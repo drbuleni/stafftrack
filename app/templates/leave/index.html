@@ -18,6 +18,37 @@
     </div>
 </div>
 
+<!-- Leave Balance Card -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-pie-chart"></i> My Leave Balance ({{ current_year }})</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            {% for leave_type, balance in leave_balance.items() %}
+            <div class="col-md-4 mb-3 mb-md-0">
+                <div class="card h-100 {{ 'border-danger' if balance.remaining == 0 else 'border-success' if balance.remaining > balance.total / 2 else 'border-warning' }}">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted mb-2">{{ leave_type }} Leave</h6>
+                        <div class="d-flex justify-content-center align-items-center mb-2">
+                            <span class="display-6 fw-bold {{ 'text-danger' if balance.remaining == 0 else 'text-success' if balance.remaining > balance.total / 2 else 'text-warning' }}">
+                                {{ balance.remaining }}
+                            </span>
+                            <span class="text-muted ms-2">/ {{ balance.total }} days</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar {{ 'bg-danger' if balance.remaining == 0 else 'bg-success' if balance.remaining > balance.total / 2 else 'bg-warning' }}"
+                                 style="width: {{ (balance.remaining / balance.total * 100)|round }}%"></div>
+                        </div>
+                        <small class="text-muted mt-2 d-block">{{ balance.used }} days used</small>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
 <!-- Pending Requests -->
 <div class="card mb-4">
     <div class="card-header">

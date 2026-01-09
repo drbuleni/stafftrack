@@ -11,7 +11,7 @@ from app.utils.email import (
     send_email, email_leave_request_submitted,
     email_leave_request_approved, email_leave_request_rejected
 )
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 bp = Blueprint('leave', __name__, url_prefix='/leave')
 
@@ -106,6 +106,50 @@ class ApprovalForm(FlaskForm):
     submit_reject = SubmitField('Reject')
 
 
+def calculate_leave_balance(user_id):
+    """Calculate leave balance for a user based on approved leave this year."""
+    current_year = date.today().year
+    year_start = date(current_year, 1, 1)
+    year_end = date(current_year, 12, 31)
+
+    # Leave entitlements per year
+    entitlements = {
+        'Annual': 21,
+        'Sick': 10,  # 30 days over 3 years = ~10 per year
+        'Family Responsibility': 3,
+    }
+
+    balance = {}
+
+    for leave_type, total_days in entitlements.items():
+        # Get approved leave for this type this year
+        approved_leave = LeaveRequest.query.filter(
+            LeaveRequest.staff_id == user_id,
+            LeaveRequest.leave_type == leave_type,
+            LeaveRequest.status == 'Approved',
+            LeaveRequest.start_date >= year_start,
+            LeaveRequest.start_date <= year_end
+        ).all()
+
+        # Calculate days used (excluding weekends)
+        days_used = 0
+        for leave in approved_leave:
+            current_date = leave.start_date
+            while current_date <= leave.end_date:
+                # Count only weekdays
+                if current_date.weekday() < 5:  # Monday = 0, Friday = 4
+                    days_used += 1
+                current_date = current_date + timedelta(days=1)
+
+        balance[leave_type] = {
+            'total': total_days,
+            'used': days_used,
+            'remaining': max(0, total_days - days_used)
+        }
+
+    return balance
+
+
 @bp.route('/')
 @login_required
 def index():
@@ -114,6 +158,8 @@ def index():
         # Managers see all requests
         pending = LeaveRequest.query.filter_by(status='Pending').order_by(LeaveRequest.created_at.desc()).all()
         processed = LeaveRequest.query.filter(LeaveRequest.status != 'Pending').order_by(LeaveRequest.approved_at.desc()).limit(20).all()
+        # For managers, show their own balance
+        leave_balance = calculate_leave_balance(current_user.id)
     else:
         # Staff see only their own
         pending = LeaveRequest.query.filter_by(staff_id=current_user.id, status='Pending').all()
@@ -121,8 +167,9 @@ def index():
             LeaveRequest.staff_id == current_user.id,
             LeaveRequest.status != 'Pending'
         ).order_by(LeaveRequest.approved_at.desc()).all()
+        leave_balance = calculate_leave_balance(current_user.id)
 
-    return render_template('leave/index.html', pending=pending, processed=processed)
+    return render_template('leave/index.html', pending=pending, processed=processed, leave_balance=leave_balance, current_year=date.today().year)
 
 
 @bp.route('/request', methods=['GET', 'POST'])
