@@ -115,6 +115,13 @@ def index():
     check_overdue_tasks()
     check_upcoming_tasks()
 
+    # Mark all notifications as read when viewing the page
+    Notification.query.filter_by(
+        user_id=current_user.id,
+        is_read=False
+    ).update({'is_read': True})
+    db.session.commit()
+
     page = request.args.get('page', 1, type=int)
     notifications = Notification.query.filter_by(user_id=current_user.id).order_by(
         Notification.created_at.desc()

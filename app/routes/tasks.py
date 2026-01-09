@@ -4,7 +4,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, TextAreaField, SelectField, DateField, SubmitField
 from wtforms.validators import DataRequired, Length
 from app import db, mail
-from app.models import Task, User
+from app.models import Task, User, Notification
 from app.utils.decorators import manager_required
 from app.utils.audit import log_audit
 from app.utils.email import send_email, email_task_assigned
@@ -91,6 +91,19 @@ def create():
             'title': task.title,
             'assigned_to': task.assigned_to
         })
+
+        # Send notification to assigned staff
+        if task.assigned_to:
+            due_text = f' (Due: {task.due_date.strftime("%d %b %Y")})' if task.due_date else ''
+            notification = Notification(
+                user_id=task.assigned_to,
+                title='New Task Assigned',
+                message=f'You have been assigned a new task: "{task.title}"{due_text}',
+                notification_type='task_assigned',
+                link=url_for('tasks.my_tasks')
+            )
+            db.session.add(notification)
+            db.session.commit()
 
         # Send email to assigned staff
         if current_app.config.get('MAIL_ENABLED') and task.assigned_to:

@@ -30,6 +30,14 @@ class AnnouncementForm(FlaskForm):
 @login_required
 def index():
     """View all announcements."""
+    # Mark all announcement notifications as read for this user
+    Notification.query.filter_by(
+        user_id=current_user.id,
+        notification_type='announcement',
+        is_read=False
+    ).update({'is_read': True})
+    db.session.commit()
+
     # Get active announcements that haven't expired
     announcements = Announcement.query.filter(
         Announcement.is_active == True,
@@ -171,18 +179,12 @@ def toggle(announcement_id):
 @bp.route('/unread-count')
 @login_required
 def unread_count():
-    """Get count of active announcements (for badge display)."""
-    # Count active announcements from the last 7 days that haven't expired
-    from datetime import timedelta
-    week_ago = datetime.utcnow() - timedelta(days=7)
-
-    count = Announcement.query.filter(
-        Announcement.is_active == True,
-        Announcement.created_at >= week_ago,
-        db.or_(
-            Announcement.expires_at == None,
-            Announcement.expires_at > datetime.utcnow()
-        )
+    """Get count of unread announcement notifications (for badge display)."""
+    # Count unread announcement notifications for this user
+    count = Notification.query.filter_by(
+        user_id=current_user.id,
+        notification_type='announcement',
+        is_read=False
     ).count()
 
     return jsonify({'count': count})
