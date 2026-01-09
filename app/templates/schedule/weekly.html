@@ -31,13 +31,10 @@
     <div class="text-center">
         <h5 class="mb-1">{{ week_start.strftime('%d %b') }} - {{ week_end.strftime('%d %b %Y') }}</h5>
         {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
-        <form method="POST" action="{{ url_for('schedule.clear_week') }}" class="d-inline" onsubmit="return confirm('Are you sure you want to clear ALL schedules for this week? This cannot be undone.');">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="week_start" value="{{ week_start.isoformat() }}">
-            <button type="submit" class="btn btn-sm btn-outline-danger">
-                <i class="bi bi-trash"></i> Clear Week
-            </button>
-        </form>
+        <button type="button" class="btn btn-sm btn-outline-danger"
+                onclick="confirmAction('{{ url_for('schedule.clear_week') }}?week_start={{ week_start.isoformat() }}', 'Clear Week Schedule', 'Are you sure you want to clear ALL schedules for this week? This cannot be undone.', 'Clear Week', 'btn-danger')">
+            <i class="bi bi-trash"></i> Clear Week
+        </button>
         {% endif %}
     </div>
     <a href="{{ url_for('schedule.weekly_view', week_start=next_week.isoformat()) }}" class="btn btn-outline-secondary">
@@ -90,12 +87,10 @@
                                         <br><small class="text-muted">{{ sched.start_time.strftime('%H:%M') }}-{{ sched.end_time.strftime('%H:%M') }}</small>
                                     {% endif %}
                                     {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
-                                    <form method="POST" action="{{ url_for('schedule.delete', schedule_id=sched.id) }}" class="d-inline mt-1" onsubmit="return confirm('Delete this schedule entry?');">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="Delete">
-                                            <i class="bi bi-x"></i>
-                                        </button>
-                                    </form>
+                                    <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1 mt-1" title="Delete"
+                                            onclick="confirmAction('{{ url_for('schedule.delete', schedule_id=sched.id) }}', 'Delete Schedule', 'Delete this schedule entry?', 'Delete', 'btn-danger')">
+                                        <i class="bi bi-x"></i>
+                                    </button>
                                     {% endif %}
                                 </div>
                             {% else %}

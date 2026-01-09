@@ -183,6 +183,31 @@
         {% block content %}{% endblock %}
     </main>
 
+    <!-- Confirmation Modal -->
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title" id="confirmModalLabel">
+                        <i class="bi bi-exclamation-triangle text-warning me-2"></i>
+                        <span id="confirmModalTitle">Confirm Action</span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="confirmModalBody">
+                    Are you sure you want to proceed?
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form id="confirmModalForm" method="POST" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-danger" id="confirmModalBtn">Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {% else %}
     <!-- Login Page - No sidebar -->
     {% block login_content %}{% endblock %}
@@ -235,6 +260,20 @@
             setInterval(updateNotificationBadge, 60000);
             setInterval(updateAnnouncementBadge, 60000);
         });
+
+        // Confirmation modal function
+        function confirmAction(url, title, message, buttonText, buttonClass) {
+            document.getElementById('confirmModalTitle').textContent = title || 'Confirm Action';
+            document.getElementById('confirmModalBody').textContent = message || 'Are you sure you want to proceed?';
+            document.getElementById('confirmModalForm').action = url;
+
+            const btn = document.getElementById('confirmModalBtn');
+            btn.textContent = buttonText || 'Confirm';
+            btn.className = 'btn ' + (buttonClass || 'btn-danger');
+
+            const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+            modal.show();
+        }
     </script>
     {% block scripts %}{% endblock %}
 </body>

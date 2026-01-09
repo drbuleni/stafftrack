@@ -12,12 +12,10 @@
                 <i class="bi bi-check-all"></i> Mark All Read
             </button>
         </form>
-        <form method="POST" action="{{ url_for('notifications.clear_all') }}" class="d-inline" onsubmit="return confirm('Clear all read notifications?');">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-outline-secondary">
-                <i class="bi bi-trash"></i> Clear Read
-            </button>
-        </form>
+        <button type="button" class="btn btn-outline-secondary"
+                onclick="confirmAction('{{ url_for('notifications.clear_all') }}', 'Clear Notifications', 'Clear all read notifications?', 'Clear', 'btn-secondary')">
+            <i class="bi bi-trash"></i> Clear Read
+        </button>
     </div>
 </div>
 

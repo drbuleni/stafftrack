@@ -54,12 +54,10 @@
                                 Password
                             </a>
                             {% if user.id != current_user.id %}
-                            <form method="POST" action="{{ url_for('users.delete', user_id=user.id) }}" class="d-inline" onsubmit="return confirm('Are you sure you want to delete {{ user.full_name }}? This will also delete all their schedules, leave requests, KPI scores, and other related data. This cannot be undone.');">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="btn btn-sm btn-outline-danger">
-                                    Delete
-                                </button>
-                            </form>
+                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                    onclick="confirmAction('{{ url_for('users.delete', user_id=user.id) }}', 'Delete User', 'Are you sure you want to delete {{ user.full_name }}? This will also delete all their schedules, leave requests, KPI scores, and other related data. This cannot be undone.', 'Delete', 'btn-danger')">
+                                Delete
+                            </button>
                             {% endif %}
                         </td>
                         {% endif %}

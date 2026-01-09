@@ -64,12 +64,10 @@
                                 <div class="badge d-flex align-items-center justify-content-between mb-1 bg-{{ 'dark' if sched.room == 'Black Room' else 'danger' if sched.room == 'Red Room' else 'primary' }}" style="{{ 'background-color: #ffc0cb !important; color: #333;' if sched.room == 'Pink Room' else '' }}" title="{{ sched.staff.full_name }} - {{ sched.role }}{% if sched.room %} ({{ sched.room }}){% endif %}{% if sched.shift_type != 'Full Day' %} - {{ sched.shift_type }}{% endif %}">
                                     <span class="text-truncate">{{ sched.staff.full_name[:10] }}{% if sched.room %} <i class="bi bi-door-open"></i>{% endif %}</span>
                                     {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
-                                    <form method="POST" action="{{ url_for('schedule.delete', schedule_id=sched.id) }}" class="d-inline ms-1" onsubmit="return confirm('Delete {{ sched.staff.full_name }} from this day?');">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <button type="submit" class="btn btn-link p-0 text-white" style="font-size: 0.7rem; line-height: 1;" title="Delete">
-                                            <i class="bi bi-x"></i>
-                                        </button>
-                                    </form>
+                                    <button type="button" class="btn btn-link p-0 text-white ms-1" style="font-size: 0.7rem; line-height: 1;" title="Delete"
+                                            onclick="confirmAction('{{ url_for('schedule.delete', schedule_id=sched.id) }}', 'Remove from Schedule', 'Remove {{ sched.staff.full_name }} from this day?', 'Remove', 'btn-danger')">
+                                        <i class="bi bi-x"></i>
+                                    </button>
                                     {% endif %}
                                 </div>
                                 {% endfor %}
