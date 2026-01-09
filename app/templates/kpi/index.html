@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}KPI Dashboard - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-graph-up-arrow"></i> KPI Dashboard</h1>
+    <div>
+        <a href="{{ url_for('kpi.view_kpis') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-list-check"></i> View All KPIs
+        </a>
+        <a href="{{ url_for('kpi.rankings', month=current_month, year=current_year) }}" class="btn btn-outline-warning">
+            <i class="bi bi-trophy"></i> Rankings
+        </a>
+        <a href="{{ url_for('kpi.score') }}" class="btn btn-primary">
+            <i class="bi bi-pencil-square"></i> Score KPIs
+        </a>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-calendar3"></i> {{ month_name }} {{ current_year }} - Staff KPI Overview</h5>
+    </div>
+    <div class="card-body">
+        {% if staff %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Staff Member</th>
+                        <th>Role</th>
+                        <th>Score</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for member in staff %}
+                    <tr>
+                        <td>
+                            <strong>{{ member.full_name }}</strong>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">{{ member.role }}</span>
+                        </td>
+                        <td>
+                            {% if member.id in scores_by_staff %}
+                                {% set score = scores_by_staff[member.id] %}
+                                <span class="fw-bold {% if score.percentage >= 70 %}text-success{% else %}text-danger{% endif %}">
+                                    {{ score.met }}/{{ score.total }} ({{ score.percentage|round|int }}%)
+                                </span>
+                                {% if not score.scored %}
+                                <br><small class="text-muted">Partial - {{ score.total }}/{{ score.total_kpis }} KPIs scored</small>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">Not scored</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if member.id in scores_by_staff %}
+                                {% set score = scores_by_staff[member.id] %}
+                                {% if score.percentage >= 70 %}
+                                    <span class="badge bg-success"><i class="bi bi-check-circle"></i> Good</span>
+                                {% else %}
+                                    <span class="badge bg-danger"><i class="bi bi-exclamation-triangle"></i> Below Target</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge bg-warning text-dark"><i class="bi bi-clock"></i> Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('kpi.score', staff_id=member.id, month=current_month, year=current_year) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-pencil"></i> Score
+                            </a>
+                            <a href="{{ url_for('kpi.history', staff_id=member.id) }}" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-clock-history"></i> History
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted text-center py-3">No staff members with KPIs found.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Summary</h5>
+            </div>
+            <div class="card-body">
+                {% set scored_count = scores_by_staff|length %}
+                {% set total_count = staff|length %}
+                {% set above_target = scores_by_staff.values()|selectattr('percentage', 'ge', 70)|list|length %}
+
+                <div class="row text-center">
+                    <div class="col-4">
+                        <h3 class="text-primary mb-0">{{ scored_count }}/{{ total_count }}</h3>
+                        <small class="text-muted">Staff Scored</small>
+                    </div>
+                    <div class="col-4">
+                        <h3 class="text-success mb-0">{{ above_target }}</h3>
+                        <small class="text-muted">Above 70%</small>
+                    </div>
+                    <div class="col-4">
+                        <h3 class="text-danger mb-0">{{ scored_count - above_target }}</h3>
+                        <small class="text-muted">Below 70%</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-info-circle"></i> About Monthly KPIs</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-0">
+                    KPIs are scored once per month for each staff member. Each KPI is marked as either "Met" or "Not Met".
+                    Staff scoring below 70% for two consecutive months will receive an automatic warning.
+                    The target is 70% or above.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

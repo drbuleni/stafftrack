@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Schedule - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-calendar3"></i> Schedule - {{ month_name }} {{ year }}</h1>
+    <div>
+        <a href="{{ url_for('schedule.weekly_view') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-calendar-week"></i> Weekly View
+        </a>
+        <a href="{{ url_for('schedule.room_view') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-door-open"></i> Room View
+        </a>
+        {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
+        <a href="{{ url_for('schedule.auto_generate') }}" class="btn btn-success">
+            <i class="bi bi-magic"></i> Auto-Generate
+        </a>
+        <a href="{{ url_for('schedule.add') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Add Manually
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <a href="{{ url_for('schedule.index', year=prev_year, month=prev_month) }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-chevron-left"></i> Previous
+    </a>
+    <a href="{{ url_for('schedule.index') }}" class="btn btn-sm btn-outline-primary">Today</a>
+    <a href="{{ url_for('schedule.index', year=next_year, month=next_month) }}" class="btn btn-sm btn-outline-secondary">
+        Next <i class="bi bi-chevron-right"></i>
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-bordered mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="text-center" style="width: 14.28%">Mon</th>
+                        <th class="text-center" style="width: 14.28%">Tue</th>
+                        <th class="text-center" style="width: 14.28%">Wed</th>
+                        <th class="text-center" style="width: 14.28%">Thu</th>
+                        <th class="text-center" style="width: 14.28%">Fri</th>
+                        <th class="text-center" style="width: 14.28%">Sat</th>
+                        <th class="text-center" style="width: 14.28%">Sun</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for week in month_days %}
+                    <tr>
+                        {% for day in week %}
+                        <td class="p-2 {{ 'bg-light' if day == 0 else 'bg-info bg-opacity-10' if day == today.day and month == today.month and year == today.year else '' }}" style="height: 120px; vertical-align: top;">
+                            {% if day != 0 %}
+                            <div class="d-flex justify-content-between mb-1">
+                                <strong class="{{ 'text-primary' if day == today.day and month == today.month and year == today.year else '' }}">{{ day }}</strong>
+                            </div>
+
+                            <!-- Scheduled staff -->
+                            {% if day in schedule_by_date %}
+                                {% for sched in schedule_by_date[day] %}
+                                <div class="badge d-flex align-items-center justify-content-between mb-1 bg-{{ 'dark' if sched.room == 'Black Room' else 'danger' if sched.room == 'Red Room' else 'primary' }}" style="{{ 'background-color: #ffc0cb !important; color: #333;' if sched.room == 'Pink Room' else '' }}" title="{{ sched.staff.full_name }} - {{ sched.role }}{% if sched.room %} ({{ sched.room }}){% endif %}{% if sched.shift_type != 'Full Day' %} - {{ sched.shift_type }}{% endif %}">
+                                    <span class="text-truncate">{{ sched.staff.full_name[:10] }}{% if sched.room %} <i class="bi bi-door-open"></i>{% endif %}</span>
+                                    {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
+                                    <form method="POST" action="{{ url_for('schedule.delete', schedule_id=sched.id) }}" class="d-inline ms-1" onsubmit="return confirm('Delete {{ sched.staff.full_name }} from this day?');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-link p-0 text-white" style="font-size: 0.7rem; line-height: 1;" title="Delete">
+                                            <i class="bi bi-x"></i>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            {% endif %}
+
+                            <!-- Leave -->
+                            {% if day in leave_by_date %}
+                                {% for leave in leave_by_date[day] %}
+                                <div class="badge bg-warning text-dark d-block mb-1 text-truncate" title="{{ leave.staff.full_name }} - {{ leave.leave_type }} Leave">
+                                    <i class="bi bi-calendar-x"></i> {{ leave.staff.full_name[:10] }}
+                                </div>
+                                {% endfor %}
+                            {% endif %}
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-body">
+        <h6 class="mb-3">Legend</h6>
+        <div class="d-flex flex-wrap gap-3">
+            <span><span class="badge bg-primary">Scheduled</span> No room assigned</span>
+            <span><span class="badge bg-dark">Black Room</span></span>
+            <span><span class="badge bg-danger">Red Room</span></span>
+            <span><span class="badge" style="background-color: #ffc0cb; color: #333;">Pink Room</span></span>
+            <span><span class="badge bg-warning text-dark"><i class="bi bi-calendar-x"></i> Leave</span> On approved leave</span>
+        </div>
+    </div>
+</div>
+{% endblock %}

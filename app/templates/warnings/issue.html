@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Issue Warning - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h4 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Issue Warning</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <i class="bi bi-info-circle"></i>
+                    Warnings are recorded in the staff member's performance history and are visible to them.
+                </div>
+
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+
+                    <div class="mb-3">
+                        {{ form.staff_id.label(class="form-label") }}
+                        {{ form.staff_id(class="form-select") }}
+                        {% if form.staff_id.errors %}
+                            <div class="text-danger small">{{ form.staff_id.errors[0] }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.warning_type.label(class="form-label") }}
+                        {{ form.warning_type(class="form-select") }}
+                        {% if form.warning_type.errors %}
+                            <div class="text-danger small">{{ form.warning_type.errors[0] }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.reason.label(class="form-label") }}
+                        {{ form.reason(class="form-control", rows="4", placeholder="Provide a clear reason for this warning") }}
+                        {% if form.reason.errors %}
+                            <div class="text-danger small">{{ form.reason.errors[0] }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        {{ form.submit(class="btn btn-danger btn-lg") }}
+                        <a href="{{ url_for('warnings.index') }}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

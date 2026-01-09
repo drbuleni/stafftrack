@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}All KPIs Reference - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-list-check"></i> All KPIs Reference</h1>
+    <a href="{{ url_for('kpi.index') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Dashboard
+    </a>
+</div>
+
+<div class="alert alert-info mb-4">
+    <i class="bi bi-info-circle"></i>
+    This page shows all KPIs defined for each role. KPIs are scored monthly with "Met" or "Not Met".
+    Target: 70% or above.
+</div>
+
+<!-- Role Tabs -->
+<ul class="nav nav-tabs mb-4" id="roleTabs" role="tablist">
+    {% for role in roles %}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link {{ 'active' if loop.first else '' }}"
+                id="tab-{{ role|replace(' ', '-') }}"
+                data-bs-toggle="tab"
+                data-bs-target="#content-{{ role|replace(' ', '-') }}"
+                type="button"
+                role="tab">
+            {{ role }}
+        </button>
+    </li>
+    {% endfor %}
+</ul>
+
+<div class="tab-content" id="roleTabsContent">
+    {% for role in roles %}
+    <div class="tab-pane fade {{ 'show active' if loop.first else '' }}"
+         id="content-{{ role|replace(' ', '-') }}"
+         role="tabpanel">
+
+        {% set role_data = all_kpis[role] %}
+        {% set total_kpis = 0 %}
+        {% for item in role_data %}
+            {% set total_kpis = total_kpis + item.kpis|length %}
+        {% endfor %}
+
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-person-badge"></i> {{ role }} KPIs
+                    <span class="badge bg-light text-dark ms-2">{{ total_kpis }} Total KPIs</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if role_data %}
+                    {% for item in role_data %}
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">
+                                    <i class="bi bi-folder"></i> {{ item.category.name }}
+                                </h6>
+                                <div>
+                                    <span class="badge bg-info">{{ item.category.weight }}% weight</span>
+                                    <span class="badge bg-secondary">{{ item.kpis|length }} KPIs</span>
+                                </div>
+                            </div>
+                        </div>
+                        <ul class="list-group list-group-flush">
+                            {% for kpi in item.kpis %}
+                            <li class="list-group-item">
+                                <i class="bi bi-check2-square text-primary me-2"></i>
+                                {{ kpi.name }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <p class="text-muted text-center py-3">No KPIs defined for this role.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Summary Table -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-table"></i> KPI Summary by Role</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Role</th>
+                        <th>Categories</th>
+                        <th>Total KPIs</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for role in roles %}
+                    {% set role_data = all_kpis[role] %}
+                    {% set total_kpis = 0 %}
+                    {% for item in role_data %}
+                        {% set total_kpis = total_kpis + item.kpis|length %}
+                    {% endfor %}
+                    <tr>
+                        <td><strong>{{ role }}</strong></td>
+                        <td>{{ role_data|length }}</td>
+                        <td>{{ total_kpis }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

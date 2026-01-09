@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}Score KPIs - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-pencil-square"></i> Score Monthly KPIs</h1>
+    <a href="{{ url_for('kpi.index') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Dashboard
+    </a>
+</div>
+
+<!-- Staff & Month Selection -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-person"></i> Select Staff & Month</h5>
+    </div>
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('kpi.score') }}" class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Staff Member</label>
+                <select name="staff_id" class="form-select" onchange="this.form.submit()">
+                    <option value="">-- Select Staff --</option>
+                    {% for staff in staff_list %}
+                    <option value="{{ staff.id }}" {% if selected_staff and selected_staff.id == staff.id %}selected{% endif %}>
+                        {{ staff.full_name }} ({{ staff.role }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Month</label>
+                <select name="month" class="form-select" onchange="this.form.submit()">
+                    {% for i in range(1, 13) %}
+                    <option value="{{ i }}" {% if selected_month == i %}selected{% endif %}>{{ month_names[i] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Year</label>
+                <select name="year" class="form-select" onchange="this.form.submit()">
+                    {% for y in range(current_year - 1, current_year + 2) %}
+                    <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-search"></i> Load
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if selected_staff and kpi_data %}
+<!-- KPI Scoring Form -->
+<form method="POST" action="{{ url_for('kpi.score') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="staff_id" value="{{ selected_staff.id }}">
+    <input type="hidden" name="month" value="{{ selected_month }}">
+    <input type="hidden" name="year" value="{{ selected_year }}">
+
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-clipboard-check"></i>
+                KPIs for {{ selected_staff.full_name }} - {{ month_names[selected_month] }} {{ selected_year }}
+            </h5>
+        </div>
+        <div class="card-body">
+            <p class="text-muted mb-4">
+                <strong>Role:</strong> {{ selected_staff.role }} |
+                Score each KPI as "Met" or "Not Met". Target: 70% or above.
+            </p>
+
+            {% for item in kpi_data %}
+            <div class="card mb-3">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                        <i class="bi bi-folder"></i> {{ item.category.name }}
+                        <span class="badge bg-secondary ms-2">{{ item.category.weight }}% weight</span>
+                        <span class="badge bg-info ms-1">{{ item.kpis|length }} KPIs</span>
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0">
+                        <tbody>
+                            {% for kpi in item.kpis %}
+                            <tr>
+                                <td style="width: 50%;">
+                                    <span class="fw-medium">{{ kpi.name }}</span>
+                                </td>
+                                <td style="width: 25%;">
+                                    <div class="btn-group w-100" role="group">
+                                        <input type="radio" class="btn-check"
+                                               name="kpi_{{ kpi.id }}"
+                                               id="met_{{ kpi.id }}"
+                                               value="1"
+                                               {% if kpi.id in existing_scores and existing_scores[kpi.id].score == 1 %}checked{% elif kpi.id not in existing_scores %}checked{% endif %}
+                                               required>
+                                        <label class="btn btn-outline-success btn-sm" for="met_{{ kpi.id }}">
+                                            <i class="bi bi-check-lg"></i> Met
+                                        </label>
+                                        <input type="radio" class="btn-check"
+                                               name="kpi_{{ kpi.id }}"
+                                               id="notmet_{{ kpi.id }}"
+                                               value="0"
+                                               {% if kpi.id in existing_scores and existing_scores[kpi.id].score == 0 %}checked{% endif %}>
+                                        <label class="btn btn-outline-danger btn-sm" for="notmet_{{ kpi.id }}">
+                                            <i class="bi bi-x-lg"></i> Not Met
+                                        </label>
+                                    </div>
+                                </td>
+                                <td style="width: 25%;">
+                                    <input type="text"
+                                           class="form-control form-control-sm"
+                                           name="notes_{{ kpi.id }}"
+                                           placeholder="Notes (optional)"
+                                           value="{{ existing_scores[kpi.id].notes if kpi.id in existing_scores and existing_scores[kpi.id].notes else '' }}">
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="card-footer">
+            <div class="d-flex justify-content-between">
+                <a href="{{ url_for('kpi.index') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-lg"></i> Cancel
+                </a>
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="bi bi-check-lg"></i> Save KPI Scores
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+
+{% elif not selected_staff %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> Please select a staff member to score their KPIs.
+</div>
+{% endif %}
+{% endblock %}

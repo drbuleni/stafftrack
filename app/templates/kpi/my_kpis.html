@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}My KPIs - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-graph-up-arrow"></i> My KPIs</h1>
+    <a href="{{ url_for('kpi.history', staff_id=current_user.id) }}" class="btn btn-outline-secondary">
+        <i class="bi bi-clock-history"></i> View History
+    </a>
+</div>
+
+<!-- Month Navigation -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    {% set prev_month = month - 1 if month > 1 else 12 %}
+    {% set prev_year = year if month > 1 else year - 1 %}
+    {% set next_month = month + 1 if month < 12 else 1 %}
+    {% set next_year = year if month < 12 else year + 1 %}
+
+    <a href="{{ url_for('kpi.my_kpis', month=prev_month, year=prev_year) }}" class="btn btn-outline-secondary">
+        <i class="bi bi-chevron-left"></i> Previous Month
+    </a>
+    <h5 class="mb-0">{{ month_name }} {{ year }}</h5>
+    <a href="{{ url_for('kpi.my_kpis', month=next_month, year=next_year) }}" class="btn btn-outline-secondary">
+        Next Month <i class="bi bi-chevron-right"></i>
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        {% if score_summary %}
+        <!-- Score Summary Card -->
+        <div class="card mb-4">
+            <div class="card-header {% if score_summary.percentage >= 70 %}bg-success{% else %}bg-danger{% endif %} text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-clipboard-data"></i>
+                    {{ month_name }} {{ year }} Score: {{ score_summary.percentage|round|int }}%
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center mb-3">
+                    <div class="col-4">
+                        <h2 class="mb-0">{{ score_summary.met }}</h2>
+                        <small class="text-muted">Met</small>
+                    </div>
+                    <div class="col-4">
+                        <h2 class="mb-0">{{ score_summary.total - score_summary.met }}</h2>
+                        <small class="text-muted">Not Met</small>
+                    </div>
+                    <div class="col-4">
+                        <h2 class="mb-0 {% if score_summary.percentage >= 70 %}text-success{% else %}text-danger{% endif %}">
+                            {{ score_summary.percentage|round|int }}%
+                        </h2>
+                        <small class="text-muted">Overall</small>
+                    </div>
+                </div>
+                <div class="progress" style="height: 25px;">
+                    <div class="progress-bar {% if score_summary.percentage >= 70 %}bg-success{% else %}bg-danger{% endif %}"
+                         style="width: {{ score_summary.percentage }}%">
+                        {{ score_summary.percentage|round|int }}%
+                    </div>
+                </div>
+                {% if score_summary.percentage < 70 %}
+                <div class="alert alert-warning mt-3 mb-0">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Your score is below the 70% target. Please discuss with your manager to improve.
+                </div>
+                {% else %}
+                <div class="alert alert-success mt-3 mb-0">
+                    <i class="bi bi-check-circle"></i>
+                    Great work! You've met or exceeded the 70% target.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- KPI Details by Category -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-list-check"></i> KPI Details</h5>
+            </div>
+            <div class="card-body">
+                {% if kpi_data %}
+                    {% for item in kpi_data %}
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">
+                                <i class="bi bi-folder"></i> {{ item.category.name }}
+                                <span class="badge bg-secondary">{{ item.category.weight }}% weight</span>
+                            </h6>
+                        </div>
+                        <ul class="list-group list-group-flush">
+                            {% for kpi in item.kpis %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>{{ kpi.name }}</span>
+                                {% if kpi.id in scores_dict %}
+                                    {% set score = scores_dict[kpi.id] %}
+                                    {% if score.score == 1 %}
+                                    <span class="badge bg-success"><i class="bi bi-check-lg"></i> Met</span>
+                                    {% else %}
+                                    <span class="badge bg-danger"><i class="bi bi-x-lg"></i> Not Met</span>
+                                    {% endif %}
+                                {% else %}
+                                <span class="badge bg-warning text-dark"><i class="bi bi-clock"></i> Not Scored</span>
+                                {% endif %}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <p class="text-muted text-center">No KPIs defined for your role.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Info Card -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-info-circle"></i> About Your KPIs</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">
+                    Your KPIs are scored once per month by your manager. Each KPI is marked as "Met" or "Not Met".
+                </p>
+                <ul class="small text-muted mb-0">
+                    <li class="mb-2"><strong>Target:</strong> 70% or above</li>
+                    <li class="mb-2"><strong>Role:</strong> {{ current_user.role }}</li>
+                    <li><strong>Warning:</strong> Two consecutive months below 70% triggers an automatic warning</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        {% if scores_dict %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Category Breakdown</h5>
+            </div>
+            <div class="card-body">
+                {% for item in kpi_data %}
+                    {% set cat_scores = [] %}
+                    {% for kpi in item.kpis %}
+                        {% if kpi.id in scores_dict %}
+                            {% if cat_scores.append(scores_dict[kpi.id].score) %}{% endif %}
+                        {% endif %}
+                    {% endfor %}
+                    {% if cat_scores %}
+                        {% set cat_met = cat_scores|sum %}
+                        {% set cat_total = cat_scores|length %}
+                        {% set cat_pct = (cat_met / cat_total * 100)|round|int %}
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between small mb-1">
+                                <span>{{ item.category.name }}</span>
+                                <span class="{% if cat_pct >= 70 %}text-success{% else %}text-danger{% endif %}">
+                                    {{ cat_met }}/{{ cat_total }} ({{ cat_pct }}%)
+                                </span>
+                            </div>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar {% if cat_pct >= 70 %}bg-success{% else %}bg-danger{% endif %}"
+                                     style="width: {{ cat_pct }}%"></div>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

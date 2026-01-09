@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}Audit Log - StaffTrack{% endblock %}
+
+{% block content %}
+<h1 class="mb-4"><i class="bi bi-shield-lock"></i> Audit Log</h1>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">User</label>
+                <select name="user_id" class="form-select">
+                    <option value="">All Users</option>
+                    {% for user in users %}
+                    <option value="{{ user.id }}" {{ 'selected' if user_filter == user.id }}>{{ user.full_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Action</label>
+                <select name="action" class="form-select">
+                    <option value="">All Actions</option>
+                    {% for action in unique_actions %}
+                    <option value="{{ action }}" {{ 'selected' if action_filter == action }}>{{ action }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Start Date</label>
+                <input type="date" name="start_date" class="form-control" value="{{ start_date or '' }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">End Date</label>
+                <input type="date" name="end_date" class="form-control" value="{{ end_date or '' }}">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary me-2">Filter</button>
+                <a href="{{ url_for('audit.index') }}" class="btn btn-outline-secondary">Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if logs.items %}
+        <div class="table-responsive">
+            <table class="table table-sm table-hover">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>User</th>
+                        <th>Action</th>
+                        <th>Entity</th>
+                        <th>IP Address</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs.items %}
+                    <tr>
+                        <td><small>{{ log.created_at.strftime('%d %b %Y %H:%M:%S') }}</small></td>
+                        <td>{{ log.user.full_name if log.user else 'System' }}</td>
+                        <td><span class="badge bg-secondary">{{ log.action }}</span></td>
+                        <td>
+                            {% if log.entity_type %}
+                            {{ log.entity_type }} #{{ log.entity_id }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td><small class="text-muted">{{ log.ip_address or '-' }}</small></td>
+                        <td>
+                            {% if log.details %}
+                            <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#details{{ log.id }}">
+                                View
+                            </button>
+                            <!-- Modal -->
+                            <div class="modal fade" id="details{{ log.id }}" tabindex="-1">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Details - {{ log.action }}</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <pre class="bg-light p-3 rounded">{{ log.details | tojson(indent=2) }}</pre>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if logs.pages > 1 %}
+        <nav>
+            <ul class="pagination justify-content-center mb-0">
+                {% if logs.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('audit.index', page=logs.prev_num, user_id=user_filter, action=action_filter, start_date=start_date, end_date=end_date) }}">Previous</a>
+                </li>
+                {% endif %}
+                {% for page_num in logs.iter_pages() %}
+                    {% if page_num %}
+                    <li class="page-item {{ 'active' if page_num == logs.page else '' }}">
+                        <a class="page-link" href="{{ url_for('audit.index', page=page_num, user_id=user_filter, action=action_filter, start_date=start_date, end_date=end_date) }}">{{ page_num }}</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                {% endfor %}
+                {% if logs.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('audit.index', page=logs.next_num, user_id=user_filter, action=action_filter, start_date=start_date, end_date=end_date) }}">Next</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+        {% else %}
+        <p class="text-muted mb-0">No audit logs found.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

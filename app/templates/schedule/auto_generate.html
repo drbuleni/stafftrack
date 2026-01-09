@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Auto-Generate Schedule - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0"><i class="bi bi-magic"></i> Auto-Generate Weekly Schedule</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <h6><i class="bi bi-info-circle"></i> How Auto-Scheduling Works</h6>
+                    <ul class="mb-0 small">
+                        <li><strong>Weekdays Only:</strong> Staff are scheduled Monday to Friday (practice closed weekends)</li>
+                        <li><strong>Full Day Shifts:</strong> Standard hours 8:00 AM - 5:00 PM</li>
+                        <li><strong>Room Rotation:</strong> Dental assistants automatically rotate through Black, Red, and Pink rooms</li>
+                        <li><strong>Leave Aware:</strong> Staff on approved leave are automatically excluded</li>
+                        <li><strong>Safe:</strong> Existing schedule entries are not overwritten</li>
+                    </ul>
+                </div>
+
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+
+                    <div class="mb-4">
+                        {{ form.week_start.label(class="form-label") }}
+                        {{ form.week_start(class="form-control", type="date") }}
+                        <small class="text-muted">Select any day - the system will adjust to the Monday of that week.</small>
+                        {% if form.week_start.errors %}
+                            <div class="text-danger small">{{ form.week_start.errors[0] }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        {{ form.submit(class="btn btn-primary btn-lg") }}
+                        <a href="{{ url_for('schedule.index') }}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-lightbulb"></i> Tips</h6>
+            </div>
+            <div class="card-body">
+                <ul class="small mb-0">
+                    <li>Generate schedules in advance (e.g., next week or next month)</li>
+                    <li>You can still manually add or remove individual schedule entries after generation</li>
+                    <li>When leave is approved, conflicting schedules are automatically removed</li>
+                    <li>Use the Weekly View to see and manage room assignments</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

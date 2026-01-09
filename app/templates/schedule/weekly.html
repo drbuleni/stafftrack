@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}Weekly Schedule - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-calendar-week"></i> Weekly Schedule</h1>
+    <div>
+        <a href="{{ url_for('schedule.index') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-calendar3"></i> Monthly View
+        </a>
+        <a href="{{ url_for('schedule.room_view') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-door-open"></i> Room View
+        </a>
+        {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
+        <a href="{{ url_for('schedule.auto_generate') }}" class="btn btn-success">
+            <i class="bi bi-magic"></i> Auto-Generate
+        </a>
+        <a href="{{ url_for('schedule.add') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Add Manually
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Week Navigation -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <a href="{{ url_for('schedule.weekly_view', week_start=prev_week.isoformat()) }}" class="btn btn-outline-secondary">
+        <i class="bi bi-chevron-left"></i> Previous Week
+    </a>
+    <div class="text-center">
+        <h5 class="mb-1">{{ week_start.strftime('%d %b') }} - {{ week_end.strftime('%d %b %Y') }}</h5>
+        {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
+        <form method="POST" action="{{ url_for('schedule.clear_week') }}" class="d-inline" onsubmit="return confirm('Are you sure you want to clear ALL schedules for this week? This cannot be undone.');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="week_start" value="{{ week_start.isoformat() }}">
+            <button type="submit" class="btn btn-sm btn-outline-danger">
+                <i class="bi bi-trash"></i> Clear Week
+            </button>
+        </form>
+        {% endif %}
+    </div>
+    <a href="{{ url_for('schedule.weekly_view', week_start=next_week.isoformat()) }}" class="btn btn-outline-secondary">
+        Next Week <i class="bi bi-chevron-right"></i>
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-bordered mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 150px;">Staff Member</th>
+                        {% for day in days %}
+                        <th class="text-center {{ 'table-primary' if day.is_today else '' }}" style="width: 120px;">
+                            <div class="fw-bold">{{ day.name }}</div>
+                            <small>{{ day.date.strftime('%d %b') }}</small>
+                        </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for staff_id, data in schedule_grid.items() %}
+                    <tr>
+                        <td>
+                            <strong>{{ data.staff.full_name }}</strong>
+                            <br><small class="text-muted">{{ data.staff.role }}</small>
+                        </td>
+                        {% for i in range(7) %}
+                        <td class="text-center {{ 'table-primary' if days[i].is_today else '' }}">
+                            {% if staff_id in leave_by_staff_date and i in leave_by_staff_date[staff_id] %}
+                                <span class="badge bg-warning text-dark">
+                                    <i class="bi bi-calendar-x"></i> Leave
+                                </span>
+                            {% elif data.days[i] %}
+                                {% set sched = data.days[i] %}
+                                <div class="small">
+                                    {% if sched.shift_type == 'Off' %}
+                                        <span class="badge bg-secondary">Off</span>
+                                    {% else %}
+                                        <span class="badge bg-{{ 'success' if sched.shift_type == 'Full Day' else 'info' }}">
+                                            {{ sched.shift_type }}
+                                        </span>
+                                    {% endif %}
+                                    {% if sched.room %}
+                                        <br><span class="badge bg-{{ 'dark' if sched.room == 'Black Room' else 'danger' if sched.room == 'Red Room' else 'pink' }}" style="{{ 'background-color: #ffc0cb !important; color: #333;' if sched.room == 'Pink Room' else '' }}">{{ sched.room }}</span>
+                                    {% endif %}
+                                    {% if sched.start_time and sched.end_time %}
+                                        <br><small class="text-muted">{{ sched.start_time.strftime('%H:%M') }}-{{ sched.end_time.strftime('%H:%M') }}</small>
+                                    {% endif %}
+                                    {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
+                                    <form method="POST" action="{{ url_for('schedule.delete', schedule_id=sched.id) }}" class="d-inline mt-1" onsubmit="return confirm('Delete this schedule entry?');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="Delete">
+                                            <i class="bi bi-x"></i>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Legend -->
+<div class="card mt-4">
+    <div class="card-body">
+        <h6 class="mb-3">Legend</h6>
+        <div class="d-flex flex-wrap gap-3">
+            <span><span class="badge bg-success">Full Day</span> Working full day</span>
+            <span><span class="badge bg-info">Morning</span> Morning shift</span>
+            <span><span class="badge bg-info">Afternoon</span> Afternoon shift</span>
+            <span><span class="badge bg-secondary">Off</span> Not working</span>
+            <span><span class="badge bg-warning text-dark">Leave</span> On approved leave</span>
+            <span><span class="badge bg-dark">Black Room</span></span>
+            <span><span class="badge bg-danger">Red Room</span></span>
+            <span><span class="badge" style="background-color: #ffc0cb; color: #333;">Pink Room</span></span>
+        </div>
+    </div>
+</div>
+{% endblock %}

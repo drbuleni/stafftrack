@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}KPI History - {{ staff.full_name }} - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1><i class="bi bi-clock-history"></i> KPI History</h1>
+        <p class="text-muted mb-0">{{ staff.full_name }} - {{ staff.role }}</p>
+    </div>
+    <a href="{{ url_for('kpi.index') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to KPIs
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-calendar3"></i> Monthly KPI Scores (Last 12 Months)</h5>
+    </div>
+    <div class="card-body">
+        {% if monthly_scores %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th>KPIs Met</th>
+                        <th>Total KPIs</th>
+                        <th>Percentage</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for score in monthly_scores %}
+                    <tr>
+                        <td>
+                            <strong>{{ score.month_name }} {{ score.year }}</strong>
+                        </td>
+                        <td>{{ score.met }}</td>
+                        <td>{{ score.total }}</td>
+                        <td>
+                            <div class="progress" style="height: 20px; min-width: 120px;">
+                                <div class="progress-bar {{ 'bg-success' if score.percentage >= 70 else 'bg-danger' }}"
+                                     style="width: {{ score.percentage }}%">
+                                    {{ score.percentage|round|int }}%
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            {% if score.percentage >= 70 %}
+                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Good</span>
+                            {% else %}
+                            <span class="badge bg-danger"><i class="bi bi-exclamation-triangle"></i> Below Target</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Summary Stats -->
+        <div class="row mt-4">
+            <div class="col-md-4">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        {% set avg_pct = (monthly_scores|sum(attribute='percentage') / monthly_scores|length)|round|int %}
+                        <h3 class="{% if avg_pct >= 70 %}text-success{% else %}text-danger{% endif %}">{{ avg_pct }}%</h3>
+                        <small class="text-muted">Average Score</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        {% set good_months = monthly_scores|selectattr('percentage', 'ge', 70)|list|length %}
+                        <h3 class="text-success">{{ good_months }}</h3>
+                        <small class="text-muted">Months Above 70%</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        {% set bad_months = monthly_scores|selectattr('percentage', 'lt', 70)|list|length %}
+                        <h3 class="text-danger">{{ bad_months }}</h3>
+                        <small class="text-muted">Months Below 70%</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0 text-center py-3">No KPI history available.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

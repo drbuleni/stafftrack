@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+
+{% block title %}Leave Entitlements - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-info-circle"></i> Leave Entitlements</h1>
+    <div>
+        <a href="{{ url_for('leave.index') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Leave
+        </a>
+        <a href="{{ url_for('leave.request_leave') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Request Leave
+        </a>
+    </div>
+</div>
+
+<div class="alert alert-info mb-4">
+    <i class="bi bi-building"></i> These leave entitlements are based on the <strong>South African Basic Conditions of Employment Act (BCEA)</strong>. Your actual entitlements may vary based on your employment contract.
+</div>
+
+<div class="row">
+    <!-- Statutory Leave -->
+    <div class="col-12 mb-4">
+        <h5 class="text-muted"><i class="bi bi-shield-check"></i> Statutory Leave (BCEA)</h5>
+    </div>
+
+    <!-- Annual Leave -->
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100 border-success">
+            <div class="card-header bg-success text-white">
+                <h6 class="mb-0"><i class="bi bi-sun"></i> Annual Leave</h6>
+            </div>
+            <div class="card-body">
+                <h4 class="text-success">21 days/year</h4>
+                <p class="text-muted">{{ entitlements['Annual']['description'] }}</p>
+                <hr>
+                <p class="small mb-0"><strong>Notes:</strong> {{ entitlements['Annual']['notes'] }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sick Leave -->
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100 border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h6 class="mb-0"><i class="bi bi-thermometer-half"></i> Sick Leave</h6>
+            </div>
+            <div class="card-body">
+                <h4 class="text-warning">30 days/3 years</h4>
+                <p class="text-muted">{{ entitlements['Sick']['description'] }}</p>
+                <hr>
+                <p class="small mb-0"><strong>Notes:</strong> {{ entitlements['Sick']['notes'] }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Family Responsibility Leave -->
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100 border-info">
+            <div class="card-header bg-info text-white">
+                <h6 class="mb-0"><i class="bi bi-people"></i> Family Responsibility</h6>
+            </div>
+            <div class="card-body">
+                <h4 class="text-info">3 days/year</h4>
+                <p class="text-muted">{{ entitlements['Family Responsibility']['description'] }}</p>
+                <hr>
+                <p class="small mb-0"><strong>Notes:</strong> {{ entitlements['Family Responsibility']['notes'] }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Maternity Leave -->
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100 border-danger">
+            <div class="card-header bg-danger text-white">
+                <h6 class="mb-0"><i class="bi bi-heart"></i> Maternity Leave</h6>
+            </div>
+            <div class="card-body">
+                <h4 class="text-danger">4 months</h4>
+                <p class="text-muted">{{ entitlements['Maternity']['description'] }}</p>
+                <hr>
+                <p class="small mb-0"><strong>Notes:</strong> {{ entitlements['Maternity']['notes'] }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Parental Leave -->
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100 border-primary">
+            <div class="card-header bg-primary text-white">
+                <h6 class="mb-0"><i class="bi bi-person-heart"></i> Parental Leave</h6>
+            </div>
+            <div class="card-body">
+                <h4 class="text-primary">10 days</h4>
+                <p class="text-muted">{{ entitlements['Parental']['description'] }}</p>
+                <hr>
+                <p class="small mb-0"><strong>Notes:</strong> {{ entitlements['Parental']['notes'] }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Adoption Leave -->
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100 border-secondary">
+            <div class="card-header bg-secondary text-white">
+                <h6 class="mb-0"><i class="bi bi-house-heart"></i> Adoption Leave</h6>
+            </div>
+            <div class="card-body">
+                <h4 class="text-secondary">10 weeks</h4>
+                <p class="text-muted">{{ entitlements['Adoption']['description'] }}</p>
+                <hr>
+                <p class="small mb-0"><strong>Notes:</strong> {{ entitlements['Adoption']['notes'] }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <!-- Other Leave Types -->
+    <div class="col-12 mb-4">
+        <h5 class="text-muted"><i class="bi bi-calendar-plus"></i> Other Leave Types</h5>
+    </div>
+
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-book"></i> Study Leave</h6>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">{{ entitlements['Study']['description'] }}</p>
+                <p class="small mb-0"><strong>Notes:</strong> {{ entitlements['Study']['notes'] }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-calendar-x"></i> Unpaid Leave</h6>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">{{ entitlements['Unpaid']['description'] }}</p>
+                <p class="small mb-0"><strong>Notes:</strong> {{ entitlements['Unpaid']['notes'] }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-three-dots"></i> Other</h6>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">{{ entitlements['Other']['description'] }}</p>
+                <p class="small mb-0"><strong>Notes:</strong> {{ entitlements['Other']['notes'] }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h6 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Important Information</h6>
+    </div>
+    <div class="card-body">
+        <ul class="mb-0">
+            <li><strong>UIF Claims:</strong> For Maternity, Parental, Adoption, and Commissioning Parental leave, employees may claim from the Unemployment Insurance Fund (UIF).</li>
+            <li><strong>Medical Certificates:</strong> For sick leave exceeding 2 consecutive days, a medical certificate is required.</li>
+            <li><strong>Leave Cycles:</strong> Annual leave must be taken within 6 months of the end of the leave cycle. Sick leave operates on a 3-year cycle.</li>
+            <li><strong>Public Holidays:</strong> If a public holiday falls on a day during annual leave, that day does not count as annual leave.</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

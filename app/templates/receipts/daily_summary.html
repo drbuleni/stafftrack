@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Daily Summary - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-calendar-day"></i> Daily Summary</h1>
+    <div>
+        <a href="{{ url_for('exports.daily_cash_pdf', date=selected_date) }}" class="btn btn-outline-primary me-2">
+            <i class="bi bi-file-earmark-pdf"></i> Export PDF
+        </a>
+        <a href="{{ url_for('receipts.index') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Receipts
+        </a>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <form method="GET" class="input-group">
+            <input type="date" name="date" class="form-control" value="{{ selected_date }}">
+            <button type="submit" class="btn btn-primary">View</button>
+        </form>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card border-success">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Cash</h6>
+                <h3 class="text-success">R {{ "%.2f"|format(cash_total) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card border-primary">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Card</h6>
+                <h3 class="text-primary">R {{ "%.2f"|format(card_total) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card border-info">
+            <div class="card-body text-center">
+                <h6 class="text-muted">EFT</h6>
+                <h3 class="text-info">R {{ "%.2f"|format(eft_total) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card bg-dark text-white">
+            <div class="card-body text-center">
+                <h6>Total</h6>
+                <h3>R {{ "%.2f"|format(grand_total) }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Receipts for {{ selected_date }}</h5>
+    </div>
+    <div class="card-body">
+        {% if receipts %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Receipt #</th>
+                        <th>Amount</th>
+                        <th>Payment Method</th>
+                        <th>Description</th>
+                        <th>Created By</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for receipt in receipts %}
+                    <tr>
+                        <td>{{ receipt.receipt_number }}</td>
+                        <td>R {{ "%.2f"|format(receipt.amount) }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if receipt.payment_method == 'Cash' else 'primary' if receipt.payment_method == 'Card' else 'info' }}">
+                                {{ receipt.payment_method }}
+                            </span>
+                        </td>
+                        <td>{{ receipt.description or '-' }}</td>
+                        <td>{{ receipt.creator.full_name }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">No receipts for this date.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

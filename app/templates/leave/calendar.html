@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Leave Calendar - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-calendar3"></i> Leave Calendar</h1>
+    <a href="{{ url_for('leave.index') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Requests
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Approved Leave</h5>
+    </div>
+    <div class="card-body">
+        {% if approved_leave %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Staff</th>
+                        <th>Type</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Duration</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for leave in approved_leave|sort(attribute='start_date') %}
+                    <tr>
+                        <td>{{ leave.staff.full_name }}</td>
+                        <td><span class="badge bg-info">{{ leave.leave_type }}</span></td>
+                        <td>{{ leave.start_date.strftime('%d %b %Y') }}</td>
+                        <td>{{ leave.end_date.strftime('%d %b %Y') }}</td>
+                        <td>{{ (leave.end_date - leave.start_date).days + 1 }} day(s)</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">No approved leave to display.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Warnings - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-exclamation-triangle"></i> Warnings</h1>
+    {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
+    <a href="{{ url_for('warnings.issue') }}" class="btn btn-danger">
+        <i class="bi bi-plus-circle"></i> Issue Warning
+    </a>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if warnings %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
+                        <th>Staff Member</th>
+                        {% endif %}
+                        <th>Type</th>
+                        <th>Reason</th>
+                        <th>Issued By</th>
+                        <th>Date</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for warning in warnings %}
+                    <tr>
+                        {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
+                        <td>
+                            <a href="{{ url_for('warnings.staff_warnings', staff_id=warning.staff_id) }}">
+                                {{ warning.staff.full_name }}
+                            </a>
+                        </td>
+                        {% endif %}
+                        <td>
+                            <span class="badge bg-danger">{{ warning.warning_type.replace('_', ' ') }}</span>
+                        </td>
+                        <td>{{ warning.reason }}</td>
+                        <td>{{ warning.issuer.full_name }}</td>
+                        <td>{{ warning.issued_at.strftime('%d %b %Y %H:%M') }}</td>
+                        <td>
+                            {% if warning.auto_generated %}
+                            <span class="badge bg-secondary">Auto</span>
+                            {% else %}
+                            <span class="badge bg-primary">Manual</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">No warnings found.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

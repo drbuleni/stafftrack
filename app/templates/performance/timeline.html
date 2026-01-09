@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Performance Timeline - {{ staff.full_name }} - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1><i class="bi bi-timeline"></i> Performance Timeline</h1>
+        <p class="text-muted mb-0">{{ staff.full_name }} - {{ staff.role }}</p>
+    </div>
+    {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
+    <div>
+        <a href="{{ url_for('exports.staff_report_pdf', staff_id=staff.id) }}" class="btn btn-outline-primary me-2">
+            <i class="bi bi-file-earmark-pdf"></i> Generate Report
+        </a>
+        <a href="{{ url_for('performance.index') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Team
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Summary Stats -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card border-danger">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Total Warnings</h6>
+                <h2 class="text-danger">{{ total_warnings }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card border-success">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Tasks Completed</h6>
+                <h2 class="text-success">{{ total_tasks_completed }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card border-primary">
+            <div class="card-body text-center">
+                <h6 class="text-muted">KPI Average (30 days)</h6>
+                <h2 class="text-primary">
+                    {% if kpi_avg is not none %}
+                    {{ "%.0f"|format(kpi_avg) }}%
+                    {% else %}
+                    N/A
+                    {% endif %}
+                </h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Start Date</h6>
+                <h5>{{ staff.start_date.strftime('%d %b %Y') if staff.start_date else 'Not set' }}</h5>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Date Filter -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Start Date</label>
+                <input type="date" name="start_date" class="form-control" value="{{ start_date }}">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">End Date</label>
+                <input type="date" name="end_date" class="form-control" value="{{ end_date }}">
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary me-2">Filter</button>
+                <a href="{{ url_for('performance.timeline', staff_id=staff.id) }}" class="btn btn-outline-secondary">Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Timeline -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Events Timeline</h5>
+            </div>
+            <div class="card-body">
+                {% if events or warnings %}
+                <div class="timeline">
+                    {% for event in events %}
+                    <div class="timeline-item mb-3">
+                        <div class="d-flex">
+                            <div class="me-3">
+                                {% if event.event_type == 'Warning' %}
+                                <span class="badge bg-danger rounded-circle p-2"><i class="bi bi-exclamation-triangle"></i></span>
+                                {% elif event.event_type == 'KPI_Score' %}
+                                <span class="badge bg-primary rounded-circle p-2"><i class="bi bi-graph-up"></i></span>
+                                {% elif event.event_type == 'Task_Complete' %}
+                                <span class="badge bg-success rounded-circle p-2"><i class="bi bi-check-lg"></i></span>
+                                {% elif event.event_type == 'Leave' %}
+                                <span class="badge bg-info rounded-circle p-2"><i class="bi bi-calendar-heart"></i></span>
+                                {% else %}
+                                <span class="badge bg-secondary rounded-circle p-2"><i class="bi bi-circle"></i></span>
+                                {% endif %}
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between">
+                                    <strong>{{ event.event_type.replace('_', ' ') }}</strong>
+                                    <small class="text-muted">{{ event.created_at.strftime('%d %b %Y %H:%M') }}</small>
+                                </div>
+                                <p class="mb-0">{{ event.event_description }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted mb-0">No events found for the selected period.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Warnings Summary -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Warnings</h5>
+            </div>
+            <div class="card-body">
+                {% if warnings %}
+                <ul class="list-unstyled mb-0">
+                    {% for warning in warnings %}
+                    <li class="mb-3 pb-3 border-bottom">
+                        <div class="d-flex justify-content-between">
+                            <strong>{{ warning.warning_type.replace('_', ' ') }}</strong>
+                            <small class="text-muted">{{ warning.issued_at.strftime('%d %b') }}</small>
+                        </div>
+                        <p class="mb-0 small">{{ warning.reason }}</p>
+                        {% if warning.auto_generated %}
+                        <span class="badge bg-secondary">Auto-generated</span>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted mb-0">No warnings in this period.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

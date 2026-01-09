@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Room Schedule - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-door-open"></i> Room Assignments</h1>
+    <div>
+        <a href="{{ url_for('schedule.index') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-calendar3"></i> Monthly View
+        </a>
+        <a href="{{ url_for('schedule.weekly_view') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-calendar-week"></i> Weekly View
+        </a>
+        {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
+        <a href="{{ url_for('schedule.add') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Add Schedule
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Date Navigation -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <a href="{{ url_for('schedule.room_view', date=prev_date.isoformat()) }}" class="btn btn-outline-secondary">
+        <i class="bi bi-chevron-left"></i> Previous Day
+    </a>
+    <h5 class="mb-0">{{ view_date.strftime('%A, %d %B %Y') }}</h5>
+    <a href="{{ url_for('schedule.room_view', date=next_date.isoformat()) }}" class="btn btn-outline-secondary">
+        Next Day <i class="bi bi-chevron-right"></i>
+    </a>
+</div>
+
+<div class="row">
+    <!-- Black Room -->
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 border-dark">
+            <div class="card-header bg-dark">
+                <h5 class="mb-0" style="color: white !important;"><i class="bi bi-door-open"></i> Black Room</h5>
+            </div>
+            <div class="card-body">
+                {% if room_schedules['Black Room'] %}
+                    {% for schedule in room_schedules['Black Room'] %}
+                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                        <div>
+                            <strong>{{ schedule.staff.full_name }}</strong>
+                            <br><small class="text-muted">{{ schedule.role }}</small>
+                            {% if schedule.start_time and schedule.end_time %}
+                            <br><small><i class="bi bi-clock"></i> {{ schedule.start_time.strftime('%H:%M') }} - {{ schedule.end_time.strftime('%H:%M') }}</small>
+                            {% endif %}
+                        </div>
+                        <span class="badge bg-{{ 'success' if schedule.shift_type == 'Full Day' else 'info' }}">
+                            {{ schedule.shift_type }}
+                        </span>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted mb-0 text-center py-3">No assignments</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Red Room -->
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 border-danger">
+            <div class="card-header bg-danger">
+                <h5 class="mb-0 text-white"><i class="bi bi-door-open"></i> Red Room</h5>
+            </div>
+            <div class="card-body">
+                {% if room_schedules['Red Room'] %}
+                    {% for schedule in room_schedules['Red Room'] %}
+                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                        <div>
+                            <strong>{{ schedule.staff.full_name }}</strong>
+                            <br><small class="text-muted">{{ schedule.role }}</small>
+                            {% if schedule.start_time and schedule.end_time %}
+                            <br><small><i class="bi bi-clock"></i> {{ schedule.start_time.strftime('%H:%M') }} - {{ schedule.end_time.strftime('%H:%M') }}</small>
+                            {% endif %}
+                        </div>
+                        <span class="badge bg-{{ 'success' if schedule.shift_type == 'Full Day' else 'info' }}">
+                            {{ schedule.shift_type }}
+                        </span>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted mb-0 text-center py-3">No assignments</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Pink Room -->
+    <div class="col-md-4 mb-4">
+        <div class="card h-100" style="border-color: #ffc0cb;">
+            <div class="card-header text-dark" style="background-color: #ffc0cb;">
+                <h5 class="mb-0"><i class="bi bi-door-open"></i> Pink Room</h5>
+            </div>
+            <div class="card-body">
+                {% if room_schedules['Pink Room'] %}
+                    {% for schedule in room_schedules['Pink Room'] %}
+                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                        <div>
+                            <strong>{{ schedule.staff.full_name }}</strong>
+                            <br><small class="text-muted">{{ schedule.role }}</small>
+                            {% if schedule.start_time and schedule.end_time %}
+                            <br><small><i class="bi bi-clock"></i> {{ schedule.start_time.strftime('%H:%M') }} - {{ schedule.end_time.strftime('%H:%M') }}</small>
+                            {% endif %}
+                        </div>
+                        <span class="badge bg-{{ 'success' if schedule.shift_type == 'Full Day' else 'info' }}">
+                            {{ schedule.shift_type }}
+                        </span>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted mb-0 text-center py-3">No assignments</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mt-2">
+    <div class="card-body">
+        <h6 class="mb-2"><i class="bi bi-info-circle"></i> About Room Assignments</h6>
+        <p class="text-muted mb-0">
+            Room assignments are used to track which dental assistant is working in which treatment room.
+            The practice has three rooms: Black Room, Red Room, and Pink Room.
+            Dental assistants rotate between these rooms based on the schedule.
+        </p>
+    </div>
+</div>
+{% endblock %}

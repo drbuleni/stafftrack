@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}SOP Documents - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-file-earmark-text"></i> SOP Documents</h1>
+    {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
+    <a href="{{ url_for('sop.upload') }}" class="btn btn-primary">
+        <i class="bi bi-upload"></i> Upload Document
+    </a>
+    {% endif %}
+</div>
+
+{% set unacknowledged = documents|rejectattr('id', 'in', acknowledged_ids)|list %}
+{% if unacknowledged %}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle"></i>
+    You have <strong>{{ unacknowledged|length }}</strong> document(s) that require acknowledgement.
+</div>
+{% endif %}
+
+<div class="row">
+    {% for doc in documents %}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100 {{ 'border-warning' if doc.id not in acknowledged_ids else 'border-success' }}">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="badge bg-{{ 'warning text-dark' if doc.id not in acknowledged_ids else 'success' }}">
+                    {{ 'Pending' if doc.id not in acknowledged_ids else 'Acknowledged' }}
+                </span>
+                <small class="text-muted">v{{ doc.version }}</small>
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">{{ doc.title }}</h5>
+                <p class="card-text text-muted">{{ doc.description or 'No description provided.' }}</p>
+                <p class="card-text">
+                    <small class="text-muted">
+                        Uploaded by {{ doc.uploader.full_name }}<br>
+                        {{ doc.uploaded_at.strftime('%d %b %Y') }}
+                    </small>
+                </p>
+            </div>
+            <div class="card-footer">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('sop.download', sop_id=doc.id) }}" class="btn btn-outline-primary">
+                        <i class="bi bi-download"></i> Download
+                    </a>
+                    {% if doc.id not in acknowledged_ids %}
+                    <form action="{{ url_for('sop.acknowledge', sop_id=doc.id) }}" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-check-lg"></i> I Acknowledge
+                        </button>
+                    </form>
+                    {% endif %}
+                    {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
+                    <a href="{{ url_for('sop.view_acknowledgements', sop_id=doc.id) }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-people"></i> View Acknowledgements
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col">
+        <p class="text-muted">No SOP documents have been uploaded yet.</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}StaffTrack{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/custom.css') }}" rel="stylesheet">
+</head>
+<body>
+    {% if current_user.is_authenticated %}
+    <!-- Mobile Header -->
+    <div class="mobile-header d-lg-none">
+        <button class="mobile-menu-btn" onclick="toggleSidebar()">
+            <i class="bi bi-list"></i>
+        </button>
+        <span class="fw-bold">StaffTrack</span>
+        <div style="width: 40px;"></div>
+    </div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <div class="sidebar-brand-text">Staff<span>Track</span></div>
+        </div>
+
+        <div class="sidebar-nav-wrapper">
+        <ul class="sidebar-nav">
+            <li class="sidebar-nav-section">Main</li>
+            <li class="sidebar-nav-item">
+                <a href="{{ url_for('dashboard.index') }}" class="sidebar-nav-link {{ 'active' if request.endpoint == 'dashboard.index' else '' }}">
+                    <i class="bi bi-grid-1x2"></i>
+                    Dashboard
+                </a>
+            </li>
+            <li class="sidebar-nav-item">
+                <a href="{{ url_for('tasks.my_tasks') }}" class="sidebar-nav-link {{ 'active' if 'tasks' in request.endpoint else '' }}">
+                    <i class="bi bi-check2-square"></i>
+                    My Tasks
+                </a>
+            </li>
+            <li class="sidebar-nav-item">
+                <a href="{{ url_for('schedule.index') }}" class="sidebar-nav-link {{ 'active' if 'schedule' in request.endpoint else '' }}">
+                    <i class="bi bi-calendar3"></i>
+                    Schedule
+                </a>
+            </li>
+            <li class="sidebar-nav-item">
+                <a href="{{ url_for('leave.index') }}" class="sidebar-nav-link {{ 'active' if 'leave' in request.endpoint else '' }}">
+                    <i class="bi bi-calendar-heart"></i>
+                    Leave
+                </a>
+            </li>
+            <li class="sidebar-nav-item">
+                <a href="{{ url_for('kpi.index') }}" class="sidebar-nav-link {{ 'active' if 'kpi' in request.endpoint else '' }}">
+                    <i class="bi bi-graph-up-arrow"></i>
+                    KPIs
+                </a>
+            </li>
+            <li class="sidebar-nav-item">
+                <a href="{{ url_for('sop.index') }}" class="sidebar-nav-link {{ 'active' if 'sop' in request.endpoint else '' }}">
+                    <i class="bi bi-file-earmark-text"></i>
+                    SOPs
+                </a>
+            </li>
+            <li class="sidebar-nav-item">
+                <a href="{{ url_for('notifications.index') }}" class="sidebar-nav-link {{ 'active' if 'notifications' in request.endpoint else '' }}">
+                    <i class="bi bi-bell"></i>
+                    Notifications
+                    <span id="notificationBadge" class="badge bg-danger ms-auto" style="display: none;">0</span>
+                </a>
+            </li>
+            <li class="sidebar-nav-item">
+                <a href="{{ url_for('announcements.index') }}" class="sidebar-nav-link {{ 'active' if 'announcements' in request.endpoint else '' }}">
+                    <i class="bi bi-megaphone"></i>
+                    Announcements
+                </a>
+            </li>
+
+            {% if current_user.role in ['Receptionist', 'Practice Manager', 'Super Admin', 'Dentist'] %}
+            <li class="sidebar-nav-section">Finance</li>
+            <li class="sidebar-nav-item">
+                <a href="{{ url_for('receipts.index') }}" class="sidebar-nav-link {{ 'active' if 'receipts' in request.endpoint else '' }}">
+                    <i class="bi bi-receipt"></i>
+                    Receipts
+                </a>
+            </li>
+            {% endif %}
+
+            {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
+            <li class="sidebar-nav-section">Management</li>
+            <li class="sidebar-nav-item">
+                <a href="{{ url_for('tasks.index') }}" class="sidebar-nav-link">
+                    <i class="bi bi-list-task"></i>
+                    All Tasks
+                </a>
+            </li>
+            <li class="sidebar-nav-item">
+                <a href="{{ url_for('kpi.score') }}" class="sidebar-nav-link">
+                    <i class="bi bi-clipboard-data"></i>
+                    Score KPIs
+                </a>
+            </li>
+            <li class="sidebar-nav-item">
+                <a href="{{ url_for('kpi.rankings') }}" class="sidebar-nav-link">
+                    <i class="bi bi-trophy"></i>
+                    Rankings
+                </a>
+            </li>
+            <li class="sidebar-nav-item">
+                <a href="{{ url_for('warnings.index') }}" class="sidebar-nav-link {{ 'active' if 'warnings' in request.endpoint else '' }}">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Warnings
+                </a>
+            </li>
+            <li class="sidebar-nav-item">
+                <a href="{{ url_for('performance.index') }}" class="sidebar-nav-link {{ 'active' if 'performance' in request.endpoint else '' }}">
+                    <i class="bi bi-person-lines-fill"></i>
+                    Performance
+                </a>
+            </li>
+            <li class="sidebar-nav-item">
+                <a href="{{ url_for('analytics.index') }}" class="sidebar-nav-link {{ 'active' if 'analytics' in request.endpoint else '' }}">
+                    <i class="bi bi-bar-chart-line"></i>
+                    Analytics
+                </a>
+            </li>
+            {% endif %}
+
+            {% if current_user.role == 'Super Admin' %}
+            <li class="sidebar-nav-section">Administration</li>
+            <li class="sidebar-nav-item">
+                <a href="{{ url_for('users.index') }}" class="sidebar-nav-link {{ 'active' if 'users' in request.endpoint else '' }}">
+                    <i class="bi bi-people"></i>
+                    Users
+                </a>
+            </li>
+            <li class="sidebar-nav-item">
+                <a href="{{ url_for('audit.index') }}" class="sidebar-nav-link {{ 'active' if 'audit' in request.endpoint else '' }}">
+                    <i class="bi bi-shield-check"></i>
+                    Audit Log
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+        </div>
+
+        <!-- User Section at Bottom -->
+        <div class="sidebar-user">
+            <div class="sidebar-user-info">
+                <div class="sidebar-user-avatar">
+                    {{ current_user.full_name[0] }}
+                </div>
+                <div class="sidebar-user-details">
+                    <div class="sidebar-user-name">{{ current_user.full_name }}</div>
+                    <div class="sidebar-user-role">{{ current_user.role }}</div>
+                </div>
+                <a href="{{ url_for('auth.logout') }}" class="text-gray-400 ms-2" title="Logout" style="color: #9ca3af;">
+                    <i class="bi bi-box-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Sidebar Overlay for Mobile -->
+    <div class="sidebar-overlay d-lg-none" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show animate-fade-in" role="alert">
+                        <i class="bi bi-{{ 'check-circle' if category == 'success' else 'exclamation-circle' if category == 'danger' else 'info-circle' }} me-2"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    {% else %}
+    <!-- Login Page - No sidebar -->
+    {% block login_content %}{% endblock %}
+    {% endif %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('show');
+            document.getElementById('sidebarOverlay').classList.toggle('show');
+        }
+
+        // Check for unread notifications
+        function updateNotificationBadge() {
+            fetch('{{ url_for("notifications.unread_count") }}')
+                .then(response => response.json())
+                .then(data => {
+                    const badge = document.getElementById('notificationBadge');
+                    if (badge && data.count > 0) {
+                        badge.textContent = data.count;
+                        badge.style.display = 'inline';
+                    } else if (badge) {
+                        badge.style.display = 'none';
+                    }
+                })
+                .catch(err => console.log('Could not fetch notifications'));
+        }
+
+        // Check notifications on page load and every 60 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            updateNotificationBadge();
+            setInterval(updateNotificationBadge, 60000);
+        });
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Quick Schedule - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0"><i class="bi bi-lightning"></i> Quick Multi-Day Schedule</h4>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Schedule a staff member for multiple consecutive days at once.</p>
+
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+
+                    <div class="mb-3">
+                        {{ form.staff_id.label(class="form-label") }}
+                        {{ form.staff_id(class="form-select") }}
+                        {% if form.staff_id.errors %}
+                            <div class="text-danger small">{{ form.staff_id.errors[0] }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.start_date.label(class="form-label") }}
+                            {{ form.start_date(class="form-control", type="date") }}
+                            {% if form.start_date.errors %}
+                                <div class="text-danger small">{{ form.start_date.errors[0] }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            {{ form.end_date.label(class="form-label") }}
+                            {{ form.end_date(class="form-control", type="date") }}
+                            {% if form.end_date.errors %}
+                                <div class="text-danger small">{{ form.end_date.errors[0] }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.shift_type.label(class="form-label") }}
+                            {{ form.shift_type(class="form-select") }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            {{ form.room.label(class="form-label") }}
+                            {{ form.room(class="form-select") }}
+                            <small class="text-muted">For dental assistants</small>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Days with approved leave or existing schedules will be skipped automatically.
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        {{ form.submit(class="btn btn-primary btn-lg") }}
+                        <a href="{{ url_for('schedule.index') }}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

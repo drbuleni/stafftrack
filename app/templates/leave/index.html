@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}Leave Requests - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-calendar-heart"></i> Leave Requests</h1>
+    <div>
+        <a href="{{ url_for('leave.entitlements') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-info-circle"></i> Leave Entitlements
+        </a>
+        <a href="{{ url_for('leave.calendar_view') }}" class="btn btn-outline-primary">
+            <i class="bi bi-calendar3"></i> Leave Calendar
+        </a>
+        <a href="{{ url_for('leave.request_leave') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Request Leave
+        </a>
+    </div>
+</div>
+
+<!-- Pending Requests -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="bi bi-hourglass-split"></i> Pending Requests
+            {% if pending %}
+            <span class="badge bg-warning text-dark">{{ pending|length }}</span>
+            {% endif %}
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if pending %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Staff</th>
+                        <th>Type</th>
+                        <th>Dates</th>
+                        <th>Reason</th>
+                        <th>Requested</th>
+                        {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
+                        <th>Action</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for leave in pending %}
+                    <tr>
+                        <td>{{ leave.staff.full_name }}</td>
+                        <td><span class="badge bg-info">{{ leave.leave_type }}</span></td>
+                        <td>{{ leave.start_date.strftime('%d %b') }} - {{ leave.end_date.strftime('%d %b %Y') }}</td>
+                        <td>{{ leave.reason or '-' }}</td>
+                        <td>{{ leave.created_at.strftime('%d %b %Y') }}</td>
+                        {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
+                        <td>
+                            <a href="{{ url_for('leave.approve', leave_id=leave.id) }}" class="btn btn-sm btn-primary">
+                                Review
+                            </a>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">No pending leave requests.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Processed Requests -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-check-circle"></i> Processed Requests</h5>
+    </div>
+    <div class="card-body">
+        {% if processed %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Staff</th>
+                        <th>Type</th>
+                        <th>Dates</th>
+                        <th>Status</th>
+                        <th>Processed By</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for leave in processed %}
+                    <tr>
+                        <td>{{ leave.staff.full_name }}</td>
+                        <td><span class="badge bg-info">{{ leave.leave_type }}</span></td>
+                        <td>{{ leave.start_date.strftime('%d %b') }} - {{ leave.end_date.strftime('%d %b %Y') }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if leave.status == 'Approved' else 'danger' }}">
+                                {{ leave.status }}
+                            </span>
+                        </td>
+                        <td>{{ leave.approver.full_name if leave.approver else '-' }}</td>
+                        <td>{{ leave.approval_notes or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">No processed requests.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

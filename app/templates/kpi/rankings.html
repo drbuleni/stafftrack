@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}KPI Rankings - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-trophy"></i> KPI Rankings</h1>
+    <a href="{{ url_for('kpi.index') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to KPIs
+    </a>
+</div>
+
+<!-- Month Navigation -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    {% set prev_month = month - 1 if month > 1 else 12 %}
+    {% set prev_year = year if month > 1 else year - 1 %}
+    {% set next_month = month + 1 if month < 12 else 1 %}
+    {% set next_year = year if month < 12 else year + 1 %}
+
+    <a href="{{ url_for('kpi.rankings', month=prev_month, year=prev_year) }}" class="btn btn-outline-secondary">
+        <i class="bi bi-chevron-left"></i> Previous Month
+    </a>
+    <h5 class="mb-0">{{ month_name }} {{ year }}</h5>
+    <a href="{{ url_for('kpi.rankings', month=next_month, year=next_year) }}" class="btn btn-outline-secondary">
+        Next Month <i class="bi bi-chevron-right"></i>
+    </a>
+</div>
+
+{% if employee_of_month %}
+<div class="card bg-warning bg-opacity-25 border-warning mb-4">
+    <div class="card-body text-center py-4">
+        <h4 class="text-warning mb-3">
+            <i class="bi bi-star-fill"></i> Employee of the Month <i class="bi bi-star-fill"></i>
+        </h4>
+        <h2 class="mb-2">{{ employee_of_month.staff.full_name }}</h2>
+        <p class="text-muted mb-3">{{ employee_of_month.staff.role }}</p>
+        <span class="badge bg-success fs-4 px-4 py-2">{{ employee_of_month.percentage|round|int }}%</span>
+        <p class="mt-2 mb-0">
+            <small class="text-muted">{{ employee_of_month.met }}/{{ employee_of_month.total }} KPIs met</small>
+        </p>
+    </div>
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-list-ol"></i> Monthly Rankings - {{ month_name }} {{ year }}</h5>
+    </div>
+    <div class="card-body">
+        {% if rankings %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 70px;">Rank</th>
+                        <th>Staff Member</th>
+                        <th>Role</th>
+                        <th>KPIs Met</th>
+                        <th>Score</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in rankings %}
+                    <tr class="{{ 'table-warning' if loop.index == 1 else '' }}">
+                        <td>
+                            {% if loop.index == 1 %}
+                            <span class="badge bg-warning text-dark fs-6"><i class="bi bi-trophy-fill"></i> 1</span>
+                            {% elif loop.index == 2 %}
+                            <span class="badge bg-secondary fs-6"><i class="bi bi-award"></i> 2</span>
+                            {% elif loop.index == 3 %}
+                            <span class="badge bg-dark fs-6"><i class="bi bi-award"></i> 3</span>
+                            {% else %}
+                            <span class="badge bg-light text-dark fs-6">{{ loop.index }}</span>
+                            {% endif %}
+                        </td>
+                        <td><strong>{{ item.staff.full_name }}</strong></td>
+                        <td><span class="badge bg-secondary">{{ item.staff.role }}</span></td>
+                        <td>{{ item.met }}/{{ item.total }}</td>
+                        <td>
+                            <div class="progress" style="height: 25px; min-width: 150px;">
+                                <div class="progress-bar {{ 'bg-success' if item.percentage >= 70 else 'bg-danger' }}"
+                                     style="width: {{ item.percentage }}%">
+                                    {{ item.percentage|round|int }}%
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            {% if item.percentage >= 70 %}
+                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Good</span>
+                            {% else %}
+                            <span class="badge bg-danger"><i class="bi bi-exclamation-triangle"></i> Below Target</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0 text-center py-4">
+            <i class="bi bi-inbox" style="font-size: 2rem;"></i><br>
+            No KPI scores for {{ month_name }} {{ year }} yet.
+        </p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-body">
+        <h6 class="mb-2"><i class="bi bi-info-circle"></i> About Rankings</h6>
+        <p class="text-muted small mb-0">
+            Rankings are based on monthly KPI scores. Only staff members with fully scored KPIs are included.
+            The "Employee of the Month" is awarded to the staff member with the highest score (minimum 70% required).
+            Target: 70% or above.
+        </p>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-bar-chart-line"></i> Analytics Dashboard</h1>
+    <span class="text-muted">Data refreshes automatically</span>
+</div>
+
+<!-- Monthly Summary Cards -->
+<div class="row mb-4" id="summaryCards">
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card border-success h-100">
+            <div class="card-body text-center">
+                <h6 class="text-muted mb-2">Monthly Revenue</h6>
+                <h3 class="text-success mb-0" id="totalRevenue">Loading...</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card border-primary h-100">
+            <div class="card-body text-center">
+                <h6 class="text-muted mb-2">Tasks Completed</h6>
+                <h3 class="text-primary mb-0"><span id="tasksCompleted">-</span> / <span id="tasksCreated">-</span></h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card border-info h-100">
+            <div class="card-body text-center">
+                <h6 class="text-muted mb-2">KPI Success Rate</h6>
+                <h3 class="text-info mb-0" id="kpiRate">--%</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card border-warning h-100">
+            <div class="card-body text-center">
+                <h6 class="text-muted mb-2">Warnings Issued</h6>
+                <h3 class="text-warning mb-0" id="warningsIssued">-</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Revenue Trend Chart -->
+    <div class="col-lg-8 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-graph-up"></i> Daily Revenue (Last 30 Days)</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="revenueChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Methods Pie Chart -->
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Payment Methods</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="paymentChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- KPI Trends Chart -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-graph-up-arrow"></i> KPI Trends (8 Weeks)</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="kpiChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Task Status Chart -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-list-task"></i> Task Status Distribution</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="taskChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Staff Performance Comparison -->
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-people"></i> Staff Performance Comparison</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="staffChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<script>
+// Color palette
+const colors = {
+    primary: '#16a34a',
+    primaryLight: '#4ade80',
+    success: '#22c55e',
+    warning: '#f59e0b',
+    danger: '#ef4444',
+    info: '#0ea5e9',
+    gray: '#6b7280'
+};
+
+// Format currency
+function formatCurrency(value) {
+    return 'R ' + value.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Load monthly summary
+async function loadSummary() {
+    try {
+        const response = await fetch('/analytics/api/monthly-summary');
+        const data = await response.json();
+
+        document.getElementById('totalRevenue').textContent = formatCurrency(data.total_revenue);
+        document.getElementById('tasksCompleted').textContent = data.tasks_completed;
+        document.getElementById('tasksCreated').textContent = data.tasks_created;
+        document.getElementById('kpiRate').textContent = data.kpi_rate + '%';
+        document.getElementById('warningsIssued').textContent = data.warnings_issued;
+    } catch (error) {
+        console.error('Failed to load summary:', error);
+    }
+}
+
+// Revenue chart
+async function loadRevenueChart() {
+    try {
+        const response = await fetch('/analytics/api/receipts-by-day');
+        const data = await response.json();
+
+        new Chart(document.getElementById('revenueChart'), {
+            type: 'line',
+            data: {
+                labels: data.labels.map(d => {
+                    const date = new Date(d);
+                    return date.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' });
+                }),
+                datasets: [{
+                    label: 'Daily Revenue',
+                    data: data.values,
+                    borderColor: colors.primary,
+                    backgroundColor: colors.primaryLight + '40',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: value => 'R' + value.toLocaleString()
+                        }
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Failed to load revenue chart:', error);
+    }
+}
+
+// Payment methods chart
+async function loadPaymentChart() {
+    try {
+        const response = await fetch('/analytics/api/receipts-by-method');
+        const data = await response.json();
+
+        new Chart(document.getElementById('paymentChart'), {
+            type: 'doughnut',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    data: data.values,
+                    backgroundColor: [colors.success, colors.info, colors.warning, colors.primary]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Failed to load payment chart:', error);
+    }
+}
+
+// KPI trends chart
+async function loadKPIChart() {
+    try {
+        const response = await fetch('/analytics/api/kpi-trends');
+        const data = await response.json();
+
+        new Chart(document.getElementById('kpiChart'), {
+            type: 'bar',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'KPI Success %',
+                    data: data.values,
+                    backgroundColor: data.values.map(v => v >= 70 ? colors.success : v >= 50 ? colors.warning : colors.danger)
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: value => value + '%'
+                        }
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Failed to load KPI chart:', error);
+    }
+}
+
+// Task status chart
+async function loadTaskChart() {
+    try {
+        const response = await fetch('/analytics/api/tasks-by-status');
+        const data = await response.json();
+
+        const statusColors = {
+            'To Do': colors.gray,
+            'In Progress': colors.info,
+            'Done': colors.success
+        };
+
+        new Chart(document.getElementById('taskChart'), {
+            type: 'doughnut',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    data: data.values,
+                    backgroundColor: data.labels.map(l => statusColors[l] || colors.gray)
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Failed to load task chart:', error);
+    }
+}
+
+// Staff performance chart
+async function loadStaffChart() {
+    try {
+        const response = await fetch('/analytics/api/staff-performance');
+        const data = await response.json();
+
+        new Chart(document.getElementById('staffChart'), {
+            type: 'bar',
+            data: {
+                labels: data.labels,
+                datasets: [
+                    {
+                        label: 'KPI Score %',
+                        data: data.kpi_scores,
+                        backgroundColor: colors.primary
+                    },
+                    {
+                        label: 'Task Completion %',
+                        data: data.task_completion,
+                        backgroundColor: colors.info
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: value => value + '%'
+                        }
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Failed to load staff chart:', error);
+    }
+}
+
+// Load all charts on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadSummary();
+    loadRevenueChart();
+    loadPaymentChart();
+    loadKPIChart();
+    loadTaskChart();
+    loadStaffChart();
+});
+</script>
+{% endblock %}

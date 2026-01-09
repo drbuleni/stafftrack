@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - StaffTrack{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header">
+    <h1 class="page-title">Welcome back, {{ user.full_name.split()[0] }}</h1>
+    <p class="page-subtitle">{{ today.strftime('%A, %d %B %Y') }}</p>
+</div>
+
+<!-- Stats Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="stat-label mb-1">Pending Tasks</p>
+                        <h2 class="stat-value">{{ my_tasks|length }}</h2>
+                        {% if overdue_count > 0 %}
+                        <span class="badge bg-danger mt-2">{{ overdue_count }} overdue</span>
+                        {% else %}
+                        <span class="badge bg-success mt-2">All on track</span>
+                        {% endif %}
+                    </div>
+                    <div class="stat-icon primary">
+                        <i class="bi bi-check2-square"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <a href="{{ url_for('tasks.my_tasks') }}" class="text-decoration-none small">
+                    View all tasks <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
+    <div class="col-sm-6 col-xl-3">
+        <div class="card stat-card warning h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="stat-label mb-1">Pending Leave</p>
+                        <h2 class="stat-value">{{ pending_leave }}</h2>
+                        <span class="badge bg-warning mt-2">Needs review</span>
+                    </div>
+                    <div class="stat-icon warning">
+                        <i class="bi bi-calendar-heart"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <a href="{{ url_for('leave.index') }}" class="text-decoration-none small">
+                    Review requests <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="col-sm-6 col-xl-3">
+        <div class="card stat-card info h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="stat-label mb-1">SOPs to Review</p>
+                        <h2 class="stat-value">{{ unacknowledged_sops }}</h2>
+                        {% if unacknowledged_sops > 0 %}
+                        <span class="badge bg-info mt-2">Action needed</span>
+                        {% else %}
+                        <span class="badge bg-secondary mt-2">All reviewed</span>
+                        {% endif %}
+                    </div>
+                    <div class="stat-icon info">
+                        <i class="bi bi-file-earmark-text"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <a href="{{ url_for('sop.index') }}" class="text-decoration-none small">
+                    View SOPs <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+        <div class="card stat-card {{ 'danger' if warning_count > 0 else 'success' }} h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="stat-label mb-1">Warnings</p>
+                        <h2 class="stat-value">{{ warning_count }}</h2>
+                        {% if warning_count > 0 %}
+                        <span class="badge bg-danger mt-2">Attention required</span>
+                        {% else %}
+                        <span class="badge bg-success mt-2">Clear record</span>
+                        {% endif %}
+                    </div>
+                    <div class="stat-icon {{ 'danger' if warning_count > 0 else 'success' }}">
+                        <i class="bi bi-{{ 'exclamation-triangle' if warning_count > 0 else 'shield-check' }}"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <a href="{{ url_for('warnings.staff_warnings', staff_id=current_user.id) }}" class="text-decoration-none small">
+                    View details <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content Row -->
+<div class="row g-4">
+    <!-- Tasks Section -->
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-check2-square me-2"></i>My Tasks
+                </h5>
+                <a href="{{ url_for('tasks.my_tasks') }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body p-0">
+                {% if my_tasks %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Due Date</th>
+                                <th>Status</th>
+                                <th style="width: 120px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for task in my_tasks[:5] %}
+                            <tr>
+                                <td>
+                                    <strong>{{ task.title }}</strong>
+                                    {% if task.description %}
+                                    <br><small class="text-muted">{{ task.description[:60] }}{% if task.description|length > 60 %}...{% endif %}</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if task.due_date %}
+                                        {% if task.due_date < today %}
+                                            <span class="badge bg-danger">
+                                                <i class="bi bi-exclamation-circle me-1"></i>{{ task.due_date.strftime('%d %b') }}
+                                            </span>
+                                        {% elif task.due_date == today %}
+                                            <span class="badge bg-warning">
+                                                <i class="bi bi-clock me-1"></i>Today
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">{{ task.due_date.strftime('%d %b') }}</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">No due date</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ 'secondary' if task.status == 'To Do' else 'primary' if task.status == 'In Progress' else 'success' }}">
+                                        {{ task.status }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <form action="{{ url_for('tasks.update_status', task_id=task.id) }}" method="POST" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        {% if task.status == 'To Do' %}
+                                        <input type="hidden" name="status" value="In Progress">
+                                        <button type="submit" class="btn btn-sm btn-outline-primary">Start</button>
+                                        {% elif task.status == 'In Progress' %}
+                                        <input type="hidden" name="status" value="Done">
+                                        <button type="submit" class="btn btn-sm btn-success">Complete</button>
+                                        {% endif %}
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <i class="bi bi-check-circle"></i>
+                    </div>
+                    <h5 class="empty-state-title">All caught up!</h5>
+                    <p class="empty-state-text">You have no pending tasks. Great job staying on top of things.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-lightning-charge me-2"></i>Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('leave.request_leave') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-calendar-plus me-2"></i>Request Leave
+                    </a>
+                    <a href="{{ url_for('schedule.index') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-calendar3 me-2"></i>View Schedule
+                    </a>
+                    <a href="{{ url_for('kpi.index') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-graph-up-arrow me-2"></i>View My KPIs
+                    </a>
+                    {% if current_user.role in ['Receptionist', 'Practice Manager', 'Super Admin', 'Dentist'] %}
+                    <a href="{{ url_for('receipts.create') }}" class="btn btn-outline-success">
+                        <i class="bi bi-receipt me-2"></i>Create Receipt
+                    </a>
+                    {% endif %}
+                </div>
+
+                {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
+                <hr class="my-4">
+                <p class="text-muted small mb-3">Management Actions</p>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('tasks.create') }}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle me-2"></i>Create Task
+                    </a>
+                    <a href="{{ url_for('kpi.score') }}" class="btn btn-primary">
+                        <i class="bi bi-clipboard-data me-2"></i>Score KPIs
+                    </a>
+                    <a href="{{ url_for('users.create') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-person-plus me-2"></i>Add Staff
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

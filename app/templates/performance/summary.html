@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Performance Summary - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-bar-chart"></i> Team Performance Summary</h1>
+    <a href="{{ url_for('performance.index') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Staff Member</th>
+                        <th>Role</th>
+                        <th>Warnings</th>
+                        <th>Tasks (This Month)</th>
+                        <th>KPI Avg (30 days)</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in summary_data %}
+                    <tr>
+                        <td><strong>{{ item.staff.full_name }}</strong></td>
+                        <td>{{ item.staff.role }}</td>
+                        <td>
+                            {% if item.warnings > 0 %}
+                            <span class="badge bg-danger">{{ item.warnings }}</span>
+                            {% else %}
+                            <span class="badge bg-success">0</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ item.tasks_completed }}</td>
+                        <td>
+                            {% if item.kpi_avg is not none %}
+                            <span class="badge bg-{{ 'success' if item.kpi_avg >= 70 else 'danger' }}">
+                                {{ "%.0f"|format(item.kpi_avg) }}%
+                            </span>
+                            {% else %}
+                            <span class="text-muted">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('performance.timeline', staff_id=item.staff.id) }}" class="btn btn-sm btn-outline-primary">
+                                Timeline
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
