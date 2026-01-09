@@ -50,7 +50,16 @@
       "Bash(./venv/Scripts/python.exe:*)",
       "Bash(./venv/Scripts/flask.exe run:*)",
       "Bash(git init:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nInitial commit - StaffTrack Staff Accountability System\n\nFeatures:\n- User management with role-based access control\n- Monthly KPI scoring system with role-specific KPIs\n- Leave management and calendar\n- Schedule management with auto-generation\n- Warnings and performance tracking\n- Announcements and notifications\n- Receipt tracking for daily summaries\n- SOP document management\n- Analytics dashboard\n- Audit logging\n\nTech stack: Flask, SQLAlchemy, PostgreSQL \\(Supabase\\), Bootstrap 5\nEOF\n\\)\")",
+      "Bash(gh --version:*)",
+      "Bash(gh repo create:*)",
+      "Bash(git remote add:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)",
+      "Bash(git remote:*)",
+      "Bash(gh auth:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

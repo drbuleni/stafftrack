@@ -28,8 +28,8 @@ def manager_required(f):
 
 
 def admin_required(f):
-    """Shortcut decorator for Super Admin only access."""
-    return role_required('Super Admin')(f)
+    """Shortcut decorator for Super Admin and Practice Manager access."""
+    return role_required('Super Admin', 'Practice Manager')(f)
 
 
 def receipt_access_required(f):

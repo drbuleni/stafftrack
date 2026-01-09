@@ -80,8 +80,14 @@
                     Announcements
                 </a>
             </li>
+            <li class="sidebar-nav-item">
+                <a href="{{ url_for('kpi.rankings') }}" class="sidebar-nav-link {{ 'active' if request.endpoint == 'kpi.rankings' else '' }}">
+                    <i class="bi bi-trophy"></i>
+                    Rankings
+                </a>
+            </li>
 
-            {% if current_user.role in ['Receptionist', 'Practice Manager', 'Super Admin', 'Dentist'] %}
+            {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
             <li class="sidebar-nav-section">Finance</li>
             <li class="sidebar-nav-item">
                 <a href="{{ url_for('receipts.index') }}" class="sidebar-nav-link {{ 'active' if 'receipts' in request.endpoint else '' }}">
@@ -89,9 +95,7 @@
                     Receipts
                 </a>
             </li>
-            {% endif %}
 
-            {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
             <li class="sidebar-nav-section">Management</li>
             <li class="sidebar-nav-item">
                 <a href="{{ url_for('tasks.index') }}" class="sidebar-nav-link">
@@ -103,12 +107,6 @@
                 <a href="{{ url_for('kpi.score') }}" class="sidebar-nav-link">
                     <i class="bi bi-clipboard-data"></i>
                     Score KPIs
-                </a>
-            </li>
-            <li class="sidebar-nav-item">
-                <a href="{{ url_for('kpi.rankings') }}" class="sidebar-nav-link">
-                    <i class="bi bi-trophy"></i>
-                    Rankings
                 </a>
             </li>
             <li class="sidebar-nav-item">
@@ -129,9 +127,7 @@
                     Analytics
                 </a>
             </li>
-            {% endif %}
 
-            {% if current_user.role == 'Super Admin' %}
             <li class="sidebar-nav-section">Administration</li>
             <li class="sidebar-nav-item">
                 <a href="{{ url_for('users.index') }}" class="sidebar-nav-link {{ 'active' if 'users' in request.endpoint else '' }}">
