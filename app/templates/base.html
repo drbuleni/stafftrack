@@ -71,13 +71,14 @@
                 <a href="{{ url_for('notifications.index') }}" class="sidebar-nav-link {{ 'active' if 'notifications' in request.endpoint else '' }}">
                     <i class="bi bi-bell"></i>
                     Notifications
-                    <span id="notificationBadge" class="badge bg-danger ms-auto" style="display: none;">0</span>
+                    <span id="notificationBadge" class="badge ms-auto" style="display: none; background-color: #d4a017; color: white;">0</span>
                 </a>
             </li>
             <li class="sidebar-nav-item">
                 <a href="{{ url_for('announcements.index') }}" class="sidebar-nav-link {{ 'active' if 'announcements' in request.endpoint else '' }}">
                     <i class="bi bi-megaphone"></i>
                     Announcements
+                    <span id="announcementBadge" class="badge ms-auto" style="display: none; background-color: #d4a017; color: white;">0</span>
                 </a>
             </li>
             <li class="sidebar-nav-item">
@@ -211,10 +212,28 @@
                 .catch(err => console.log('Could not fetch notifications'));
         }
 
-        // Check notifications on page load and every 60 seconds
+        // Check for new announcements
+        function updateAnnouncementBadge() {
+            fetch('{{ url_for("announcements.unread_count") }}')
+                .then(response => response.json())
+                .then(data => {
+                    const badge = document.getElementById('announcementBadge');
+                    if (badge && data.count > 0) {
+                        badge.textContent = data.count;
+                        badge.style.display = 'inline';
+                    } else if (badge) {
+                        badge.style.display = 'none';
+                    }
+                })
+                .catch(err => console.log('Could not fetch announcements'));
+        }
+
+        // Check notifications and announcements on page load and every 60 seconds
         document.addEventListener('DOMContentLoaded', function() {
             updateNotificationBadge();
+            updateAnnouncementBadge();
             setInterval(updateNotificationBadge, 60000);
+            setInterval(updateAnnouncementBadge, 60000);
         });
     </script>
     {% block scripts %}{% endblock %}

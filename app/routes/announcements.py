@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
 from wtforms import StringField, TextAreaField, SelectField, DateTimeLocalField, SubmitField
@@ -166,3 +166,23 @@ def toggle(announcement_id):
 
     flash(f'Announcement "{announcement.title}" has been {status}.', 'success')
     return redirect(url_for('announcements.manage'))
+
+
+@bp.route('/unread-count')
+@login_required
+def unread_count():
+    """Get count of active announcements (for badge display)."""
+    # Count active announcements from the last 7 days that haven't expired
+    from datetime import timedelta
+    week_ago = datetime.utcnow() - timedelta(days=7)
+
+    count = Announcement.query.filter(
+        Announcement.is_active == True,
+        Announcement.created_at >= week_ago,
+        db.or_(
+            Announcement.expires_at == None,
+            Announcement.expires_at > datetime.utcnow()
+        )
+    ).count()
+
+    return jsonify({'count': count})

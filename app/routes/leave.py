@@ -4,7 +4,7 @@ from flask_wtf import FlaskForm
 from wtforms import SelectField, DateField, TextAreaField, SubmitField
 from wtforms.validators import DataRequired
 from app import db, mail
-from app.models import LeaveRequest, User, PerformanceEvent, Schedule
+from app.models import LeaveRequest, User, PerformanceEvent, Schedule, Notification
 from app.utils.decorators import manager_required
 from app.utils.audit import log_audit
 from app.utils.email import (
@@ -153,13 +153,24 @@ def request_leave():
             'end_date': leave.end_date.isoformat()
         })
 
+        # Send notification to managers (Practice Manager and Super Admin)
+        managers = User.query.filter(
+            User.role.in_(['Practice Manager', 'Super Admin']),
+            User.status == 'Active'
+        ).all()
+        for manager in managers:
+            notification = Notification(
+                user_id=manager.id,
+                title='New Leave Request',
+                message=f'{current_user.full_name} has requested {leave.leave_type} leave from {leave.start_date.strftime("%d %b %Y")} to {leave.end_date.strftime("%d %b %Y")}',
+                notification_type='leave_request',
+                link=url_for('leave.approve', leave_id=leave.id)
+            )
+            db.session.add(notification)
+        db.session.commit()
+
         # Send email to managers
         if current_app.config.get('MAIL_ENABLED'):
-            managers = User.query.filter(
-                User.role.in_(['Practice Manager', 'Super Admin']),
-                User.status == 'Active',
-                User.email.isnot(None)
-            ).all()
             for manager in managers:
                 if manager.email:
                     html = email_leave_request_submitted(
@@ -240,6 +251,18 @@ def approve(leave_id):
             'status': leave.status,
             'notes': leave.approval_notes
         })
+
+        # Send notification to the employee
+        status_text = 'approved' if leave.status == 'Approved' else 'rejected'
+        notification = Notification(
+            user_id=leave.staff_id,
+            title=f'Leave Request {leave.status}',
+            message=f'Your {leave.leave_type} leave request from {leave.start_date.strftime("%d %b %Y")} to {leave.end_date.strftime("%d %b %Y")} has been {status_text}.',
+            notification_type='leave_response',
+            link=url_for('leave.index')
+        )
+        db.session.add(notification)
+        db.session.commit()
 
         # Send email to staff member
         if current_app.config.get('MAIL_ENABLED'):
