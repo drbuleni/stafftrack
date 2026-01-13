@@ -30,12 +30,20 @@
                         <span class="badge bg-danger me-2"><i class="bi bi-exclamation-triangle"></i> Overdue</span>
                     {% elif notification.notification_type == 'task_reminder' %}
                         <span class="badge bg-warning text-dark me-2"><i class="bi bi-clock"></i> Reminder</span>
+                    {% elif notification.notification_type == 'task_assigned' %}
+                        <span class="badge bg-primary me-2"><i class="bi bi-list-task"></i> Task</span>
                     {% elif notification.notification_type == 'leave_pending' %}
                         <span class="badge bg-info me-2"><i class="bi bi-calendar"></i> Leave</span>
+                    {% elif notification.notification_type == 'leave_approved' %}
+                        <span class="badge bg-success me-2"><i class="bi bi-calendar-check"></i> Leave</span>
+                    {% elif notification.notification_type == 'leave_rejected' %}
+                        <span class="badge bg-danger me-2"><i class="bi bi-calendar-x"></i> Leave</span>
                     {% elif notification.notification_type == 'warning' %}
                         <span class="badge bg-danger me-2"><i class="bi bi-exclamation-circle"></i> Warning</span>
                     {% elif notification.notification_type == 'kpi_low' %}
                         <span class="badge bg-warning text-dark me-2"><i class="bi bi-graph-down"></i> KPI</span>
+                    {% elif notification.notification_type == 'room_assignment' %}
+                        <span class="badge bg-success me-2"><i class="bi bi-door-open"></i> Room</span>
                     {% else %}
                         <span class="badge bg-secondary me-2"><i class="bi bi-info-circle"></i> Info</span>
                     {% endif %}

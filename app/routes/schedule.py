@@ -4,12 +4,13 @@ from flask_wtf import FlaskForm
 from wtforms import SelectField, DateField, TextAreaField, SubmitField, TimeField, BooleanField
 from wtforms.validators import DataRequired, Optional
 from app import db
-from app.models import Schedule, User, LeaveRequest
+from app.models import Schedule, User, LeaveRequest, Notification
 from app.utils.decorators import manager_required
 from app.utils.audit import log_audit
 from app.utils.helpers import can_schedule, get_leave_for_date
 from datetime import date, timedelta, time
 import calendar
+import os
 
 bp = Blueprint('schedule', __name__, url_prefix='/schedule')
 
@@ -661,7 +662,7 @@ def room_view():
 @manager_required
 def clear_week():
     """Clear all schedules for a specific week."""
-    week_start_str = request.form.get('week_start')
+    week_start_str = request.args.get('week_start') or request.form.get('week_start')
     if not week_start_str:
         flash('No week specified.', 'danger')
         return redirect(url_for('schedule.index'))
@@ -689,3 +690,124 @@ def clear_week():
 
     flash(f'Cleared {deleted} schedule entries for the week.', 'success')
     return redirect(url_for('schedule.weekly_view', week_start=week_start.isoformat()))
+
+
+@bp.route('/clear-month', methods=['POST'])
+@login_required
+@manager_required
+def clear_month():
+    """Clear all schedules for a specific month."""
+    year = request.args.get('year', type=int) or request.form.get('year', type=int)
+    month = request.args.get('month', type=int) or request.form.get('month', type=int)
+
+    if not year or not month:
+        flash('No month specified.', 'danger')
+        return redirect(url_for('schedule.index'))
+
+    # Get first and last day of the month
+    first_day = date(year, month, 1)
+    if month == 12:
+        last_day = date(year + 1, 1, 1) - timedelta(days=1)
+    else:
+        last_day = date(year, month + 1, 1) - timedelta(days=1)
+
+    # Delete all schedules for this month
+    deleted = Schedule.query.filter(
+        Schedule.date >= first_day,
+        Schedule.date <= last_day
+    ).delete()
+
+    db.session.commit()
+
+    log_audit('Cleared Month Schedule', 'Schedule', None, {
+        'year': year,
+        'month': month,
+        'deleted_count': deleted
+    })
+
+    flash(f'Cleared {deleted} schedule entries for {calendar.month_name[month]} {year}.', 'success')
+    return redirect(url_for('schedule.index', year=year, month=month))
+
+
+def send_daily_room_notifications():
+    """
+    Send daily room assignment notifications to dental assistants.
+    This should be called once daily (e.g., via a scheduled job or cron).
+    """
+    today = date.today()
+
+    # Get all dental assistant schedules for today with room assignments
+    schedules = Schedule.query.join(User).filter(
+        Schedule.date == today,
+        Schedule.room.isnot(None),
+        Schedule.room != '',
+        User.role == 'Dental Assistant',
+        User.status == 'Active'
+    ).all()
+
+    notifications_sent = 0
+
+    for schedule in schedules:
+        # Check if notification already sent today for this staff
+        existing = Notification.query.filter(
+            Notification.user_id == schedule.staff_id,
+            Notification.notification_type == 'room_assignment',
+            db.func.date(Notification.created_at) == today
+        ).first()
+
+        if existing:
+            continue
+
+        # Create notification
+        time_str = ""
+        if schedule.start_time and schedule.end_time:
+            time_str = f" ({schedule.start_time.strftime('%H:%M')} - {schedule.end_time.strftime('%H:%M')})"
+
+        notification = Notification(
+            user_id=schedule.staff_id,
+            title=f"Today's Room Assignment: {schedule.room}",
+            message=f"You are assigned to {schedule.room} today ({today.strftime('%d %b %Y')}){time_str}. Have a great day!",
+            notification_type='room_assignment',
+            link='/schedule/rooms'
+        )
+        db.session.add(notification)
+        notifications_sent += 1
+
+    if notifications_sent > 0:
+        db.session.commit()
+
+    return notifications_sent
+
+
+@bp.route('/send-room-notifications', methods=['POST'])
+@login_required
+@manager_required
+def trigger_room_notifications():
+    """Manually trigger room notifications for today."""
+    sent = send_daily_room_notifications()
+    flash(f'Sent {sent} room assignment notifications.', 'success')
+    return redirect(url_for('schedule.index'))
+
+
+@bp.route('/cron/room-notifications', methods=['GET', 'POST'])
+def cron_room_notifications():
+    """
+    Endpoint for external cron services to trigger daily room notifications.
+    Protected by a secret key in the query string.
+    Usage: GET /schedule/cron/room-notifications?key=YOUR_SECRET_KEY
+    """
+    from flask import current_app, jsonify
+
+    # Check for secret key (set CRON_SECRET in environment variables)
+    secret = current_app.config.get('CRON_SECRET') or os.environ.get('CRON_SECRET', 'stafftrack-cron-2024')
+    provided_key = request.args.get('key')
+
+    if provided_key != secret:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    sent = send_daily_room_notifications()
+    return jsonify({
+        'success': True,
+        'notifications_sent': sent,
+        'date': date.today().isoformat()
+    })

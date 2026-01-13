@@ -13,6 +13,16 @@ bp = Blueprint('kpi', __name__, url_prefix='/kpi')
 # Roles that have KPIs defined
 KPI_ROLES = ['Dental Assistant', 'Dentist', 'Receptionist', 'Cleaner']
 
+# Practice Manager uses Dentist KPIs (since the PM is also a dentist in this practice)
+# Super Admin (practice owner) is excluded from KPIs
+SCORABLE_ROLES = ['Dental Assistant', 'Dentist', 'Receptionist', 'Cleaner', 'Practice Manager']
+
+def get_kpi_role(user_role):
+    """Map user role to KPI role. Practice Manager uses Dentist KPIs."""
+    if user_role == 'Practice Manager':
+        return 'Dentist'
+    return user_role
+
 MONTH_NAMES = [
     '', 'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
@@ -38,8 +48,9 @@ def calculate_monthly_score(staff_id, month, year):
     if not staff or staff.role not in KPI_ROLES:
         return None
 
-    # Get all KPIs for this staff's role
-    role_kpis = RoleKPI.query.filter_by(role=staff.role, is_active=True).all()
+    # Get all KPIs for this staff's role (Practice Manager uses Dentist KPIs)
+    kpi_role = get_kpi_role(staff.role)
+    role_kpis = RoleKPI.query.filter_by(role=kpi_role, is_active=True).all()
     if not role_kpis:
         return None
 
@@ -78,10 +89,10 @@ def index():
     current_year = today.year
 
     if current_user.role in ['Practice Manager', 'Super Admin']:
-        # Show team overview for managers
+        # Show team overview for managers (excludes Super Admin from being scored)
         staff = User.query.filter(
             User.status == 'Active',
-            User.role.in_(KPI_ROLES)
+            User.role.in_(SCORABLE_ROLES)
         ).order_by(User.role, User.full_name).all()
 
         scores_by_staff = {}
@@ -109,12 +120,13 @@ def my_kpis():
     month = request.args.get('month', today.month, type=int)
     year = request.args.get('year', today.year, type=int)
 
-    if current_user.role not in KPI_ROLES:
+    if current_user.role not in SCORABLE_ROLES:
         flash('No KPIs are defined for your role.', 'info')
         return redirect(url_for('dashboard.index'))
 
-    # Get KPIs organized by category
-    kpi_data = get_kpis_for_role(current_user.role)
+    # Get KPIs organized by category (Practice Manager uses Dentist KPIs)
+    kpi_role = get_kpi_role(current_user.role)
+    kpi_data = get_kpis_for_role(kpi_role)
 
     # Get existing scores for this month
     scores_dict = {}
@@ -143,10 +155,10 @@ def my_kpis():
 @manager_required
 def score():
     """Score KPIs for a staff member."""
-    # Get staff members who have KPIs
+    # Get staff members who can be scored (excludes Super Admin)
     staff_list = User.query.filter(
         User.status == 'Active',
-        User.role.in_(KPI_ROLES)
+        User.role.in_(SCORABLE_ROLES)
     ).order_by(User.role, User.full_name).all()
 
     today = date.today()
@@ -163,12 +175,13 @@ def score():
             return redirect(url_for('kpi.score'))
 
         staff = User.query.get(staff_id)
-        if not staff or staff.role not in KPI_ROLES:
+        if not staff or staff.role not in SCORABLE_ROLES:
             flash('Invalid staff member selected.', 'danger')
             return redirect(url_for('kpi.score'))
 
-        # Get all KPIs for this role
-        role_kpis = RoleKPI.query.filter_by(role=staff.role, is_active=True).all()
+        # Get all KPIs for this role (Practice Manager uses Dentist KPIs)
+        kpi_role = get_kpi_role(staff.role)
+        role_kpis = RoleKPI.query.filter_by(role=kpi_role, is_active=True).all()
 
         # Delete existing scores for this month (allow re-scoring)
         KPIScore.query.filter_by(
@@ -259,8 +272,9 @@ def score():
 
     if selected_staff_id:
         selected_staff = User.query.get(selected_staff_id)
-        if selected_staff and selected_staff.role in KPI_ROLES:
-            kpi_data = get_kpis_for_role(selected_staff.role)
+        if selected_staff and selected_staff.role in SCORABLE_ROLES:
+            kpi_role = get_kpi_role(selected_staff.role)
+            kpi_data = get_kpis_for_role(kpi_role)
 
             # Get existing scores if any
             scores = KPIScore.query.filter_by(
@@ -293,7 +307,7 @@ def history(staff_id):
 
     staff = User.query.get_or_404(staff_id)
 
-    if staff.role not in KPI_ROLES:
+    if staff.role not in SCORABLE_ROLES:
         flash('No KPIs are defined for this role.', 'info')
         return redirect(url_for('kpi.index'))
 
@@ -331,10 +345,10 @@ def rankings():
     month = request.args.get('month', today.month, type=int)
     year = request.args.get('year', today.year, type=int)
 
-    # Get all staff with KPI roles
+    # Get all staff who can be scored (excludes Super Admin)
     staff = User.query.filter(
         User.status == 'Active',
-        User.role.in_(KPI_ROLES)
+        User.role.in_(SCORABLE_ROLES)
     ).all()
 
     rankings_data = []

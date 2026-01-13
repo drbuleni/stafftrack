@@ -198,7 +198,14 @@ def resend_email(receipt_id):
 @receipt_access_required
 def daily_summary():
     """Show daily cash summary."""
-    selected_date = request.args.get('date', date.today().isoformat())
+    date_str = request.args.get('date', date.today().isoformat())
+
+    # Parse the date string to a date object
+    try:
+        selected_date = date.fromisoformat(date_str)
+    except ValueError:
+        selected_date = date.today()
+        date_str = selected_date.isoformat()
 
     receipts = Receipt.query.filter_by(date=selected_date).all()
 
@@ -209,7 +216,7 @@ def daily_summary():
 
     return render_template('receipts/daily_summary.html',
                           receipts=receipts,
-                          selected_date=selected_date,
+                          selected_date=date_str,
                           cash_total=cash_total,
                           card_total=card_total,
                           eft_total=eft_total,

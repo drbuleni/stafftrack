@@ -6,7 +6,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Config:
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
+    # SECRET_KEY is required - generate one with: python -c "import secrets; print(secrets.token_hex(32))"
+    SECRET_KEY = os.environ.get('SECRET_KEY')
+    if not SECRET_KEY:
+        raise ValueError("No SECRET_KEY set. Add SECRET_KEY to your environment variables on Render.")
 
     # Use Supabase PostgreSQL (from .env) or fallback to SQLite for local development
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
@@ -26,7 +29,8 @@ class Config:
 
     # Session settings
     PERMANENT_SESSION_LIFETIME = timedelta(hours=8)
-    SESSION_COOKIE_SECURE = False  # Set to True in production with HTTPS
+    # HTTPS-only cookies (Render uses HTTPS by default)
+    SESSION_COOKIE_SECURE = os.environ.get('FLASK_ENV') != 'development'
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
 

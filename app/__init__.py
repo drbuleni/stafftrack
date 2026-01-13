@@ -5,6 +5,7 @@ from flask_wtf.csrf import CSRFProtect
 from flask_mail import Mail
 from config import Config
 import os
+import click
 
 db = SQLAlchemy()
 login_manager = LoginManager()
@@ -79,5 +80,13 @@ def create_app(config_class=Config):
 
     from app.routes.announcements import bp as announcements_bp
     app.register_blueprint(announcements_bp)
+
+    # Register CLI commands
+    @app.cli.command('send-room-notifications')
+    def send_room_notifications_command():
+        """Send daily room assignment notifications to dental assistants."""
+        from app.routes.schedule import send_daily_room_notifications
+        sent = send_daily_room_notifications()
+        click.echo(f'Sent {sent} room assignment notifications.')
 
     return app
