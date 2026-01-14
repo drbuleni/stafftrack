@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-calendar-plus"></i> {{ title }}</h1>
+    <a href="{{ url_for('calendar.index') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Calendar
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+
+                    <div class="mb-3">
+                        {{ form.title.label(class="form-label") }}
+                        {{ form.title(class="form-control", placeholder="e.g., Cancer Awareness Day, John's Birthday") }}
+                        {% for error in form.title.errors %}
+                        <div class="invalid-feedback d-block">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            {{ form.event_date.label(class="form-label") }}
+                            {{ form.event_date(class="form-control") }}
+                            {% for error in form.event_date.errors %}
+                            <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.event_type.label(class="form-label") }}
+                            {{ form.event_type(class="form-select") }}
+                            {% for error in form.event_type.errors %}
+                            <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.description.label(class="form-label") }}
+                        {{ form.description(class="form-control", rows="3", placeholder="Optional description or details...") }}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.staff_id.label(class="form-label") }}
+                        {{ form.staff_id(class="form-select") }}
+                        <small class="text-muted">Link this event to a staff member (useful for birthdays)</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            {{ form.is_recurring(class="form-check-input") }}
+                            {{ form.is_recurring.label(class="form-check-label") }}
+                        </div>
+                        <small class="text-muted">Check this for events that repeat every year (birthdays, awareness days)</small>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        {{ form.submit(class="btn btn-primary") }}
+                        <a href="{{ url_for('calendar.index') }}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-lightbulb"></i> Tips</h6>
+            </div>
+            <div class="card-body">
+                <p class="small mb-2"><strong>Event Types:</strong></p>
+                <ul class="small">
+                    <li><span class="badge bg-success">Birthday</span> - Staff birthdays</li>
+                    <li><span class="badge bg-info">Awareness Day</span> - Health awareness days (Cancer, Diabetes, etc.)</li>
+                    <li><span class="badge bg-danger">Holiday</span> - Public holidays, office closures</li>
+                    <li><span class="badge bg-primary">Meeting</span> - Staff meetings, appointments</li>
+                    <li><span class="badge bg-warning text-dark">Training</span> - Training sessions, workshops</li>
+                    <li><span class="badge bg-secondary">Other</span> - Any other events</li>
+                </ul>
+                <p class="small mb-0"><strong>Recurring Events:</strong> Enable "Repeats Yearly" for birthdays and annual awareness days so they appear every year automatically.</p>
+            </div>
+        </div>
+
+        {% if event %}
+        <div class="card mt-3">
+            <div class="card-header bg-danger text-white">
+                <h6 class="mb-0"><i class="bi bi-trash"></i> Delete Event</h6>
+            </div>
+            <div class="card-body">
+                <p class="small">Permanently remove this event from the calendar.</p>
+                <button type="button" class="btn btn-danger btn-sm"
+                        onclick="confirmAction('{{ url_for('calendar.delete', event_id=event.id) }}', 'Delete Event', 'Are you sure you want to delete this event? This cannot be undone.', 'Delete', 'btn-danger')">
+                    <i class="bi bi-trash"></i> Delete Event
+                </button>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -317,3 +317,26 @@ class Announcement(db.Model):
 
     def __repr__(self):
         return f'<Announcement {self.title}>'
+
+
+class CalendarEvent(db.Model):
+    """Calendar events for birthdays, awareness days, and special occasions."""
+    __tablename__ = 'calendar_events'
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    event_date = db.Column(db.Date, nullable=False)
+    event_type = db.Column(db.String(50), nullable=False)  # Birthday, Awareness Day, Holiday, Meeting, Other
+    color = db.Column(db.String(20), default='primary')  # Bootstrap color class
+    is_recurring = db.Column(db.Boolean, default=False)  # Repeats yearly (for birthdays, awareness days)
+    staff_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # Link to staff for birthdays
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationships
+    staff = db.relationship('User', foreign_keys=[staff_id], backref='birthday_events')
+    creator = db.relationship('User', foreign_keys=[created_by], backref='created_calendar_events')
+
+    def __repr__(self):
+        return f'<CalendarEvent {self.title} on {self.event_date}>'

@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Calendar - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-calendar-event"></i> Calendar - {{ month_name }} {{ year }}</h1>
+    <div>
+        <a href="{{ url_for('calendar.upcoming') }}" class="btn btn-outline-info">
+            <i class="bi bi-clock"></i> Upcoming Events
+        </a>
+        {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
+        <a href="{{ url_for('calendar.add') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Add Event
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <a href="{{ url_for('calendar.index', year=prev_year, month=prev_month) }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-chevron-left"></i> Previous
+    </a>
+    <a href="{{ url_for('calendar.index') }}" class="btn btn-sm btn-outline-primary">Today</a>
+    <a href="{{ url_for('calendar.index', year=next_year, month=next_month) }}" class="btn btn-sm btn-outline-secondary">
+        Next <i class="bi bi-chevron-right"></i>
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-bordered mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="text-center" style="width: 14.28%">Mon</th>
+                        <th class="text-center" style="width: 14.28%">Tue</th>
+                        <th class="text-center" style="width: 14.28%">Wed</th>
+                        <th class="text-center" style="width: 14.28%">Thu</th>
+                        <th class="text-center" style="width: 14.28%">Fri</th>
+                        <th class="text-center" style="width: 14.28%">Sat</th>
+                        <th class="text-center" style="width: 14.28%">Sun</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for week in month_calendar %}
+                    <tr>
+                        {% for day in week %}
+                        <td class="p-2 {{ 'bg-light' if day == 0 else 'bg-info bg-opacity-10' if day == today.day and month == today.month and year == today.year else '' }}" style="height: 120px; vertical-align: top;">
+                            {% if day != 0 %}
+                            <div class="d-flex justify-content-between mb-1">
+                                <strong class="{{ 'text-primary' if day == today.day and month == today.month and year == today.year else '' }}">{{ day }}</strong>
+                            </div>
+
+                            <!-- Calendar Events -->
+                            {% if day in events_by_date %}
+                                {% for event in events_by_date[day] %}
+                                <a href="{{ url_for('calendar.view', event_id=event.id) }}" class="text-decoration-none">
+                                    <div class="badge bg-{{ event.color }} d-block mb-1 text-truncate text-start"
+                                         title="{{ event.title }}{% if event.description %} - {{ event.description }}{% endif %}{% if event.is_recurring %} (Yearly){% endif %}">
+                                        {% if event.type == 'Birthday' %}
+                                        <i class="bi bi-balloon"></i>
+                                        {% elif event.type == 'Awareness Day' %}
+                                        <i class="bi bi-megaphone"></i>
+                                        {% elif event.type == 'Holiday' %}
+                                        <i class="bi bi-calendar-heart"></i>
+                                        {% elif event.type == 'Meeting' %}
+                                        <i class="bi bi-people"></i>
+                                        {% elif event.type == 'Training' %}
+                                        <i class="bi bi-book"></i>
+                                        {% else %}
+                                        <i class="bi bi-calendar-event"></i>
+                                        {% endif %}
+                                        {{ event.title[:15] }}{% if event.title|length > 15 %}...{% endif %}
+                                    </div>
+                                </a>
+                                {% endfor %}
+                            {% endif %}
+
+                            <!-- Leave -->
+                            {% if day in leave_by_date %}
+                                {% for leave in leave_by_date[day] %}
+                                <div class="badge bg-warning text-dark d-block mb-1 text-truncate"
+                                     title="{{ leave.staff.full_name }} - {{ leave.type }} Leave">
+                                    <i class="bi bi-calendar-x"></i> {{ leave.staff.full_name[:12] }}
+                                </div>
+                                {% endfor %}
+                            {% endif %}
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-body">
+        <h6 class="mb-3">Legend</h6>
+        <div class="d-flex flex-wrap gap-3">
+            <span><span class="badge bg-success"><i class="bi bi-balloon"></i> Birthday</span></span>
+            <span><span class="badge bg-info"><i class="bi bi-megaphone"></i> Awareness Day</span></span>
+            <span><span class="badge bg-danger"><i class="bi bi-calendar-heart"></i> Holiday</span></span>
+            <span><span class="badge bg-primary"><i class="bi bi-people"></i> Meeting</span></span>
+            <span><span class="badge bg-warning text-dark"><i class="bi bi-book"></i> Training</span></span>
+            <span><span class="badge bg-secondary"><i class="bi bi-calendar-event"></i> Other</span></span>
+            <span><span class="badge bg-warning text-dark"><i class="bi bi-calendar-x"></i> Leave</span></span>
+        </div>
+    </div>
+</div>
+{% endblock %}

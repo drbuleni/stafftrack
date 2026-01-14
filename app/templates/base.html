@@ -87,6 +87,12 @@
                     Rankings
                 </a>
             </li>
+            <li class="sidebar-nav-item">
+                <a href="{{ url_for('calendar.index') }}" class="sidebar-nav-link {{ 'active' if 'calendar' in request.endpoint else '' }}">
+                    <i class="bi bi-calendar-event"></i>
+                    Calendar
+                </a>
+            </li>
 
             {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
             <li class="sidebar-nav-section">Finance</li>

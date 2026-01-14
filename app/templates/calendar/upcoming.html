@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Upcoming Events - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-clock"></i> Upcoming Events</h1>
+    <div>
+        {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
+        <a href="{{ url_for('calendar.add') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Add Event
+        </a>
+        {% endif %}
+        <a href="{{ url_for('calendar.index') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-calendar3"></i> Full Calendar
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Next 30 Days</h5>
+    </div>
+    <div class="card-body">
+        {% if upcoming_events %}
+        <div class="list-group list-group-flush">
+            {% for item in upcoming_events %}
+            <a href="{{ url_for('calendar.view', event_id=item.event.id) }}" class="list-group-item list-group-item-action">
+                <div class="d-flex w-100 justify-content-between align-items-center">
+                    <div>
+                        <span class="badge bg-{{ item.color }} me-2">
+                            {% if item.event.event_type == 'Birthday' %}
+                            <i class="bi bi-balloon"></i>
+                            {% elif item.event.event_type == 'Awareness Day' %}
+                            <i class="bi bi-megaphone"></i>
+                            {% elif item.event.event_type == 'Holiday' %}
+                            <i class="bi bi-calendar-heart"></i>
+                            {% elif item.event.event_type == 'Meeting' %}
+                            <i class="bi bi-people"></i>
+                            {% elif item.event.event_type == 'Training' %}
+                            <i class="bi bi-book"></i>
+                            {% else %}
+                            <i class="bi bi-calendar-event"></i>
+                            {% endif %}
+                            {{ item.event.event_type }}
+                        </span>
+                        <strong>{{ item.event.title }}</strong>
+                        {% if item.event.is_recurring %}
+                        <span class="badge bg-light text-dark ms-1"><i class="bi bi-arrow-repeat"></i> Yearly</span>
+                        {% endif %}
+                    </div>
+                    <div class="text-end">
+                        <span class="text-muted">{{ item.date.strftime('%a, %d %b %Y') }}</span>
+                        {% set days_until = (item.date - today).days %}
+                        {% if days_until == 0 %}
+                        <span class="badge bg-primary ms-2">Today</span>
+                        {% elif days_until == 1 %}
+                        <span class="badge bg-warning text-dark ms-2">Tomorrow</span>
+                        {% elif days_until <= 7 %}
+                        <span class="badge bg-info ms-2">{{ days_until }} days</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% if item.event.description %}
+                <small class="text-muted">{{ item.event.description[:100] }}{% if item.event.description|length > 100 %}...{% endif %}</small>
+                {% endif %}
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">No upcoming events in the next 30 days.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
