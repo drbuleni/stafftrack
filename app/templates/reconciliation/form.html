@@ -1,0 +1,482 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if is_edit else 'New' }} Daily Reconciliation - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>
+        <i class="bi bi-clipboard-data"></i>
+        {{ 'Edit' if is_edit else 'New' }} Daily Reconciliation
+    </h1>
+    <a href="{{ url_for('reconciliation.index') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to History
+    </a>
+</div>
+
+<form method="POST" id="reconciliationForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <!-- Date and Day Selection -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-calendar3"></i> Date</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <label class="form-label">Date</label>
+                    <input type="date" name="date" class="form-control"
+                           value="{{ rec.date.isoformat() if rec else rec_date.isoformat() }}"
+                           {{ 'readonly' if is_edit else '' }}>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Day</label>
+                    <input type="text" class="form-control"
+                           value="{{ days_of_week[rec.date.weekday()] if rec else days_of_week[rec_date.weekday()] }}" readonly>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Admin/Prepared By</label>
+                    <input type="text" class="form-control" value="{{ current_user.full_name }}" readonly>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section A: Morning Counts -->
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="bi bi-sunrise"></i> A) Morning Counts</h5>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-12">
+                    <label class="form-label"><strong>Dentists on Duty</strong> (select all that apply)</label>
+                    <div class="row">
+                        {% for dentist in dentists %}
+                        <div class="col-md-4 mb-2">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input dentist-checkbox"
+                                       name="dentists_on_duty" value="{{ dentist.id }}"
+                                       id="dentist_{{ dentist.id }}"
+                                       data-dentist-id="{{ dentist.id }}"
+                                       data-dentist-name="{{ dentist.full_name }}"
+                                       {{ 'checked' if rec and rec.dentists_on_duty and dentist.id in rec.dentists_on_duty else '' }}>
+                                <label class="form-check-label" for="dentist_{{ dentist.id }}">
+                                    {{ dentist.full_name }}
+                                </label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dynamic appointments per dentist -->
+            <div id="appointmentsContainer" class="mb-3" style="display: none;">
+                <label class="form-label"><strong>Appointments Booked Per Doctor</strong></label>
+                <div class="row" id="appointmentInputs">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Staff on Duty</label>
+                    <input type="number" name="staff_on_duty" class="form-control" min="0"
+                           value="{{ rec.staff_on_duty if rec else 0 }}">
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Confirmed (Call/WhatsApp)</label>
+                    <input type="number" name="confirmed_appointments" class="form-control" min="0"
+                           value="{{ rec.confirmed_appointments if rec else 0 }}">
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Reminder Messages Sent</label>
+                    <input type="number" name="reminder_messages_sent" class="form-control" min="0"
+                           value="{{ rec.reminder_messages_sent if rec else 0 }}">
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">New Patients Booked</label>
+                    <input type="number" name="new_patients_booked" class="form-control" min="0"
+                           value="{{ rec.new_patients_booked if rec else 0 }}">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Medical Aid Pre-auth/Approvals</label>
+                    <input type="number" name="medical_aid_preauth_received" class="form-control" min="0"
+                           value="{{ rec.medical_aid_preauth_received if rec else 0 }}">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Lab Cases (Send/Receive)</label>
+                    <input type="number" name="lab_cases" class="form-control" min="0"
+                           value="{{ rec.lab_cases if rec else 0 }}">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section B: End-of-Day Patient Flow -->
+    <div class="card mb-4">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0"><i class="bi bi-people"></i> B) End-of-Day Patient Flow</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Patients Treated</label>
+                    <input type="number" name="patients_treated" class="form-control" min="0"
+                           value="{{ rec.patients_treated if rec else 0 }}">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">No-shows</label>
+                    <input type="number" name="no_shows" class="form-control" min="0"
+                           value="{{ rec.no_shows if rec else 0 }}">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Cancelled</label>
+                    <input type="number" name="cancelled" class="form-control" min="0"
+                           value="{{ rec.cancelled if rec else 0 }}">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Rescheduled</label>
+                    <input type="number" name="rescheduled" class="form-control" min="0"
+                           value="{{ rec.rescheduled if rec else 0 }}">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Walk-ins Treated</label>
+                    <input type="number" name="walk_ins_treated" class="form-control" min="0"
+                           value="{{ rec.walk_ins_treated if rec else 0 }}">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section C: End-of-Day Cash-Up -->
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="bi bi-cash-stack"></i> C) End-of-Day Cash-Up (Rands)</h5>
+        </div>
+        <div class="card-body">
+            <h6 class="text-muted mb-3">Money In (Today)</h6>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">EFT Received</label>
+                    <div class="input-group">
+                        <span class="input-group-text">R</span>
+                        <input type="number" name="eft_received" class="form-control money-in" step="0.01" min="0"
+                               value="{{ rec.eft_received if rec else '0.00' }}">
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Card (Speedpoint) - FNB</label>
+                    <div class="input-group">
+                        <span class="input-group-text">R</span>
+                        <input type="number" name="card_fnb" class="form-control money-in" step="0.01" min="0"
+                               value="{{ rec.card_fnb if rec else '0.00' }}">
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Card (Speedpoint) - Capitec</label>
+                    <div class="input-group">
+                        <span class="input-group-text">R</span>
+                        <input type="number" name="card_capitec" class="form-control money-in" step="0.01" min="0"
+                               value="{{ rec.card_capitec if rec else '0.00' }}">
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Medical Aid Payments (Actual Money In)</label>
+                    <div class="input-group">
+                        <span class="input-group-text">R</span>
+                        <input type="number" name="medical_aid_payments" class="form-control money-in" step="0.01" min="0"
+                               value="{{ rec.medical_aid_payments if rec else '0.00' }}">
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Medical Aid Balance Payments by Patient</label>
+                    <div class="input-group">
+                        <span class="input-group-text">R</span>
+                        <input type="number" name="medical_aid_balance_payments" class="form-control money-in" step="0.01" min="0"
+                               value="{{ rec.medical_aid_balance_payments if rec else '0.00' }}">
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Other (specify below)</label>
+                    <div class="input-group">
+                        <span class="input-group-text">R</span>
+                        <input type="number" name="other_payments" class="form-control money-in" step="0.01" min="0"
+                               value="{{ rec.other_payments if rec else '0.00' }}">
+                    </div>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Other Payment Description</label>
+                    <input type="text" name="other_payments_description" class="form-control"
+                           value="{{ rec.other_payments_description if rec else '' }}"
+                           placeholder="Specify if other payments received">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label"><strong>TOTAL MONEY IN</strong></label>
+                    <div class="input-group">
+                        <span class="input-group-text">R</span>
+                        <input type="text" id="totalMoneyIn" class="form-control fw-bold" readonly
+                               value="{{ rec.total_money_in if rec else '0.00' }}">
+                    </div>
+                </div>
+            </div>
+
+            <hr>
+            <h6 class="text-muted mb-3">Money Out (Today)</h6>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Refunds / Expenses Paid Out</label>
+                    <div class="input-group">
+                        <span class="input-group-text">R</span>
+                        <input type="number" name="refunds_expenses" class="form-control" id="refundsExpenses" step="0.01" min="0"
+                               value="{{ rec.refunds_expenses if rec else '0.00' }}">
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label"><strong>NET COLLECTIONS (A - B)</strong></label>
+                    <div class="input-group">
+                        <span class="input-group-text">R</span>
+                        <input type="text" id="netCollections" class="form-control fw-bold bg-dark text-white" readonly
+                               value="{{ rec.net_collections if rec else '0.00' }}">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section D: Reconciliation -->
+    <div class="card mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0"><i class="bi bi-calculator"></i> D) Reconciliation (GoodX vs Cash-Up)</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">GoodX: Total Production (fees charged today)</label>
+                    <div class="input-group">
+                        <span class="input-group-text">R</span>
+                        <input type="number" name="goodx_production" class="form-control" step="0.01" min="0"
+                               value="{{ rec.goodx_production if rec else '0.00' }}">
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">GoodX: Total Collections Posted Today</label>
+                    <div class="input-group">
+                        <span class="input-group-text">R</span>
+                        <input type="number" name="goodx_collections" class="form-control" id="goodxCollections" step="0.01" min="0"
+                               value="{{ rec.goodx_collections if rec else '0.00' }}">
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label"><strong>Variance</strong></label>
+                    <div class="input-group">
+                        <span class="input-group-text">R</span>
+                        <input type="text" id="variance" class="form-control fw-bold" readonly
+                               value="{{ rec.variance if rec else '0.00' }}">
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-12">
+                    <label class="form-label">If variance is not 0, explain:</label>
+                    <textarea name="variance_explanation" class="form-control" rows="2"
+                              placeholder="Explain any variance...">{{ rec.variance_explanation if rec else '' }}</textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section E: Retail/Stock -->
+    <div class="card mb-4">
+        <div class="card-header bg-purple text-white" style="background-color: #6f42c1;">
+            <h5 class="mb-0"><i class="bi bi-bag"></i> E) Retail / Stock - Qty Sold Today</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Item</th>
+                            <th style="width: 150px;">Qty Sold</th>
+                            <th style="width: 180px;">Amount (R)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in retail_items %}
+                        <tr>
+                            <td>{{ item }}</td>
+                            <td>
+                                <input type="number" name="retail_qty_{{ item }}" class="form-control form-control-sm" min="0"
+                                       value="{{ rec.retail_sales[item].qty if rec and rec.retail_sales and item in rec.retail_sales else 0 }}">
+                            </td>
+                            <td>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text">R</span>
+                                    <input type="number" name="retail_amount_{{ item }}" class="form-control" step="0.01" min="0"
+                                           value="{{ rec.retail_sales[item].amount if rec and rec.retail_sales and item in rec.retail_sales else '0.00' }}">
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section F: Payment References -->
+    <div class="card mb-4">
+        <div class="card-header" style="background-color: #fd7e14; color: white;">
+            <h5 class="mb-0"><i class="bi bi-hash"></i> F) Payment References</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">FNB Batch</label>
+                    <input type="text" name="fnb_batch" class="form-control"
+                           value="{{ rec.fnb_batch if rec else '' }}">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Capitec Batch</label>
+                    <input type="text" name="capitec_batch" class="form-control"
+                           value="{{ rec.capitec_batch if rec else '' }}">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">EFT Ref</label>
+                    <input type="text" name="eft_ref" class="form-control"
+                           value="{{ rec.eft_ref if rec else '' }}">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Cash Deposit</label>
+                    <input type="text" name="cash_deposit" class="form-control"
+                           value="{{ rec.cash_deposit if rec else '' }}">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Med Aid Ref</label>
+                    <input type="text" name="med_aid_ref" class="form-control"
+                           value="{{ rec.med_aid_ref if rec else '' }}">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notes -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-sticky"></i> Notes</h5>
+        </div>
+        <div class="card-body">
+            <textarea name="notes" class="form-control" rows="4"
+                      placeholder="Any notes, follow-ups, or explanations...">{{ rec.notes if rec else '' }}</textarea>
+        </div>
+    </div>
+
+    <!-- Submit -->
+    <div class="d-flex gap-2 mb-5">
+        <button type="submit" class="btn btn-primary btn-lg">
+            <i class="bi bi-check-circle"></i> {{ 'Update' if is_edit else 'Submit' }} Reconciliation
+        </button>
+        <a href="{{ url_for('reconciliation.index') }}" class="btn btn-outline-secondary btn-lg">Cancel</a>
+    </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle dentist checkboxes and appointment inputs
+    const checkboxes = document.querySelectorAll('.dentist-checkbox');
+    const container = document.getElementById('appointmentsContainer');
+    const inputsDiv = document.getElementById('appointmentInputs');
+
+    function updateAppointmentInputs() {
+        const selected = [];
+        checkboxes.forEach(cb => {
+            if (cb.checked) {
+                selected.push({
+                    id: cb.dataset.dentistId,
+                    name: cb.dataset.dentistName
+                });
+            }
+        });
+
+        if (selected.length > 0) {
+            container.style.display = 'block';
+            inputsDiv.innerHTML = '';
+            selected.forEach(dentist => {
+                const existingValue = document.querySelector(`input[name="appointments_${dentist.id}"]`)?.value ||
+                    {% if rec and rec.appointments_booked %}{{ rec.appointments_booked | tojson }}{% else %}{}{% endif %}[dentist.id] || 0;
+                inputsDiv.innerHTML += `
+                    <div class="col-md-4 mb-2">
+                        <label class="form-label">${dentist.name}</label>
+                        <input type="number" name="appointments_${dentist.id}" class="form-control"
+                               min="0" value="${existingValue}" placeholder="Appointments">
+                    </div>
+                `;
+            });
+        } else {
+            container.style.display = 'none';
+        }
+    }
+
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', updateAppointmentInputs);
+    });
+
+    // Initialize on page load
+    updateAppointmentInputs();
+
+    // Calculate totals
+    const moneyInFields = document.querySelectorAll('.money-in');
+    const refundsField = document.getElementById('refundsExpenses');
+    const goodxCollections = document.getElementById('goodxCollections');
+    const totalMoneyIn = document.getElementById('totalMoneyIn');
+    const netCollections = document.getElementById('netCollections');
+    const variance = document.getElementById('variance');
+
+    function calculateTotals() {
+        let total = 0;
+        moneyInFields.forEach(field => {
+            total += parseFloat(field.value) || 0;
+        });
+
+        const refunds = parseFloat(refundsField.value) || 0;
+        const net = total - refunds;
+        const goodx = parseFloat(goodxCollections.value) || 0;
+        const var_ = net - goodx;
+
+        totalMoneyIn.value = total.toFixed(2);
+        netCollections.value = net.toFixed(2);
+        variance.value = var_.toFixed(2);
+
+        // Color variance
+        if (var_ === 0) {
+            variance.classList.remove('bg-danger', 'bg-warning');
+            variance.classList.add('bg-success', 'text-white');
+        } else if (Math.abs(var_) < 100) {
+            variance.classList.remove('bg-danger', 'bg-success');
+            variance.classList.add('bg-warning', 'text-dark');
+        } else {
+            variance.classList.remove('bg-success', 'bg-warning');
+            variance.classList.add('bg-danger', 'text-white');
+        }
+    }
+
+    moneyInFields.forEach(field => field.addEventListener('input', calculateTotals));
+    refundsField.addEventListener('input', calculateTotals);
+    goodxCollections.addEventListener('input', calculateTotals);
+
+    // Initial calculation
+    calculateTotals();
+});
+</script>
+{% endblock %}

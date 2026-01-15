@@ -94,8 +94,17 @@
                 </a>
             </li>
 
-            {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
+            {% if current_user.role in ['Receptionist', 'Practice Manager', 'Super Admin'] %}
             <li class="sidebar-nav-section">Finance</li>
+            <li class="sidebar-nav-item">
+                <a href="{{ url_for('reconciliation.today') }}" class="sidebar-nav-link {{ 'active' if 'reconciliation' in request.endpoint else '' }}">
+                    <i class="bi bi-clipboard-data"></i>
+                    Daily Reconciliation
+                </a>
+            </li>
+            {% endif %}
+
+            {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
             <li class="sidebar-nav-item">
                 <a href="{{ url_for('receipts.index') }}" class="sidebar-nav-link {{ 'active' if 'receipts' in request.endpoint else '' }}">
                     <i class="bi bi-receipt"></i>

@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+
+{% block title %}Reconciliation {{ rec.date.strftime('%d %b %Y') }} - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>
+        <i class="bi bi-clipboard-data"></i>
+        Daily Reconciliation - {{ rec.date.strftime('%A, %d %B %Y') }}
+    </h1>
+    <div>
+        {% if rec.status != 'Checked' or current_user.role in ['Practice Manager', 'Super Admin'] %}
+        <a href="{{ url_for('reconciliation.edit', rec_id=rec.id) }}" class="btn btn-outline-primary">
+            <i class="bi bi-pencil"></i> Edit
+        </a>
+        {% endif %}
+        {% if rec.status == 'Submitted' and current_user.role in ['Practice Manager', 'Super Admin'] %}
+        <form method="POST" action="{{ url_for('reconciliation.check', rec_id=rec.id) }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-success">
+                <i class="bi bi-check-circle"></i> Mark as Checked
+            </button>
+        </form>
+        {% endif %}
+        <a href="{{ url_for('reconciliation.index') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back
+        </a>
+    </div>
+</div>
+
+<!-- Status Banner -->
+<div class="alert {{ 'alert-success' if rec.status == 'Checked' else 'alert-warning' if rec.status == 'Submitted' else 'alert-secondary' }} mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            {% if rec.status == 'Checked' %}
+            <i class="bi bi-check-circle-fill me-2"></i>
+            <strong>Checked</strong> by {{ rec.checker.full_name if rec.checker else 'Unknown' }}
+            on {{ rec.checked_at.strftime('%d %b %Y at %H:%M') if rec.checked_at else '-' }}
+            {% elif rec.status == 'Submitted' %}
+            <i class="bi bi-clock-fill me-2"></i>
+            <strong>Submitted</strong> - Awaiting review
+            {% else %}
+            <i class="bi bi-file-earmark me-2"></i>
+            <strong>Draft</strong>
+            {% endif %}
+        </div>
+        <div class="text-end">
+            <small>Prepared by: <strong>{{ rec.preparer.full_name if rec.preparer else '-' }}</strong></small>
+            {% if rec.prepared_at %}
+            <small class="text-muted ms-2">{{ rec.prepared_at.strftime('%d %b %Y at %H:%M') }}</small>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Section A: Morning Counts -->
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-sunrise"></i> A) Morning Counts</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Dentists on Duty:</strong></p>
+                        <ul class="mb-3">
+                            {% for name in dentist_names %}
+                            <li>{{ name }}</li>
+                            {% else %}
+                            <li class="text-muted">None recorded</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Appointments Booked:</strong></p>
+                        <ul class="mb-3">
+                            {% for name, count in appointments_display.items() %}
+                            <li>{{ name }}: {{ count }}</li>
+                            {% else %}
+                            <li class="text-muted">None recorded</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-6 col-md-3">
+                        <small class="text-muted">Staff on Duty</small>
+                        <p class="fw-bold mb-2">{{ rec.staff_on_duty }}</p>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <small class="text-muted">Confirmed</small>
+                        <p class="fw-bold mb-2">{{ rec.confirmed_appointments }}</p>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <small class="text-muted">Reminders Sent</small>
+                        <p class="fw-bold mb-2">{{ rec.reminder_messages_sent }}</p>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <small class="text-muted">New Patients</small>
+                        <p class="fw-bold mb-2">{{ rec.new_patients_booked }}</p>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <small class="text-muted">Pre-auth Received</small>
+                        <p class="fw-bold mb-2">{{ rec.medical_aid_preauth_received }}</p>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <small class="text-muted">Lab Cases</small>
+                        <p class="fw-bold mb-2">{{ rec.lab_cases }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section B: Patient Flow -->
+        <div class="card mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="bi bi-people"></i> B) End-of-Day Patient Flow</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col">
+                        <div class="display-6 text-primary">{{ rec.patients_treated }}</div>
+                        <small class="text-muted">Treated</small>
+                    </div>
+                    <div class="col">
+                        <div class="display-6 text-danger">{{ rec.no_shows }}</div>
+                        <small class="text-muted">No-shows</small>
+                    </div>
+                    <div class="col">
+                        <div class="display-6 text-warning">{{ rec.cancelled }}</div>
+                        <small class="text-muted">Cancelled</small>
+                    </div>
+                    <div class="col">
+                        <div class="display-6 text-secondary">{{ rec.rescheduled }}</div>
+                        <small class="text-muted">Rescheduled</small>
+                    </div>
+                    <div class="col">
+                        <div class="display-6 text-info">{{ rec.walk_ins_treated }}</div>
+                        <small class="text-muted">Walk-ins</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section C: Cash-Up -->
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-cash-stack"></i> C) End-of-Day Cash-Up</h5>
+            </div>
+            <div class="card-body">
+                <h6 class="text-muted">Money In</h6>
+                <table class="table table-sm">
+                    <tr>
+                        <td>EFT Received</td>
+                        <td class="text-end">R {{ "%.2f"|format(rec.eft_received) }}</td>
+                    </tr>
+                    <tr>
+                        <td>Card (FNB)</td>
+                        <td class="text-end">R {{ "%.2f"|format(rec.card_fnb) }}</td>
+                    </tr>
+                    <tr>
+                        <td>Card (Capitec)</td>
+                        <td class="text-end">R {{ "%.2f"|format(rec.card_capitec) }}</td>
+                    </tr>
+                    <tr>
+                        <td>Medical Aid Payments</td>
+                        <td class="text-end">R {{ "%.2f"|format(rec.medical_aid_payments) }}</td>
+                    </tr>
+                    <tr>
+                        <td>Medical Aid Balance (Patient)</td>
+                        <td class="text-end">R {{ "%.2f"|format(rec.medical_aid_balance_payments) }}</td>
+                    </tr>
+                    {% if rec.other_payments > 0 %}
+                    <tr>
+                        <td>Other: {{ rec.other_payments_description or 'Not specified' }}</td>
+                        <td class="text-end">R {{ "%.2f"|format(rec.other_payments) }}</td>
+                    </tr>
+                    {% endif %}
+                    <tr class="table-light fw-bold">
+                        <td>TOTAL MONEY IN</td>
+                        <td class="text-end">R {{ "%.2f"|format(rec.total_money_in) }}</td>
+                    </tr>
+                </table>
+
+                <h6 class="text-muted mt-3">Money Out</h6>
+                <table class="table table-sm">
+                    <tr>
+                        <td>Refunds / Expenses</td>
+                        <td class="text-end">R {{ "%.2f"|format(rec.refunds_expenses) }}</td>
+                    </tr>
+                    <tr class="table-dark fw-bold">
+                        <td>NET COLLECTIONS</td>
+                        <td class="text-end">R {{ "%.2f"|format(rec.net_collections) }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Section D: Reconciliation -->
+        <div class="card mb-4">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0"><i class="bi bi-calculator"></i> D) Reconciliation</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr>
+                        <td>GoodX Production</td>
+                        <td class="text-end">R {{ "%.2f"|format(rec.goodx_production) }}</td>
+                    </tr>
+                    <tr>
+                        <td>GoodX Collections</td>
+                        <td class="text-end">R {{ "%.2f"|format(rec.goodx_collections) }}</td>
+                    </tr>
+                    <tr class="fw-bold {{ 'table-success' if rec.variance == 0 else 'table-warning' if rec.variance|abs < 100 else 'table-danger' }}">
+                        <td>Variance</td>
+                        <td class="text-end">R {{ "%.2f"|format(rec.variance) }}</td>
+                    </tr>
+                </table>
+                {% if rec.variance != 0 and rec.variance_explanation %}
+                <div class="alert alert-info mt-3 mb-0">
+                    <strong>Explanation:</strong> {{ rec.variance_explanation }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Section E: Retail -->
+        {% if rec.retail_sales %}
+        <div class="card mb-4">
+            <div class="card-header" style="background-color: #6f42c1; color: white;">
+                <h5 class="mb-0"><i class="bi bi-bag"></i> E) Retail Sales</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Qty</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item, data in rec.retail_sales.items() %}
+                        <tr>
+                            <td>{{ item }}</td>
+                            <td>{{ data.qty }}</td>
+                            <td>R {{ "%.2f"|format(data.amount) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Section F: Payment References -->
+        <div class="card mb-4">
+            <div class="card-header" style="background-color: #fd7e14; color: white;">
+                <h5 class="mb-0"><i class="bi bi-hash"></i> F) Payment References</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tr>
+                        <td class="text-muted">FNB Batch</td>
+                        <td>{{ rec.fnb_batch or '-' }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Capitec Batch</td>
+                        <td>{{ rec.capitec_batch or '-' }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">EFT Ref</td>
+                        <td>{{ rec.eft_ref or '-' }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Cash Deposit</td>
+                        <td>{{ rec.cash_deposit or '-' }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Med Aid Ref</td>
+                        <td>{{ rec.med_aid_ref or '-' }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Notes -->
+        {% if rec.notes %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-sticky"></i> Notes</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-0" style="white-space: pre-wrap;">{{ rec.notes }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Delete Button for Managers -->
+        {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h6 class="mb-0"><i class="bi bi-trash"></i> Delete</h6>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted">Permanently delete this reconciliation sheet.</p>
+                <button type="button" class="btn btn-danger btn-sm"
+                        onclick="confirmAction('{{ url_for('reconciliation.delete', rec_id=rec.id) }}', 'Delete Reconciliation', 'Are you sure you want to delete the reconciliation sheet for {{ rec.date.strftime('%d %b %Y') }}?', 'Delete', 'btn-danger')">
+                    <i class="bi bi-trash"></i> Delete Sheet
+                </button>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

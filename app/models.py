@@ -340,3 +340,96 @@ class CalendarEvent(db.Model):
 
     def __repr__(self):
         return f'<CalendarEvent {self.title} on {self.event_date}>'
+
+
+class DailyReconciliation(db.Model):
+    """Daily reconciliation sheet for tracking operations and cash-up."""
+    __tablename__ = 'daily_reconciliations'
+
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False, unique=True)
+    day_of_week = db.Column(db.String(20))
+
+    # Section A: Morning Counts
+    dentists_on_duty = db.Column(db.JSON)  # List of dentist IDs on duty
+    staff_on_duty = db.Column(db.Integer, default=0)
+    appointments_booked = db.Column(db.JSON)  # {dentist_id: count}
+    confirmed_appointments = db.Column(db.Integer, default=0)
+    reminder_messages_sent = db.Column(db.Integer, default=0)
+    new_patients_booked = db.Column(db.Integer, default=0)
+    medical_aid_preauth_received = db.Column(db.Integer, default=0)
+    lab_cases = db.Column(db.Integer, default=0)
+
+    # Section B: End-of-Day Patient Flow
+    patients_treated = db.Column(db.Integer, default=0)
+    no_shows = db.Column(db.Integer, default=0)
+    cancelled = db.Column(db.Integer, default=0)
+    rescheduled = db.Column(db.Integer, default=0)
+    walk_ins_treated = db.Column(db.Integer, default=0)
+
+    # Section C: End-of-Day Cash-Up (Money In)
+    eft_received = db.Column(db.Numeric(10, 2), default=0)
+    card_fnb = db.Column(db.Numeric(10, 2), default=0)
+    card_capitec = db.Column(db.Numeric(10, 2), default=0)
+    medical_aid_payments = db.Column(db.Numeric(10, 2), default=0)
+    medical_aid_balance_payments = db.Column(db.Numeric(10, 2), default=0)
+    other_payments = db.Column(db.Numeric(10, 2), default=0)
+    other_payments_description = db.Column(db.String(200))
+
+    # Money Out
+    refunds_expenses = db.Column(db.Numeric(10, 2), default=0)
+
+    # Calculated fields (stored for reporting)
+    total_money_in = db.Column(db.Numeric(10, 2), default=0)
+    net_collections = db.Column(db.Numeric(10, 2), default=0)
+
+    # Section D: Reconciliation
+    goodx_production = db.Column(db.Numeric(10, 2), default=0)
+    goodx_collections = db.Column(db.Numeric(10, 2), default=0)
+    variance = db.Column(db.Numeric(10, 2), default=0)
+    variance_explanation = db.Column(db.Text)
+
+    # Section E: Retail/Stock Sales
+    retail_sales = db.Column(db.JSON)  # {item_name: {qty: x, amount: y}}
+
+    # Section F: Payment References
+    fnb_batch = db.Column(db.String(50))
+    capitec_batch = db.Column(db.String(50))
+    eft_ref = db.Column(db.String(50))
+    cash_deposit = db.Column(db.String(50))
+    med_aid_ref = db.Column(db.String(50))
+
+    # Sign-off
+    prepared_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    prepared_at = db.Column(db.DateTime)
+    checked_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    checked_at = db.Column(db.DateTime)
+
+    # Notes
+    notes = db.Column(db.Text)
+
+    # Status
+    status = db.Column(db.String(20), default='Draft')  # Draft, Submitted, Checked
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    preparer = db.relationship('User', foreign_keys=[prepared_by], backref='prepared_reconciliations')
+    checker = db.relationship('User', foreign_keys=[checked_by], backref='checked_reconciliations')
+
+    def calculate_totals(self):
+        """Calculate total money in and net collections."""
+        self.total_money_in = (
+            (self.eft_received or 0) +
+            (self.card_fnb or 0) +
+            (self.card_capitec or 0) +
+            (self.medical_aid_payments or 0) +
+            (self.medical_aid_balance_payments or 0) +
+            (self.other_payments or 0)
+        )
+        self.net_collections = self.total_money_in - (self.refunds_expenses or 0)
+        self.variance = self.net_collections - (self.goodx_collections or 0)
+
+    def __repr__(self):
+        return f'<DailyReconciliation {self.date}>'

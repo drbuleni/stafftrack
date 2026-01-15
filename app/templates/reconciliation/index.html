@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}Daily Reconciliation - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-clipboard-data"></i> Daily Reconciliation</h1>
+    <div>
+        <a href="{{ url_for('reconciliation.today') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Today's Sheet
+        </a>
+    </div>
+</div>
+
+<!-- Month Navigation -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <a href="{{ url_for('reconciliation.index', year=prev_year, month=prev_month) }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-chevron-left"></i> Previous
+    </a>
+    <h5 class="mb-0">{{ month_name }} {{ year }}</h5>
+    <a href="{{ url_for('reconciliation.index', year=next_year, month=next_month) }}" class="btn btn-sm btn-outline-secondary">
+        Next <i class="bi bi-chevron-right"></i>
+    </a>
+</div>
+
+<!-- Monthly Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card border-success">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Total Money In</h6>
+                <h3 class="text-success">R {{ "%.2f"|format(monthly_totals.total_money_in) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card bg-dark text-white">
+            <div class="card-body text-center">
+                <h6>Net Collections</h6>
+                <h3>R {{ "%.2f"|format(monthly_totals.net_collections) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2 mb-3">
+        <div class="card border-primary">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Patients Treated</h6>
+                <h3 class="text-primary">{{ monthly_totals.patients_treated }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2 mb-3">
+        <div class="card border-danger">
+            <div class="card-body text-center">
+                <h6 class="text-muted">No-shows</h6>
+                <h3 class="text-danger">{{ monthly_totals.no_shows }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2 mb-3">
+        <div class="card border-info">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Walk-ins</h6>
+                <h3 class="text-info">{{ monthly_totals.walk_ins }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reconciliation List -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Daily Sheets</h5>
+    </div>
+    <div class="card-body p-0">
+        {% if reconciliations %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date</th>
+                        <th>Day</th>
+                        <th>Patients</th>
+                        <th>Net Collections</th>
+                        <th>Variance</th>
+                        <th>Status</th>
+                        <th>Prepared By</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rec in reconciliations %}
+                    <tr class="{{ 'table-success' if rec.status == 'Checked' else 'table-warning' if rec.status == 'Submitted' else '' }}">
+                        <td>
+                            <a href="{{ url_for('reconciliation.view', rec_id=rec.id) }}">
+                                {{ rec.date.strftime('%d %b %Y') }}
+                            </a>
+                            {% if rec.date == today %}
+                            <span class="badge bg-primary ms-1">Today</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ rec.day_of_week }}</td>
+                        <td>{{ rec.patients_treated }}</td>
+                        <td>R {{ "%.2f"|format(rec.net_collections) }}</td>
+                        <td>
+                            {% if rec.variance == 0 %}
+                            <span class="badge bg-success">R 0.00</span>
+                            {% elif rec.variance|abs < 100 %}
+                            <span class="badge bg-warning text-dark">R {{ "%.2f"|format(rec.variance) }}</span>
+                            {% else %}
+                            <span class="badge bg-danger">R {{ "%.2f"|format(rec.variance) }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if rec.status == 'Checked' %}
+                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Checked</span>
+                            {% elif rec.status == 'Submitted' %}
+                            <span class="badge bg-warning text-dark"><i class="bi bi-clock"></i> Submitted</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Draft</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ rec.preparer.full_name if rec.preparer else '-' }}</td>
+                        <td>
+                            <a href="{{ url_for('reconciliation.view', rec_id=rec.id) }}" class="btn btn-sm btn-outline-primary" title="View">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            {% if rec.status != 'Checked' or current_user.role in ['Practice Manager', 'Super Admin'] %}
+                            <a href="{{ url_for('reconciliation.edit', rec_id=rec.id) }}" class="btn btn-sm btn-outline-secondary" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-clipboard-x display-4 text-muted"></i>
+            <p class="text-muted mt-3">No reconciliation sheets for {{ month_name }} {{ year }}.</p>
+            <a href="{{ url_for('reconciliation.new') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Create Today's Sheet
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Quick Create for Specific Date -->
+{% if current_user.role in ['Receptionist', 'Practice Manager', 'Super Admin'] %}
+<div class="card mt-4">
+    <div class="card-header">
+        <h6 class="mb-0">Create Sheet for Specific Date</h6>
+    </div>
+    <div class="card-body">
+        <form action="{{ url_for('reconciliation.new') }}" method="GET" class="d-flex gap-2">
+            <input type="date" name="selected_date" class="form-control" style="max-width: 200px;" value="{{ today.isoformat() }}">
+            <button type="submit" class="btn btn-outline-primary">Go</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
