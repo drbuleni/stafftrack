@@ -274,6 +274,20 @@
             updateAnnouncementBadge();
             setInterval(updateNotificationBadge, 60000);
             setInterval(updateAnnouncementBadge, 60000);
+
+            // Restore sidebar scroll position
+            const sidebarNav = document.querySelector('.sidebar-nav-wrapper');
+            if (sidebarNav) {
+                const savedScrollPos = localStorage.getItem('sidebarScrollPos');
+                if (savedScrollPos) {
+                    sidebarNav.scrollTop = parseInt(savedScrollPos);
+                }
+
+                // Save scroll position when user scrolls
+                sidebarNav.addEventListener('scroll', function() {
+                    localStorage.setItem('sidebarScrollPos', sidebarNav.scrollTop);
+                });
+            }
         });
 
         // Confirmation modal function

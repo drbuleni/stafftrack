@@ -30,10 +30,10 @@ DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturda
 
 
 def get_dentists():
-    """Get all users who can be dentists on duty (Dentist, Practice Manager, Super Admin with dental duties)."""
+    """Get all users who can be dentists on duty (Dentist, Practice Manager, Super Admin)."""
     return User.query.filter(
         User.status == 'Active',
-        User.role.in_(['Dentist', 'Practice Manager'])
+        User.role.in_(['Dentist', 'Practice Manager', 'Super Admin'])
     ).order_by(User.full_name).all()
 
 
