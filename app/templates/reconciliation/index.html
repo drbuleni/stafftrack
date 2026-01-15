@@ -6,6 +6,9 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1><i class="bi bi-clipboard-data"></i> Daily Reconciliation</h1>
     <div>
+        <a href="{{ url_for('reconciliation.analytics') }}" class="btn btn-outline-info me-2">
+            <i class="bi bi-graph-up"></i> Analytics
+        </a>
         <a href="{{ url_for('reconciliation.today') }}" class="btn btn-primary">
             <i class="bi bi-plus-circle"></i> Today's Sheet
         </a>

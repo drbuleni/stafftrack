@@ -59,7 +59,11 @@
       "Bash(git push:*)",
       "Bash(git remote:*)",
       "Bash(gh auth:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(.venvScriptspython -c \"\nfrom app import create_app, db\nfrom app.models import PerformanceEvent, LeaveRequest, User\n\napp = create_app\\(\\)\nwith app.app_context\\(\\):\n    # Find Zanele\n    zanele = User.query.filter\\(User.full_name.ilike\\(''%%Zanele%%''\\)\\).first\\(\\)\n    if zanele:\n        print\\(f''Found: {zanele.full_name} \\(ID: {zanele.id}\\)''\\)\n        \n        # Find leave-related performance events for her\n        events = PerformanceEvent.query.filter_by\\(\n            staff_id=zanele.id,\n            event_type=''Leave''\n        \\).all\\(\\)\n        \n        print\\(f''Found {len\\(events\\)} leave events:''\\)\n        for e in events:\n            leave_id = e.event_data.get\\(''leave_id''\\) if e.event_data else None\n            # Check if leave still exists\n            leave_exists = LeaveRequest.query.get\\(leave_id\\) if leave_id else None\n            print\\(f''  - Event ID {e.id}: {e.event_description}''\\)\n            print\\(f''    leave_id={leave_id}, leave still exists={leave_exists is not None}''\\)\n    else:\n        print\\(''Zanele not found''\\)\n\")",
+      "Bash(venvScriptspython.exe -c \"from app import create_app, db; from app.models import PerformanceEvent, LeaveRequest, User; app = create_app\\(\\); ctx = app.app_context\\(\\); ctx.push\\(\\); zanele = User.query.filter\\(User.full_name.ilike\\(''%%Zanele%%''\\)\\).first\\(\\); print\\(f''Found: {zanele.full_name} \\(ID: {zanele.id}\\)''\\) if zanele else print\\(''Not found''\\); events = PerformanceEvent.query.filter_by\\(staff_id=zanele.id, event_type=''Leave''\\).all\\(\\) if zanele else []; print\\(f''{len\\(events\\)} leave events''\\); [print\\(f''Event {e.id}: {e.event_description}''\\) for e in events]\")",
+      "Bash(gh repo sync:*)"
     ]
   }
 }

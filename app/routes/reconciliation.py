@@ -407,3 +407,179 @@ def today():
         return redirect(url_for('reconciliation.edit', rec_id=existing.id))
     else:
         return redirect(url_for('reconciliation.new'))
+
+
+@bp.route('/analytics')
+@login_required
+def analytics():
+    """View analytics and statistics for reconciliation data."""
+    import calendar
+    from sqlalchemy import func, extract
+
+    # Get date range from parameters
+    period = request.args.get('period', 'month')  # week, month, quarter, year
+    today_date = date.today()
+
+    if period == 'week':
+        start_date = today_date - timedelta(days=today_date.weekday())
+        end_date = today_date
+        period_label = f"This Week ({start_date.strftime('%d %b')} - {end_date.strftime('%d %b %Y')})"
+    elif period == 'month':
+        start_date = date(today_date.year, today_date.month, 1)
+        end_date = today_date
+        period_label = calendar.month_name[today_date.month] + f" {today_date.year}"
+    elif period == 'quarter':
+        quarter = (today_date.month - 1) // 3
+        start_date = date(today_date.year, quarter * 3 + 1, 1)
+        end_date = today_date
+        quarter_names = ['Q1', 'Q2', 'Q3', 'Q4']
+        period_label = f"{quarter_names[quarter]} {today_date.year}"
+    elif period == 'year':
+        start_date = date(today_date.year, 1, 1)
+        end_date = today_date
+        period_label = f"Year {today_date.year}"
+    else:
+        # Custom date range
+        start_str = request.args.get('start_date')
+        end_str = request.args.get('end_date')
+        try:
+            start_date = date.fromisoformat(start_str) if start_str else date(today_date.year, today_date.month, 1)
+            end_date = date.fromisoformat(end_str) if end_str else today_date
+        except ValueError:
+            start_date = date(today_date.year, today_date.month, 1)
+            end_date = today_date
+        period_label = f"{start_date.strftime('%d %b %Y')} - {end_date.strftime('%d %b %Y')}"
+
+    # Get all reconciliations in the period
+    reconciliations = DailyReconciliation.query.filter(
+        DailyReconciliation.date >= start_date,
+        DailyReconciliation.date <= end_date
+    ).order_by(DailyReconciliation.date).all()
+
+    # Calculate summary statistics
+    total_days = len(reconciliations)
+
+    summary = {
+        'total_money_in': sum(float(r.total_money_in or 0) for r in reconciliations),
+        'net_collections': sum(float(r.net_collections or 0) for r in reconciliations),
+        'goodx_production': sum(float(r.goodx_production or 0) for r in reconciliations),
+        'goodx_collections': sum(float(r.goodx_collections or 0) for r in reconciliations),
+        'patients_treated': sum(r.patients_treated or 0 for r in reconciliations),
+        'no_shows': sum(r.no_shows or 0 for r in reconciliations),
+        'cancelled': sum(r.cancelled or 0 for r in reconciliations),
+        'rescheduled': sum(r.rescheduled or 0 for r in reconciliations),
+        'walk_ins': sum(r.walk_ins_treated or 0 for r in reconciliations),
+        'new_patients': sum(r.new_patients_booked or 0 for r in reconciliations),
+        'total_variance': sum(float(r.variance or 0) for r in reconciliations),
+        'total_refunds': sum(float(r.refunds_expenses or 0) for r in reconciliations),
+    }
+
+    # Calculate averages
+    if total_days > 0:
+        averages = {
+            'daily_collections': summary['net_collections'] / total_days,
+            'daily_patients': summary['patients_treated'] / total_days,
+            'daily_no_shows': summary['no_shows'] / total_days,
+            'daily_production': summary['goodx_production'] / total_days,
+        }
+    else:
+        averages = {'daily_collections': 0, 'daily_patients': 0, 'daily_no_shows': 0, 'daily_production': 0}
+
+    # Calculate rates
+    total_appointments = summary['patients_treated'] + summary['no_shows'] + summary['cancelled']
+    if total_appointments > 0:
+        rates = {
+            'show_rate': (summary['patients_treated'] / total_appointments) * 100,
+            'no_show_rate': (summary['no_shows'] / total_appointments) * 100,
+            'cancellation_rate': (summary['cancelled'] / total_appointments) * 100,
+        }
+    else:
+        rates = {'show_rate': 0, 'no_show_rate': 0, 'cancellation_rate': 0}
+
+    # Collection rate (collections vs production)
+    if summary['goodx_production'] > 0:
+        rates['collection_rate'] = (summary['goodx_collections'] / summary['goodx_production']) * 100
+    else:
+        rates['collection_rate'] = 0
+
+    # Daily trends for charts
+    daily_data = []
+    for r in reconciliations:
+        daily_data.append({
+            'date': r.date.strftime('%d %b'),
+            'date_full': r.date.isoformat(),
+            'net_collections': float(r.net_collections or 0),
+            'production': float(r.goodx_production or 0),
+            'patients': r.patients_treated or 0,
+            'no_shows': r.no_shows or 0,
+            'variance': float(r.variance or 0),
+        })
+
+    # Payment method breakdown
+    payment_breakdown = {
+        'EFT': sum(float(r.eft_received or 0) for r in reconciliations),
+        'Card (FNB)': sum(float(r.card_fnb or 0) for r in reconciliations),
+        'Card (Capitec)': sum(float(r.card_capitec or 0) for r in reconciliations),
+        'Medical Aid': sum(float(r.medical_aid_payments or 0) for r in reconciliations),
+        'Med Aid Balance': sum(float(r.medical_aid_balance_payments or 0) for r in reconciliations),
+        'Other': sum(float(r.other_payments or 0) for r in reconciliations),
+    }
+
+    # Day of week analysis
+    day_analysis = {day: {'count': 0, 'collections': 0, 'patients': 0, 'no_shows': 0}
+                    for day in DAYS_OF_WEEK}
+    for r in reconciliations:
+        if r.day_of_week:
+            day_analysis[r.day_of_week]['count'] += 1
+            day_analysis[r.day_of_week]['collections'] += float(r.net_collections or 0)
+            day_analysis[r.day_of_week]['patients'] += r.patients_treated or 0
+            day_analysis[r.day_of_week]['no_shows'] += r.no_shows or 0
+
+    # Calculate averages per day
+    for day in DAYS_OF_WEEK:
+        if day_analysis[day]['count'] > 0:
+            day_analysis[day]['avg_collections'] = day_analysis[day]['collections'] / day_analysis[day]['count']
+            day_analysis[day]['avg_patients'] = day_analysis[day]['patients'] / day_analysis[day]['count']
+        else:
+            day_analysis[day]['avg_collections'] = 0
+            day_analysis[day]['avg_patients'] = 0
+
+    # Doctor performance
+    doctor_stats = {}
+    for r in reconciliations:
+        if r.dentists_on_duty and r.appointments_booked:
+            for d_id in r.dentists_on_duty:
+                d_id_str = str(d_id)
+                if d_id not in doctor_stats:
+                    dentist = User.query.get(d_id)
+                    doctor_stats[d_id] = {
+                        'name': dentist.full_name if dentist else f'Doctor {d_id}',
+                        'days_worked': 0,
+                        'total_appointments': 0,
+                    }
+                doctor_stats[d_id]['days_worked'] += 1
+                doctor_stats[d_id]['total_appointments'] += r.appointments_booked.get(d_id_str, 0)
+
+    # Best and worst days
+    if reconciliations:
+        best_day = max(reconciliations, key=lambda r: float(r.net_collections or 0))
+        worst_day = min(reconciliations, key=lambda r: float(r.net_collections or 0))
+    else:
+        best_day = worst_day = None
+
+    return render_template('reconciliation/analytics.html',
+                          period=period,
+                          period_label=period_label,
+                          start_date=start_date,
+                          end_date=end_date,
+                          total_days=total_days,
+                          summary=summary,
+                          averages=averages,
+                          rates=rates,
+                          daily_data=daily_data,
+                          payment_breakdown=payment_breakdown,
+                          day_analysis=day_analysis,
+                          doctor_stats=doctor_stats,
+                          best_day=best_day,
+                          worst_day=worst_day,
+                          days_of_week=DAYS_OF_WEEK)

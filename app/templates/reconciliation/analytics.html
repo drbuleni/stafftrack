@@ -1,0 +1,547 @@
+{% extends "base.html" %}
+
+{% block title %}Reconciliation Analytics - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-graph-up"></i> Reconciliation Analytics</h1>
+    <a href="{{ url_for('reconciliation.index') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Sheets
+    </a>
+</div>
+
+<!-- Period Selector -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <span class="text-muted me-2">Period:</span>
+            <a href="{{ url_for('reconciliation.analytics', period='week') }}"
+               class="btn btn-sm {{ 'btn-primary' if period == 'week' else 'btn-outline-primary' }}">
+                This Week
+            </a>
+            <a href="{{ url_for('reconciliation.analytics', period='month') }}"
+               class="btn btn-sm {{ 'btn-primary' if period == 'month' else 'btn-outline-primary' }}">
+                This Month
+            </a>
+            <a href="{{ url_for('reconciliation.analytics', period='quarter') }}"
+               class="btn btn-sm {{ 'btn-primary' if period == 'quarter' else 'btn-outline-primary' }}">
+                This Quarter
+            </a>
+            <a href="{{ url_for('reconciliation.analytics', period='year') }}"
+               class="btn btn-sm {{ 'btn-primary' if period == 'year' else 'btn-outline-primary' }}">
+                This Year
+            </a>
+            <span class="mx-2">|</span>
+            <form action="{{ url_for('reconciliation.analytics') }}" method="GET" class="d-flex gap-2 align-items-center">
+                <input type="hidden" name="period" value="custom">
+                <input type="date" name="start_date" class="form-control form-control-sm" style="width: auto;"
+                       value="{{ start_date.isoformat() }}">
+                <span>to</span>
+                <input type="date" name="end_date" class="form-control form-control-sm" style="width: auto;"
+                       value="{{ end_date.isoformat() }}">
+                <button type="submit" class="btn btn-sm btn-outline-secondary">Go</button>
+            </form>
+        </div>
+        <div class="mt-2">
+            <h5 class="mb-0"><i class="bi bi-calendar3"></i> {{ period_label }} <small class="text-muted">({{ total_days }} days recorded)</small></h5>
+        </div>
+    </div>
+</div>
+
+{% if total_days == 0 %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> No reconciliation data available for this period.
+    <a href="{{ url_for('reconciliation.new') }}">Create a reconciliation sheet</a> to start tracking.
+</div>
+{% else %}
+
+<!-- Key Metrics Row -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card h-100 border-success">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Total Net Collections</h6>
+                <h2 class="text-success mb-0">R {{ "%.2f"|format(summary.net_collections) }}</h2>
+                <small class="text-muted">Avg: R {{ "%.2f"|format(averages.daily_collections) }}/day</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card h-100 border-primary">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Total Production</h6>
+                <h2 class="text-primary mb-0">R {{ "%.2f"|format(summary.goodx_production) }}</h2>
+                <small class="text-muted">Avg: R {{ "%.2f"|format(averages.daily_production) }}/day</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card h-100 border-info">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Patients Treated</h6>
+                <h2 class="text-info mb-0">{{ summary.patients_treated }}</h2>
+                <small class="text-muted">Avg: {{ "%.1f"|format(averages.daily_patients) }}/day</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card h-100 {{ 'border-success' if rates.collection_rate >= 90 else 'border-warning' if rates.collection_rate >= 70 else 'border-danger' }}">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Collection Rate</h6>
+                <h2 class="mb-0 {{ 'text-success' if rates.collection_rate >= 90 else 'text-warning' if rates.collection_rate >= 70 else 'text-danger' }}">
+                    {{ "%.1f"|format(rates.collection_rate) }}%
+                </h2>
+                <small class="text-muted">Collections vs Production</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row mb-4">
+    <!-- Collections Trend -->
+    <div class="col-lg-8 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-graph-up"></i> Collections Trend</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="collectionsChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Methods Pie -->
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Payment Methods</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="paymentChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Patient Flow Stats -->
+<div class="row mb-4">
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="bi bi-people"></i> Patient Flow Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div class="display-6 text-primary">{{ summary.patients_treated }}</div>
+                        <small class="text-muted">Treated</small>
+                        <div class="progress mt-2" style="height: 8px;">
+                            <div class="progress-bar bg-primary" style="width: {{ rates.show_rate }}%"></div>
+                        </div>
+                        <small>{{ "%.1f"|format(rates.show_rate) }}%</small>
+                    </div>
+                    <div class="col-4">
+                        <div class="display-6 text-danger">{{ summary.no_shows }}</div>
+                        <small class="text-muted">No-shows</small>
+                        <div class="progress mt-2" style="height: 8px;">
+                            <div class="progress-bar bg-danger" style="width: {{ rates.no_show_rate }}%"></div>
+                        </div>
+                        <small>{{ "%.1f"|format(rates.no_show_rate) }}%</small>
+                    </div>
+                    <div class="col-4">
+                        <div class="display-6 text-secondary">{{ summary.cancelled }}</div>
+                        <small class="text-muted">Cancelled</small>
+                        <div class="progress mt-2" style="height: 8px;">
+                            <div class="progress-bar bg-secondary" style="width: {{ rates.cancellation_rate }}%"></div>
+                        </div>
+                        <small>{{ "%.1f"|format(rates.cancellation_rate) }}%</small>
+                    </div>
+                </div>
+                <hr>
+                <div class="row text-center">
+                    <div class="col-4">
+                        <h5 class="text-info">{{ summary.walk_ins }}</h5>
+                        <small class="text-muted">Walk-ins</small>
+                    </div>
+                    <div class="col-4">
+                        <h5 class="text-success">{{ summary.new_patients }}</h5>
+                        <small class="text-muted">New Patients</small>
+                    </div>
+                    <div class="col-4">
+                        <h5 class="text-warning">{{ summary.rescheduled }}</h5>
+                        <small class="text-muted">Rescheduled</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Patients Trend -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Daily Patient Flow</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="patientsChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Day of Week Analysis -->
+<div class="row mb-4">
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-calendar-week"></i> Performance by Day of Week</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="dayOfWeekChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-calendar-check"></i> Day of Week Stats</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Day</th>
+                                <th>Days</th>
+                                <th>Avg Collections</th>
+                                <th>Avg Patients</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for day in days_of_week %}
+                            {% if day_analysis[day].count > 0 %}
+                            <tr>
+                                <td>{{ day }}</td>
+                                <td>{{ day_analysis[day].count }}</td>
+                                <td>R {{ "%.2f"|format(day_analysis[day].avg_collections) }}</td>
+                                <td>{{ "%.1f"|format(day_analysis[day].avg_patients) }}</td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Best/Worst Days & Doctor Stats -->
+<div class="row mb-4">
+    {% if best_day and worst_day %}
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-trophy"></i> Best & Worst Days</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6 text-center border-end">
+                        <i class="bi bi-trophy-fill text-warning display-5"></i>
+                        <h6 class="text-success mt-2">Best Day</h6>
+                        <p class="mb-1"><strong>{{ best_day.date.strftime('%d %b %Y') }}</strong></p>
+                        <p class="mb-1">({{ best_day.day_of_week }})</p>
+                        <h4 class="text-success">R {{ "%.2f"|format(best_day.net_collections) }}</h4>
+                        <small class="text-muted">{{ best_day.patients_treated }} patients</small>
+                    </div>
+                    <div class="col-6 text-center">
+                        <i class="bi bi-emoji-frown text-muted display-5"></i>
+                        <h6 class="text-danger mt-2">Lowest Day</h6>
+                        <p class="mb-1"><strong>{{ worst_day.date.strftime('%d %b %Y') }}</strong></p>
+                        <p class="mb-1">({{ worst_day.day_of_week }})</p>
+                        <h4 class="text-danger">R {{ "%.2f"|format(worst_day.net_collections) }}</h4>
+                        <small class="text-muted">{{ worst_day.patients_treated }} patients</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if doctor_stats %}
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-person-badge"></i> Doctor Activity</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Doctor</th>
+                                <th>Days Worked</th>
+                                <th>Total Appts</th>
+                                <th>Avg Appts/Day</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for id, stats in doctor_stats.items() %}
+                            <tr>
+                                <td>{{ stats.name }}</td>
+                                <td>{{ stats.days_worked }}</td>
+                                <td>{{ stats.total_appointments }}</td>
+                                <td>{{ "%.1f"|format(stats.total_appointments / stats.days_worked if stats.days_worked > 0 else 0) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Financial Summary -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-cash-stack"></i> Financial Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Money In Breakdown</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td>EFT Received</td>
+                                <td class="text-end">R {{ "%.2f"|format(payment_breakdown['EFT']) }}</td>
+                            </tr>
+                            <tr>
+                                <td>Card (FNB)</td>
+                                <td class="text-end">R {{ "%.2f"|format(payment_breakdown['Card (FNB)']) }}</td>
+                            </tr>
+                            <tr>
+                                <td>Card (Capitec)</td>
+                                <td class="text-end">R {{ "%.2f"|format(payment_breakdown['Card (Capitec)']) }}</td>
+                            </tr>
+                            <tr>
+                                <td>Medical Aid</td>
+                                <td class="text-end">R {{ "%.2f"|format(payment_breakdown['Medical Aid']) }}</td>
+                            </tr>
+                            <tr>
+                                <td>Med Aid Balance (Patient)</td>
+                                <td class="text-end">R {{ "%.2f"|format(payment_breakdown['Med Aid Balance']) }}</td>
+                            </tr>
+                            <tr>
+                                <td>Other</td>
+                                <td class="text-end">R {{ "%.2f"|format(payment_breakdown['Other']) }}</td>
+                            </tr>
+                            <tr class="table-success fw-bold">
+                                <td>TOTAL MONEY IN</td>
+                                <td class="text-end">R {{ "%.2f"|format(summary.total_money_in) }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Net Position</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td>Total Money In</td>
+                                <td class="text-end">R {{ "%.2f"|format(summary.total_money_in) }}</td>
+                            </tr>
+                            <tr>
+                                <td>Less: Refunds/Expenses</td>
+                                <td class="text-end text-danger">- R {{ "%.2f"|format(summary.total_refunds) }}</td>
+                            </tr>
+                            <tr class="table-dark fw-bold">
+                                <td>NET COLLECTIONS</td>
+                                <td class="text-end">R {{ "%.2f"|format(summary.net_collections) }}</td>
+                            </tr>
+                            <tr><td colspan="2">&nbsp;</td></tr>
+                            <tr>
+                                <td>GoodX Production</td>
+                                <td class="text-end">R {{ "%.2f"|format(summary.goodx_production) }}</td>
+                            </tr>
+                            <tr>
+                                <td>GoodX Collections</td>
+                                <td class="text-end">R {{ "%.2f"|format(summary.goodx_collections) }}</td>
+                            </tr>
+                            <tr class="{{ 'table-success' if summary.total_variance == 0 else 'table-warning' if summary.total_variance|abs < 500 else 'table-danger' }}">
+                                <td>Total Variance</td>
+                                <td class="text-end">R {{ "%.2f"|format(summary.total_variance) }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endif %}
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+{% if total_days > 0 %}
+// Daily data from server
+const dailyData = {{ daily_data | tojson }};
+const paymentBreakdown = {{ payment_breakdown | tojson }};
+const dayAnalysis = {{ day_analysis | tojson }};
+
+// Collections Trend Chart
+const collectionsCtx = document.getElementById('collectionsChart').getContext('2d');
+new Chart(collectionsCtx, {
+    type: 'line',
+    data: {
+        labels: dailyData.map(d => d.date),
+        datasets: [
+            {
+                label: 'Net Collections',
+                data: dailyData.map(d => d.net_collections),
+                borderColor: '#198754',
+                backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                fill: true,
+                tension: 0.3
+            },
+            {
+                label: 'Production',
+                data: dailyData.map(d => d.production),
+                borderColor: '#0d6efd',
+                backgroundColor: 'transparent',
+                borderDash: [5, 5],
+                tension: 0.3
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'top' }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return 'R ' + value.toLocaleString();
+                    }
+                }
+            }
+        }
+    }
+});
+
+// Payment Methods Pie Chart
+const paymentCtx = document.getElementById('paymentChart').getContext('2d');
+const paymentLabels = Object.keys(paymentBreakdown).filter(k => paymentBreakdown[k] > 0);
+const paymentValues = paymentLabels.map(k => paymentBreakdown[k]);
+
+new Chart(paymentCtx, {
+    type: 'doughnut',
+    data: {
+        labels: paymentLabels,
+        datasets: [{
+            data: paymentValues,
+            backgroundColor: [
+                '#0d6efd', '#198754', '#ffc107', '#dc3545', '#6f42c1', '#fd7e14'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'bottom' }
+        }
+    }
+});
+
+// Patients Trend Chart
+const patientsCtx = document.getElementById('patientsChart').getContext('2d');
+new Chart(patientsCtx, {
+    type: 'bar',
+    data: {
+        labels: dailyData.map(d => d.date),
+        datasets: [
+            {
+                label: 'Patients Treated',
+                data: dailyData.map(d => d.patients),
+                backgroundColor: '#0dcaf0',
+            },
+            {
+                label: 'No-shows',
+                data: dailyData.map(d => d.no_shows),
+                backgroundColor: '#dc3545',
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'top' }
+        },
+        scales: {
+            x: { stacked: false },
+            y: { beginAtZero: true }
+        }
+    }
+});
+
+// Day of Week Chart
+const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const dayCtx = document.getElementById('dayOfWeekChart').getContext('2d');
+new Chart(dayCtx, {
+    type: 'bar',
+    data: {
+        labels: daysOfWeek.filter(d => dayAnalysis[d] && dayAnalysis[d].count > 0),
+        datasets: [{
+            label: 'Avg Collections (R)',
+            data: daysOfWeek.filter(d => dayAnalysis[d] && dayAnalysis[d].count > 0)
+                           .map(d => dayAnalysis[d].avg_collections),
+            backgroundColor: '#198754',
+            yAxisID: 'y'
+        }, {
+            label: 'Avg Patients',
+            data: daysOfWeek.filter(d => dayAnalysis[d] && dayAnalysis[d].count > 0)
+                           .map(d => dayAnalysis[d].avg_patients),
+            backgroundColor: '#0dcaf0',
+            yAxisID: 'y1'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'top' }
+        },
+        scales: {
+            y: {
+                type: 'linear',
+                position: 'left',
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return 'R ' + value.toLocaleString();
+                    }
+                }
+            },
+            y1: {
+                type: 'linear',
+                position: 'right',
+                beginAtZero: true,
+                grid: { drawOnChartArea: false }
+            }
+        }
+    }
+});
+{% endif %}
+</script>
+{% endblock %}
