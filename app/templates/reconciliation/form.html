@@ -50,32 +50,14 @@
         <div class="card-body">
             <div class="row mb-3">
                 <div class="col-12">
-                    <label class="form-label"><strong>Dentists on Duty</strong> (select all that apply)</label>
-                    <div class="row">
-                        {% for dentist in dentists %}
-                        <div class="col-md-4 mb-2">
-                            <div class="form-check">
-                                <input type="checkbox" class="form-check-input dentist-checkbox"
-                                       name="dentists_on_duty" value="{{ dentist.id }}"
-                                       id="dentist_{{ dentist.id }}"
-                                       data-dentist-id="{{ dentist.id }}"
-                                       data-dentist-name="{{ dentist.full_name }}"
-                                       {{ 'checked' if rec and rec.dentists_on_duty and dentist.id in rec.dentists_on_duty else '' }}>
-                                <label class="form-check-label" for="dentist_{{ dentist.id }}">
-                                    {{ dentist.full_name }}
-                                </label>
-                            </div>
-                        </div>
-                        {% endfor %}
+                    <label class="form-label"><strong>Dentists on Duty</strong></label>
+                    <p class="text-muted small mb-2">Select doctors and enter their appointments for today</p>
+                    <div id="dentistSelections">
+                        <!-- Dentist selection rows will be added here -->
                     </div>
-                </div>
-            </div>
-
-            <!-- Dynamic appointments per dentist -->
-            <div id="appointmentsContainer" class="mb-3" style="display: none;">
-                <label class="form-label"><strong>Appointments Booked Per Doctor</strong></label>
-                <div class="row" id="appointmentInputs">
-                    <!-- Dynamically populated -->
+                    <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addDentistRow()">
+                        <i class="bi bi-plus-circle"></i> Add Doctor
+                    </button>
                 </div>
             </div>
 
@@ -392,48 +374,108 @@
 </form>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Handle dentist checkboxes and appointment inputs
-    const checkboxes = document.querySelectorAll('.dentist-checkbox');
-    const container = document.getElementById('appointmentsContainer');
-    const inputsDiv = document.getElementById('appointmentInputs');
+// Dentist data from database
+const dentistOptions = [
+    {% for dentist in dentists %}
+    { id: {{ dentist.id }}, name: "{{ dentist.full_name }}" }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
 
-    function updateAppointmentInputs() {
-        const selected = [];
-        checkboxes.forEach(cb => {
-            if (cb.checked) {
-                selected.push({
-                    id: cb.dataset.dentistId,
-                    name: cb.dataset.dentistName
-                });
-            }
-        });
+// Existing data for edit mode
+const existingDentists = {% if rec and rec.dentists_on_duty %}{{ rec.dentists_on_duty | tojson }}{% else %}[]{% endif %};
+const existingAppointments = {% if rec and rec.appointments_booked %}{{ rec.appointments_booked | tojson }}{% else %}{}{% endif %};
 
-        if (selected.length > 0) {
-            container.style.display = 'block';
-            inputsDiv.innerHTML = '';
-            selected.forEach(dentist => {
-                const existingValue = document.querySelector(`input[name="appointments_${dentist.id}"]`)?.value ||
-                    {% if rec and rec.appointments_booked %}{{ rec.appointments_booked | tojson }}{% else %}{}{% endif %}[dentist.id] || 0;
-                inputsDiv.innerHTML += `
-                    <div class="col-md-4 mb-2">
-                        <label class="form-label">${dentist.name}</label>
-                        <input type="number" name="appointments_${dentist.id}" class="form-control"
-                               min="0" value="${existingValue}" placeholder="Appointments">
-                    </div>
-                `;
-            });
-        } else {
-            container.style.display = 'none';
-        }
-    }
+let dentistRowCount = 0;
 
-    checkboxes.forEach(cb => {
-        cb.addEventListener('change', updateAppointmentInputs);
+function addDentistRow(preselectedId = null, preselectedAppts = 0) {
+    dentistRowCount++;
+    const container = document.getElementById('dentistSelections');
+
+    const row = document.createElement('div');
+    row.className = 'row mb-2 dentist-row';
+    row.id = `dentistRow_${dentistRowCount}`;
+
+    let optionsHtml = '<option value="">-- Select Doctor --</option>';
+    dentistOptions.forEach(d => {
+        const selected = (preselectedId && d.id == preselectedId) ? 'selected' : '';
+        optionsHtml += `<option value="${d.id}" ${selected}>${d.name}</option>`;
     });
 
-    // Initialize on page load
-    updateAppointmentInputs();
+    row.innerHTML = `
+        <div class="col-md-5">
+            <select name="dentists_on_duty" class="form-select dentist-select" onchange="updateDentistOptions()">
+                ${optionsHtml}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <div class="input-group">
+                <span class="input-group-text">Appts</span>
+                <input type="number" name="appointments_${preselectedId || 'new_' + dentistRowCount}"
+                       class="form-control appointment-input" min="0" value="${preselectedAppts}"
+                       placeholder="0" data-row="${dentistRowCount}">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeDentistRow(${dentistRowCount})">
+                <i class="bi bi-trash"></i> Remove
+            </button>
+        </div>
+    `;
+
+    container.appendChild(row);
+    updateDentistOptions();
+}
+
+function removeDentistRow(rowNum) {
+    const row = document.getElementById(`dentistRow_${rowNum}`);
+    if (row) {
+        row.remove();
+        updateDentistOptions();
+    }
+}
+
+function updateDentistOptions() {
+    // Get all selected dentist IDs
+    const selectedIds = [];
+    document.querySelectorAll('.dentist-select').forEach(select => {
+        if (select.value) {
+            selectedIds.push(select.value);
+        }
+    });
+
+    // Update appointment input names based on selected doctor
+    document.querySelectorAll('.dentist-row').forEach(row => {
+        const select = row.querySelector('.dentist-select');
+        const input = row.querySelector('.appointment-input');
+        if (select && input && select.value) {
+            input.name = `appointments_${select.value}`;
+        }
+    });
+
+    // Disable already-selected options in other dropdowns
+    document.querySelectorAll('.dentist-select').forEach(select => {
+        const currentValue = select.value;
+        select.querySelectorAll('option').forEach(option => {
+            if (option.value && option.value !== currentValue && selectedIds.includes(option.value)) {
+                option.disabled = true;
+            } else {
+                option.disabled = false;
+            }
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize dentist rows from existing data (edit mode)
+    if (existingDentists.length > 0) {
+        existingDentists.forEach(dentistId => {
+            const appts = existingAppointments[dentistId] || existingAppointments[String(dentistId)] || 0;
+            addDentistRow(dentistId, appts);
+        });
+    } else {
+        // Add one empty row for new forms
+        addDentistRow();
+    }
 
     // Calculate totals
     const moneyInFields = document.querySelectorAll('.money-in');
