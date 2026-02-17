@@ -45,7 +45,7 @@ def get_kpis_for_role(role):
 def calculate_monthly_score(staff_id, month, year):
     """Calculate the overall KPI score for a staff member for a given month."""
     staff = User.query.get(staff_id)
-    if not staff or staff.role not in KPI_ROLES:
+    if not staff or staff.role not in SCORABLE_ROLES:
         return None
 
     # Get all KPIs for this staff's role (Practice Manager uses Dentist KPIs)
