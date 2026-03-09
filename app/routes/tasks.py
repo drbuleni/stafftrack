@@ -5,7 +5,7 @@ from wtforms import StringField, TextAreaField, SelectField, DateField, SubmitFi
 from wtforms.validators import DataRequired, Length
 from app import db, mail
 from app.models import Task, User, Notification
-from app.utils.decorators import manager_required
+
 from app.utils.audit import log_audit
 from app.utils.email import send_email, email_task_assigned
 from datetime import date
@@ -68,19 +68,27 @@ def my_tasks():
 
 @bp.route('/create', methods=['GET', 'POST'])
 @login_required
-@manager_required
 def create():
     """Create a new task."""
     form = TaskForm()
-    form.assigned_to.choices = [(0, '-- Unassigned --')] + [
-        (u.id, u.full_name) for u in User.query.filter_by(status='Active').all()
-    ]
+    if current_user.role in ['Practice Manager', 'Super Admin']:
+        form.assigned_to.choices = [(0, '-- Unassigned --')] + [
+            (u.id, u.full_name) for u in User.query.filter_by(status='Active').all()
+        ]
+    else:
+        # Regular staff can only create tasks for themselves
+        form.assigned_to.choices = [(current_user.id, current_user.full_name)]
 
     if form.validate_on_submit():
+        assigned = form.assigned_to.data if form.assigned_to.data != 0 else None
+        # Non-managers can only assign to themselves
+        if current_user.role not in ['Practice Manager', 'Super Admin']:
+            assigned = current_user.id
+
         task = Task(
             title=form.title.data,
             description=form.description.data,
-            assigned_to=form.assigned_to.data if form.assigned_to.data != 0 else None,
+            assigned_to=assigned,
             due_date=form.due_date.data,
             created_by=current_user.id
         )

@@ -3,7 +3,12 @@
 {% block title %}My Tasks - StaffTrack{% endblock %}
 
 {% block content %}
-<h1 class="mb-4"><i class="bi bi-list-task"></i> My Tasks</h1>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0"><i class="bi bi-list-task"></i> My Tasks</h1>
+    <a href="{{ url_for('tasks.create') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Create Task
+    </a>
+</div>
 
 {% set pending_tasks = tasks | selectattr('status', 'ne', 'Done') | list %}
 {% set completed_tasks = tasks | selectattr('status', 'eq', 'Done') | list %}
