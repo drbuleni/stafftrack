@@ -4,7 +4,9 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SelectField, DateField, SubmitField
 from wtforms.validators import DataRequired, Length, Email, Optional, EqualTo
 from app import db
-from app.models import User, Schedule, Task, LeaveRequest, KPIScore, Warning, PerformanceEvent
+from app.models import (User, Schedule, Task, LeaveRequest, KPIScore, Warning,
+                        PerformanceEvent, Receipt, Notification, SOPAcknowledgement,
+                        AuditLog, Announcement, CalendarEvent, DailyReconciliation)
 from app.utils.decorators import admin_required, manager_required
 from app.utils.audit import log_audit
 
@@ -185,13 +187,30 @@ def delete(user_id):
     username = user.username
     user_id_deleted = user.id
 
-    # Delete related records or set to null
+    # Delete user-owned records
+    Notification.query.filter_by(user_id=user.id).delete()
+    SOPAcknowledgement.query.filter_by(staff_id=user.id).delete()
     Schedule.query.filter_by(staff_id=user.id).delete()
-    Task.query.filter_by(assigned_to=user.id).update({'assigned_to': None})
     LeaveRequest.query.filter_by(staff_id=user.id).delete()
     KPIScore.query.filter_by(staff_id=user.id).delete()
     Warning.query.filter_by(staff_id=user.id).delete()
     PerformanceEvent.query.filter_by(staff_id=user.id).delete()
+    Receipt.query.filter_by(created_by=user.id).delete()
+
+    # Nullify or reassign secondary references
+    Task.query.filter_by(assigned_to=user.id).update({'assigned_to': None})
+    Task.query.filter_by(created_by=user.id).update({'created_by': current_user.id})
+    LeaveRequest.query.filter_by(approved_by=user.id).update({'approved_by': None})
+    KPIScore.query.filter_by(scored_by=user.id).delete()
+    Warning.query.filter_by(issued_by=user.id).delete()
+    PerformanceEvent.query.filter_by(created_by=user.id).delete()
+    Schedule.query.filter_by(created_by=user.id).delete()
+    CalendarEvent.query.filter_by(staff_id=user.id).update({'staff_id': None})
+    CalendarEvent.query.filter_by(created_by=user.id).update({'created_by': current_user.id})
+    Announcement.query.filter_by(created_by=user.id).update({'created_by': current_user.id})
+    DailyReconciliation.query.filter_by(prepared_by=user.id).update({'prepared_by': current_user.id})
+    DailyReconciliation.query.filter_by(checked_by=user.id).update({'checked_by': None})
+    AuditLog.query.filter_by(user_id=user.id).delete()
 
     db.session.delete(user)
     db.session.commit()
