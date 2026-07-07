@@ -89,6 +89,20 @@ h4 { font-size: 1.125rem; }
     color: var(--gray-500) !important;
 }
 
+/* Headings must follow the text color of colored containers
+   (the global heading color above otherwise leaves dark text
+   on dark backgrounds, e.g. .card-header.bg-dark.text-white) */
+:is(.text-white, .text-light) :is(h1, h2, h3, h4, h5, h6) {
+    color: inherit;
+}
+
+/* Colored card headers always get readable white text,
+   even when a template forgets the text-white class */
+.card-header:is(.bg-primary, .bg-secondary, .bg-success, .bg-danger, .bg-info, .bg-dark),
+.card-header:is(.bg-primary, .bg-secondary, .bg-success, .bg-danger, .bg-info, .bg-dark) :is(h1, h2, h3, h4, h5, h6) {
+    color: #fff;
+}
+
 /* ============================================
    Sidebar Navigation
    ============================================ */
