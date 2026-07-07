@@ -16,6 +16,7 @@ class User(UserMixin, db.Model):
     phone = db.Column(db.String(20))
     start_date = db.Column(db.Date)
     status = db.Column(db.String(20), default='Active')  # Active/Inactive
+    practice_id = db.Column(db.Integer, db.ForeignKey('practices.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -433,3 +434,290 @@ class DailyReconciliation(db.Model):
 
     def __repr__(self):
         return f'<DailyReconciliation {self.date}>'
+
+
+class ReconciliationBillingEntry(db.Model):
+    """A single patient billing line on a provider's daily billing sheet."""
+    __tablename__ = 'reconciliation_billing_entries'
+
+    id = db.Column(db.Integer, primary_key=True)
+    reconciliation_id = db.Column(db.Integer, db.ForeignKey('daily_reconciliations.id'), nullable=False)
+
+    provider_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # optional link to a staff member
+    provider_name = db.Column(db.String(100), nullable=False)  # display name, e.g. "Dr Buleni"
+
+    computer_no = db.Column(db.String(50))
+    file_no = db.Column(db.String(50))
+    patient_name = db.Column(db.String(150))
+    medical_aid = db.Column(db.String(100))  # medical aid name or "Private"
+    amount_billed = db.Column(db.Numeric(10, 2), default=0)
+    card_paid = db.Column(db.Numeric(10, 2), default=0)   # Card Payment KAS7
+    eft_paid = db.Column(db.Numeric(10, 2), default=0)    # EFT Payment KAS3
+    receipt_no = db.Column(db.String(50))
+    sort_order = db.Column(db.Integer, default=0)
+
+    reconciliation = db.relationship(
+        'DailyReconciliation',
+        backref=db.backref('billing_entries', cascade='all, delete-orphan',
+                           order_by='ReconciliationBillingEntry.sort_order')
+    )
+    provider = db.relationship('User', foreign_keys=[provider_id])
+
+    def __repr__(self):
+        return f'<ReconciliationBillingEntry {self.provider_name} - {self.patient_name}>'
+
+
+class ReconciliationEraPayment(db.Model):
+    """An ERA (medical aid remittance) payment received - KAS6."""
+    __tablename__ = 'reconciliation_era_payments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    reconciliation_id = db.Column(db.Integer, db.ForeignKey('daily_reconciliations.id'), nullable=False)
+
+    batch_number = db.Column(db.String(50))
+    medical_aid_name = db.Column(db.String(100))
+    payment_date = db.Column(db.Date)
+    amount_paid = db.Column(db.Numeric(10, 2), default=0)
+    sort_order = db.Column(db.Integer, default=0)
+
+    reconciliation = db.relationship(
+        'DailyReconciliation',
+        backref=db.backref('era_payments', cascade='all, delete-orphan',
+                           order_by='ReconciliationEraPayment.sort_order')
+    )
+
+    def __repr__(self):
+        return f'<ReconciliationEraPayment {self.batch_number} - {self.medical_aid_name}>'
+
+
+# =====================================================================
+# Quoting & Lead Pipeline module
+# =====================================================================
+
+class Practice(db.Model):
+    """A tenant practice. All quoting/lead data is scoped to a practice."""
+    __tablename__ = 'practices'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    address = db.Column(db.Text)
+    phone = db.Column(db.String(50))
+    email = db.Column(db.String(100))
+    logo_path = db.Column(db.String(500))
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    users = db.relationship('User', backref='practice', lazy='dynamic', foreign_keys='User.practice_id')
+
+    def __repr__(self):
+        return f'<Practice {self.name}>'
+
+
+class SadaCode(db.Model):
+    """SADA procedure code in a practice's master library."""
+    __tablename__ = 'sada_codes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    practice_id = db.Column(db.Integer, db.ForeignKey('practices.id'), nullable=False, index=True)
+    code = db.Column(db.String(20), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    default_price_medical_aid = db.Column(db.Numeric(10, 2), default=0)
+    default_price_cash = db.Column(db.Numeric(10, 2), default=0)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (db.UniqueConstraint('practice_id', 'code', name='unique_practice_sada_code'),)
+
+    def __repr__(self):
+        return f'<SadaCode {self.code}>'
+
+
+class Icd10Code(db.Model):
+    """ICD-10 diagnostic code in a practice's curated list."""
+    __tablename__ = 'icd10_codes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    practice_id = db.Column(db.Integer, db.ForeignKey('practices.id'), nullable=False, index=True)
+    code = db.Column(db.String(20), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (db.UniqueConstraint('practice_id', 'code', name='unique_practice_icd10_code'),)
+
+    def __repr__(self):
+        return f'<Icd10Code {self.code}>'
+
+
+class TreatmentTemplate(db.Model):
+    """A named treatment plan (Implant, Whitening, RCT, etc.) made of code lines."""
+    __tablename__ = 'treatment_templates'
+
+    id = db.Column(db.Integer, primary_key=True)
+    practice_id = db.Column(db.Integer, db.ForeignKey('practices.id'), nullable=False, index=True)
+    name = db.Column(db.String(100), nullable=False)
+    category = db.Column(db.String(100), default='General')
+    description = db.Column(db.Text)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    lines = db.relationship(
+        'TreatmentTemplateLine',
+        backref='template',
+        lazy='dynamic',
+        cascade='all, delete-orphan',
+        order_by='TreatmentTemplateLine.visit_number, TreatmentTemplateLine.sequence'
+    )
+
+    __table_args__ = (db.UniqueConstraint('practice_id', 'name', name='unique_practice_template_name'),)
+
+    def __repr__(self):
+        return f'<TreatmentTemplate {self.name}>'
+
+
+class TreatmentTemplateLine(db.Model):
+    """A single code line within a treatment template."""
+    __tablename__ = 'treatment_template_lines'
+
+    id = db.Column(db.Integer, primary_key=True)
+    template_id = db.Column(db.Integer, db.ForeignKey('treatment_templates.id'), nullable=False, index=True)
+    visit_number = db.Column(db.Integer, default=1)
+    visit_title = db.Column(db.String(200))
+    sequence = db.Column(db.Integer, default=0)
+    sada_code_id = db.Column(db.Integer, db.ForeignKey('sada_codes.id'), nullable=False)
+    default_icd10_code_id = db.Column(db.Integer, db.ForeignKey('icd10_codes.id'))
+    default_quantity = db.Column(db.Integer, default=1)
+    default_tooth_number = db.Column(db.String(20))
+
+    sada_code = db.relationship('SadaCode', foreign_keys=[sada_code_id])
+    default_icd10_code = db.relationship('Icd10Code', foreign_keys=[default_icd10_code_id])
+
+    def __repr__(self):
+        return f'<TemplateLine tmpl={self.template_id} v{self.visit_number}.{self.sequence}>'
+
+
+class Quote(db.Model):
+    """A quote issued to a patient. Immutable doc-style record."""
+    __tablename__ = 'quotes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    practice_id = db.Column(db.Integer, db.ForeignKey('practices.id'), nullable=False, index=True)
+    quote_number = db.Column(db.String(50), nullable=False)
+    patient_name = db.Column(db.String(200), nullable=False)
+    patient_phone = db.Column(db.String(50))
+    quote_date = db.Column(db.Date, nullable=False)
+    treatment_template_id = db.Column(db.Integer, db.ForeignKey('treatment_templates.id'))
+    treatment_label = db.Column(db.String(200))
+    pricing_mode = db.Column(db.String(20), default='medical_aid')  # medical_aid / cash
+    subtotal = db.Column(db.Numeric(12, 2), default=0)
+    grand_total = db.Column(db.Numeric(12, 2), default=0)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    lines = db.relationship(
+        'QuoteLine',
+        backref='quote',
+        lazy='dynamic',
+        cascade='all, delete-orphan',
+        order_by='QuoteLine.visit_number, QuoteLine.sequence'
+    )
+    lead = db.relationship('Lead', backref='quote', uselist=False, cascade='all, delete-orphan')
+    template = db.relationship('TreatmentTemplate', foreign_keys=[treatment_template_id])
+    creator = db.relationship('User', foreign_keys=[created_by], backref='created_quotes')
+
+    __table_args__ = (db.UniqueConstraint('practice_id', 'quote_number', name='unique_practice_quote_number'),)
+
+    def recalc_totals(self):
+        total = sum((line.line_total or 0) for line in self.lines)
+        self.subtotal = total
+        self.grand_total = total
+
+    def visit_groups(self):
+        """Return lines grouped by visit_number, in order. List of (visit_number, [lines])."""
+        groups = {}
+        for line in self.lines:
+            groups.setdefault(line.visit_number or 1, []).append(line)
+        return sorted(groups.items())
+
+    def __repr__(self):
+        return f'<Quote {self.quote_number}>'
+
+
+class QuoteLine(db.Model):
+    """A single code line on a quote. Prices are snapshotted at quote time."""
+    __tablename__ = 'quote_lines'
+
+    id = db.Column(db.Integer, primary_key=True)
+    quote_id = db.Column(db.Integer, db.ForeignKey('quotes.id'), nullable=False, index=True)
+    visit_number = db.Column(db.Integer, default=1)
+    visit_title = db.Column(db.String(200))
+    sequence = db.Column(db.Integer, default=0)
+    sada_code_id = db.Column(db.Integer, db.ForeignKey('sada_codes.id'))
+    icd10_code_id = db.Column(db.Integer, db.ForeignKey('icd10_codes.id'))
+    code_snapshot = db.Column(db.String(20))
+    icd10_snapshot = db.Column(db.String(20))
+    description_snapshot = db.Column(db.Text)
+    unit_price_snapshot = db.Column(db.Numeric(10, 2), default=0)
+    tooth_number = db.Column(db.String(20))
+    quantity = db.Column(db.Integer, default=1)
+    line_total = db.Column(db.Numeric(12, 2), default=0)
+    paid_status = db.Column(db.String(20), default='unpaid')  # unpaid / paid
+
+    sada_code = db.relationship('SadaCode', foreign_keys=[sada_code_id])
+    icd10_code = db.relationship('Icd10Code', foreign_keys=[icd10_code_id])
+
+    def __repr__(self):
+        return f'<QuoteLine quote={self.quote_id} code={self.code_snapshot}>'
+
+
+class Lead(db.Model):
+    """The CRM-side record for an issued quote. One lead per quote."""
+    __tablename__ = 'leads'
+
+    id = db.Column(db.Integer, primary_key=True)
+    practice_id = db.Column(db.Integer, db.ForeignKey('practices.id'), nullable=False, index=True)
+    quote_id = db.Column(db.Integer, db.ForeignKey('quotes.id'), nullable=False, unique=True)
+    status = db.Column(db.String(20), default='new', nullable=False)
+    # new / contacted / interested / converted / dead
+    next_followup_date = db.Column(db.Date)
+    converted_at = db.Column(db.DateTime)
+    dead_at = db.Column(db.DateTime)
+    assigned_to = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    interactions = db.relationship(
+        'LeadInteraction',
+        backref='lead',
+        lazy='dynamic',
+        cascade='all, delete-orphan',
+        order_by='LeadInteraction.interacted_at.desc()'
+    )
+    assignee = db.relationship('User', foreign_keys=[assigned_to], backref='assigned_leads')
+
+    def __repr__(self):
+        return f'<Lead quote={self.quote_id} status={self.status}>'
+
+
+class LeadInteraction(db.Model):
+    """A logged interaction (call, message, note) on a lead."""
+    __tablename__ = 'lead_interactions'
+
+    id = db.Column(db.Integer, primary_key=True)
+    lead_id = db.Column(db.Integer, db.ForeignKey('leads.id'), nullable=False, index=True)
+    interacted_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    channel = db.Column(db.String(20), default='call')  # call / sms / whatsapp / email / in_person / note
+    note = db.Column(db.Text)
+    outcome = db.Column(db.String(200))
+    status_at_interaction = db.Column(db.String(20))
+    next_followup_date = db.Column(db.Date)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    creator = db.relationship('User', foreign_keys=[created_by], backref='created_interactions')
+
+    def __repr__(self):
+        return f'<LeadInteraction lead={self.lead_id} {self.channel} at {self.interacted_at}>'

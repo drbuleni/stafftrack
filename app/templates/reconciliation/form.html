@@ -15,8 +15,10 @@
 
 <form method="POST" id="reconciliationForm">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="billing_data" id="billingData">
+    <input type="hidden" name="era_data" id="eraData">
 
-    <!-- Date and Day Selection -->
+    <!-- Date -->
     <div class="card mb-4">
         <div class="card-header bg-primary text-white">
             <h5 class="mb-0"><i class="bi bi-calendar3"></i> Date</h5>
@@ -42,312 +44,98 @@
         </div>
     </div>
 
-    <!-- Section A: Morning Counts -->
-    <div class="card mb-4">
-        <div class="card-header bg-info text-white">
-            <h5 class="mb-0"><i class="bi bi-sunrise"></i> A) Morning Counts</h5>
-        </div>
-        <div class="card-body">
-            <div class="row mb-3">
-                <div class="col-12">
-                    <label class="form-label"><strong>Dentists on Duty</strong></label>
-                    <p class="text-muted small mb-2">Select doctors and enter their appointments for today</p>
-                    <div id="dentistSelections">
-                        <!-- Dentist selection rows will be added here -->
-                    </div>
-                    <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addDentistRow()">
-                        <i class="bi bi-plus-circle"></i> Add Doctor
-                    </button>
-                </div>
-            </div>
+    <!-- Doctor Billing Sheets -->
+    <div id="doctorSheets"></div>
 
-            <div class="row">
-                <div class="col-md-3 mb-3">
-                    <label class="form-label">Staff on Duty</label>
-                    <input type="number" name="staff_on_duty" class="form-control" min="0"
-                           value="{{ rec.staff_on_duty if rec else 0 }}">
-                </div>
-                <div class="col-md-3 mb-3">
-                    <label class="form-label">Confirmed (Call/WhatsApp)</label>
-                    <input type="number" name="confirmed_appointments" class="form-control" min="0"
-                           value="{{ rec.confirmed_appointments if rec else 0 }}">
-                </div>
-                <div class="col-md-3 mb-3">
-                    <label class="form-label">Reminder Messages Sent</label>
-                    <input type="number" name="reminder_messages_sent" class="form-control" min="0"
-                           value="{{ rec.reminder_messages_sent if rec else 0 }}">
-                </div>
-                <div class="col-md-3 mb-3">
-                    <label class="form-label">New Patients Booked</label>
-                    <input type="number" name="new_patients_booked" class="form-control" min="0"
-                           value="{{ rec.new_patients_booked if rec else 0 }}">
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">Medical Aid Pre-auth/Approvals</label>
-                    <input type="number" name="medical_aid_preauth_received" class="form-control" min="0"
-                           value="{{ rec.medical_aid_preauth_received if rec else 0 }}">
-                </div>
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">Lab Cases (Send/Receive)</label>
-                    <input type="number" name="lab_cases" class="form-control" min="0"
-                           value="{{ rec.lab_cases if rec else 0 }}">
-                </div>
-            </div>
-        </div>
+    <div class="mb-4">
+        <button type="button" class="btn btn-outline-primary" onclick="addSheet()">
+            <i class="bi bi-plus-circle"></i> Add Doctor Sheet
+        </button>
     </div>
 
-    <!-- Section B: End-of-Day Patient Flow -->
-    <div class="card mb-4">
-        <div class="card-header bg-warning text-dark">
-            <h5 class="mb-0"><i class="bi bi-people"></i> B) End-of-Day Patient Flow</h5>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">Patients Treated</label>
-                    <input type="number" name="patients_treated" class="form-control" min="0"
-                           value="{{ rec.patients_treated if rec else 0 }}">
-                </div>
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">No-shows</label>
-                    <input type="number" name="no_shows" class="form-control" min="0"
-                           value="{{ rec.no_shows if rec else 0 }}">
-                </div>
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">Cancelled</label>
-                    <input type="number" name="cancelled" class="form-control" min="0"
-                           value="{{ rec.cancelled if rec else 0 }}">
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">Rescheduled</label>
-                    <input type="number" name="rescheduled" class="form-control" min="0"
-                           value="{{ rec.rescheduled if rec else 0 }}">
-                </div>
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">Walk-ins Treated</label>
-                    <input type="number" name="walk_ins_treated" class="form-control" min="0"
-                           value="{{ rec.walk_ins_treated if rec else 0 }}">
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Section C: End-of-Day Cash-Up -->
+    <!-- ERA's Payments KAS6 -->
     <div class="card mb-4">
         <div class="card-header bg-success text-white">
-            <h5 class="mb-0"><i class="bi bi-cash-stack"></i> C) End-of-Day Cash-Up (Rands)</h5>
+            <h5 class="mb-0"><i class="bi bi-bank"></i> ERA's Payments KAS6</h5>
         </div>
-        <div class="card-body">
-            <h6 class="text-muted mb-3">Money In (Today)</h6>
-            <div class="row">
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">EFT Received</label>
-                    <div class="input-group">
-                        <span class="input-group-text">R</span>
-                        <input type="number" name="eft_received" class="form-control money-in" step="0.01" min="0"
-                               value="{{ rec.eft_received if rec else '0.00' }}">
-                    </div>
-                </div>
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">Card (Speedpoint) - FNB</label>
-                    <div class="input-group">
-                        <span class="input-group-text">R</span>
-                        <input type="number" name="card_fnb" class="form-control money-in" step="0.01" min="0"
-                               value="{{ rec.card_fnb if rec else '0.00' }}">
-                    </div>
-                </div>
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">Card (Speedpoint) - Capitec</label>
-                    <div class="input-group">
-                        <span class="input-group-text">R</span>
-                        <input type="number" name="card_capitec" class="form-control money-in" step="0.01" min="0"
-                               value="{{ rec.card_capitec if rec else '0.00' }}">
-                    </div>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">Medical Aid Payments (Actual Money In)</label>
-                    <div class="input-group">
-                        <span class="input-group-text">R</span>
-                        <input type="number" name="medical_aid_payments" class="form-control money-in" step="0.01" min="0"
-                               value="{{ rec.medical_aid_payments if rec else '0.00' }}">
-                    </div>
-                </div>
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">Medical Aid Balance Payments by Patient</label>
-                    <div class="input-group">
-                        <span class="input-group-text">R</span>
-                        <input type="number" name="medical_aid_balance_payments" class="form-control money-in" step="0.01" min="0"
-                               value="{{ rec.medical_aid_balance_payments if rec else '0.00' }}">
-                    </div>
-                </div>
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">Other (specify below)</label>
-                    <div class="input-group">
-                        <span class="input-group-text">R</span>
-                        <input type="number" name="other_payments" class="form-control money-in" step="0.01" min="0"
-                               value="{{ rec.other_payments if rec else '0.00' }}">
-                    </div>
-                </div>
-            </div>
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <label class="form-label">Other Payment Description</label>
-                    <input type="text" name="other_payments_description" class="form-control"
-                           value="{{ rec.other_payments_description if rec else '' }}"
-                           placeholder="Specify if other payments received">
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label"><strong>TOTAL MONEY IN</strong></label>
-                    <div class="input-group">
-                        <span class="input-group-text">R</span>
-                        <input type="text" id="totalMoneyIn" class="form-control fw-bold" readonly
-                               value="{{ rec.total_money_in if rec else '0.00' }}">
-                    </div>
-                </div>
-            </div>
-
-            <hr>
-            <h6 class="text-muted mb-3">Money Out (Today)</h6>
-            <div class="row">
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">Refunds / Expenses Paid Out</label>
-                    <div class="input-group">
-                        <span class="input-group-text">R</span>
-                        <input type="number" name="refunds_expenses" class="form-control" id="refundsExpenses" step="0.01" min="0"
-                               value="{{ rec.refunds_expenses if rec else '0.00' }}">
-                    </div>
-                </div>
-                <div class="col-md-4 mb-3">
-                    <label class="form-label"><strong>NET COLLECTIONS (A - B)</strong></label>
-                    <div class="input-group">
-                        <span class="input-group-text">R</span>
-                        <input type="text" id="netCollections" class="form-control fw-bold bg-dark text-white" readonly
-                               value="{{ rec.net_collections if rec else '0.00' }}">
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Section D: Reconciliation -->
-    <div class="card mb-4">
-        <div class="card-header bg-secondary text-white">
-            <h5 class="mb-0"><i class="bi bi-calculator"></i> D) Reconciliation (GoodX vs Cash-Up)</h5>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">GoodX: Total Production (fees charged today)</label>
-                    <div class="input-group">
-                        <span class="input-group-text">R</span>
-                        <input type="number" name="goodx_production" class="form-control" step="0.01" min="0"
-                               value="{{ rec.goodx_production if rec else '0.00' }}">
-                    </div>
-                </div>
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">GoodX: Total Collections Posted Today</label>
-                    <div class="input-group">
-                        <span class="input-group-text">R</span>
-                        <input type="number" name="goodx_collections" class="form-control" id="goodxCollections" step="0.01" min="0"
-                               value="{{ rec.goodx_collections if rec else '0.00' }}">
-                    </div>
-                </div>
-                <div class="col-md-4 mb-3">
-                    <label class="form-label"><strong>Variance</strong></label>
-                    <div class="input-group">
-                        <span class="input-group-text">R</span>
-                        <input type="text" id="variance" class="form-control fw-bold" readonly
-                               value="{{ rec.variance if rec else '0.00' }}">
-                    </div>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-12">
-                    <label class="form-label">If variance is not 0, explain:</label>
-                    <textarea name="variance_explanation" class="form-control" rows="2"
-                              placeholder="Explain any variance...">{{ rec.variance_explanation if rec else '' }}</textarea>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Section E: Retail/Stock -->
-    <div class="card mb-4">
-        <div class="card-header bg-purple text-white" style="background-color: #6f42c1;">
-            <h5 class="mb-0"><i class="bi bi-bag"></i> E) Retail / Stock - Qty Sold Today</h5>
-        </div>
-        <div class="card-body">
+        <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-bordered">
+                <table class="table table-bordered table-sm mb-0 align-middle" id="eraTable">
                     <thead class="table-light">
                         <tr>
-                            <th>Item</th>
-                            <th style="width: 150px;">Qty Sold</th>
-                            <th style="width: 180px;">Amount (R)</th>
+                            <th style="min-width: 130px;">Batch Number</th>
+                            <th style="min-width: 180px;">Medical Aid Name</th>
+                            <th style="min-width: 150px;">Payment Date</th>
+                            <th style="min-width: 140px;">Amount Paid</th>
+                            <th style="width: 50px;"></th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {% for item in retail_items %}
-                        <tr>
-                            <td>{{ item }}</td>
-                            <td>
-                                <input type="number" name="retail_qty_{{ item }}" class="form-control form-control-sm" min="0"
-                                       value="{{ rec.retail_sales[item].qty if rec and rec.retail_sales and item in rec.retail_sales else 0 }}">
-                            </td>
-                            <td>
-                                <div class="input-group input-group-sm">
-                                    <span class="input-group-text">R</span>
-                                    <input type="number" name="retail_amount_{{ item }}" class="form-control" step="0.01" min="0"
-                                           value="{{ rec.retail_sales[item].amount if rec and rec.retail_sales and item in rec.retail_sales else '0.00' }}">
-                                </div>
-                            </td>
+                    <tbody></tbody>
+                    <tfoot>
+                        <tr class="table-light fw-bold">
+                            <td colspan="3" class="text-end">Total</td>
+                            <td class="text-end era-total">R0.00</td>
+                            <td></td>
                         </tr>
-                        {% endfor %}
-                    </tbody>
+                    </tfoot>
                 </table>
             </div>
         </div>
+        <div class="card-footer">
+            <button type="button" class="btn btn-outline-success btn-sm" onclick="addEraRow()">
+                <i class="bi bi-plus-circle"></i> Add ERA Payment
+            </button>
+        </div>
     </div>
 
-    <!-- Section F: Payment References -->
-    <div class="card mb-4">
-        <div class="card-header" style="background-color: #fd7e14; color: white;">
-            <h5 class="mb-0"><i class="bi bi-hash"></i> F) Payment References</h5>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">FNB Batch</label>
-                    <input type="text" name="fnb_batch" class="form-control"
-                           value="{{ rec.fnb_batch if rec else '' }}">
+    <!-- Summary -->
+    <div class="row mb-4">
+        <div class="col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="bi bi-receipt"></i> Total Billed</h5>
                 </div>
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">Capitec Batch</label>
-                    <input type="text" name="capitec_batch" class="form-control"
-                           value="{{ rec.capitec_batch if rec else '' }}">
-                </div>
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">EFT Ref</label>
-                    <input type="text" name="eft_ref" class="form-control"
-                           value="{{ rec.eft_ref if rec else '' }}">
+                <div class="card-body p-0">
+                    <table class="table table-bordered mb-0" id="billedSummary">
+                        <tbody></tbody>
+                        <tfoot>
+                            <tr class="table-light fw-bold">
+                                <td>Total</td>
+                                <td class="text-end" id="summaryBilledTotal">R0.00</td>
+                            </tr>
+                        </tfoot>
+                    </table>
                 </div>
             </div>
-            <div class="row">
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">Cash Deposit</label>
-                    <input type="text" name="cash_deposit" class="form-control"
-                           value="{{ rec.cash_deposit if rec else '' }}">
+        </div>
+        <div class="col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0"><i class="bi bi-cash-stack"></i> Total Money Received for the Day</h5>
                 </div>
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">Med Aid Ref</label>
-                    <input type="text" name="med_aid_ref" class="form-control"
-                           value="{{ rec.med_aid_ref if rec else '' }}">
+                <div class="card-body p-0">
+                    <table class="table table-bordered mb-0">
+                        <tbody>
+                            <tr>
+                                <td>KAS6 ERA's</td>
+                                <td class="text-end" id="summaryEra">R0.00</td>
+                            </tr>
+                            <tr>
+                                <td>KAS7 Card</td>
+                                <td class="text-end" id="summaryCard">R0.00</td>
+                            </tr>
+                            <tr>
+                                <td>KAS3 EFT</td>
+                                <td class="text-end" id="summaryEft">R0.00</td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-light fw-bold">
+                                <td>Total</td>
+                                <td class="text-end" id="summaryReceivedTotal">R0.00</td>
+                            </tr>
+                        </tfoot>
+                    </table>
                 </div>
             </div>
         </div>
@@ -359,7 +147,7 @@
             <h5 class="mb-0"><i class="bi bi-sticky"></i> Notes</h5>
         </div>
         <div class="card-body">
-            <textarea name="notes" class="form-control" rows="4"
+            <textarea name="notes" class="form-control" rows="3"
                       placeholder="Any notes, follow-ups, or explanations...">{{ rec.notes if rec else '' }}</textarea>
         </div>
     </div>
@@ -373,152 +161,329 @@
     </div>
 </form>
 
+<style>
+    .sheet-header {
+        background-color: #00e5e5;
+        color: #000;
+    }
+    .billing-table input.form-control,
+    #eraTable input.form-control {
+        border: 0;
+        border-radius: 0;
+        min-width: 90px;
+    }
+    .billing-table td, #eraTable td {
+        padding: 0;
+    }
+    .billing-table td.cell-action, #eraTable td.cell-action {
+        padding: 0.25rem;
+        text-align: center;
+    }
+    .billing-table tfoot td, #eraTable tfoot td {
+        padding: 0.4rem 0.6rem;
+    }
+</style>
+
 <script>
-// Dentist data from database
-const dentistOptions = [
+// Doctors/providers from the database
+const providerOptions = [
     {% for dentist in dentists %}
-    { id: {{ dentist.id }}, name: "{{ dentist.full_name }}" }{% if not loop.last %},{% endif %}
+    { id: {{ dentist.id }}, name: {{ dentist.full_name | tojson }} }{% if not loop.last %},{% endif %}
     {% endfor %}
 ];
 
-// Existing data for edit mode
-const existingDentists = {% if rec and rec.dentists_on_duty %}{{ rec.dentists_on_duty | tojson }}{% else %}[]{% endif %};
-const existingAppointments = {% if rec and rec.appointments_booked %}{{ rec.appointments_booked | tojson }}{% else %}{}{% endif %};
+// Existing data (edit mode)
+const billingInit = {{ billing_init | tojson }};
+const eraInit = {{ era_init | tojson }};
 
-let dentistRowCount = 0;
+const BLANK_ROWS = 5;
+let sheetCount = 0;
 
-function addDentistRow(preselectedId = null, preselectedAppts = 0) {
-    dentistRowCount++;
-    const container = document.getElementById('dentistSelections');
+function money(value) {
+    return 'R' + (value || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 
-    const row = document.createElement('div');
-    row.className = 'row mb-2 dentist-row';
-    row.id = `dentistRow_${dentistRowCount}`;
+function num(input) {
+    return parseFloat(input.value) || 0;
+}
+
+/* ---------- Doctor billing sheets ---------- */
+
+function addSheet(init = null) {
+    sheetCount++;
+    const sheetId = 'sheet_' + sheetCount;
+    const container = document.getElementById('doctorSheets');
 
     let optionsHtml = '<option value="">-- Select Doctor --</option>';
-    dentistOptions.forEach(d => {
-        const selected = (preselectedId && d.id == preselectedId) ? 'selected' : '';
-        optionsHtml += `<option value="${d.id}" ${selected}>${d.name}</option>`;
+    providerOptions.forEach(p => {
+        const selected = (init && init.provider_id === p.id) ? 'selected' : '';
+        optionsHtml += `<option value="${p.id}" ${selected}>${p.name}</option>`;
     });
+    // Custom provider (e.g. a locum or hygienist not in the doctor list)
+    const isCustom = init && !init.provider_id && init.provider_name;
+    optionsHtml += `<option value="custom" ${isCustom ? 'selected' : ''}>Other (type name)...</option>`;
 
-    row.innerHTML = `
-        <div class="col-md-5">
-            <select name="dentists_on_duty" class="form-select dentist-select" onchange="updateDentistOptions()">
+    const card = document.createElement('div');
+    card.className = 'card mb-4 doctor-sheet';
+    card.id = sheetId;
+    card.innerHTML = `
+        <div class="card-header sheet-header d-flex flex-wrap align-items-center gap-2">
+            <strong class="me-2"><i class="bi bi-person-badge"></i> Doctor:</strong>
+            <select class="form-select form-select-sm provider-select" style="max-width: 260px;" onchange="providerChanged(this)">
                 ${optionsHtml}
             </select>
+            <input type="text" class="form-control form-control-sm provider-custom" style="max-width: 220px; display: ${isCustom ? 'block' : 'none'};"
+                   placeholder="Type name, e.g. Mr Zwane" value="${isCustom ? escapeAttr(init.provider_name) : ''}">
+            <button type="button" class="btn btn-sm btn-outline-danger ms-auto" onclick="removeSheet('${sheetId}')">
+                <i class="bi bi-trash"></i> Remove Sheet
+            </button>
         </div>
-        <div class="col-md-4">
-            <div class="input-group">
-                <span class="input-group-text">Appts</span>
-                <input type="number" name="appointments_${preselectedId || 'new_' + dentistRowCount}"
-                       class="form-control appointment-input" min="0" value="${preselectedAppts}"
-                       placeholder="0" data-row="${dentistRowCount}">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm mb-0 align-middle billing-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="min-width: 110px;">Computer No.</th>
+                            <th style="min-width: 100px;">File No.</th>
+                            <th style="min-width: 180px;">Patient Name and Surname</th>
+                            <th style="min-width: 150px;">Medical Aid / Private</th>
+                            <th style="min-width: 120px;">Amount Billed</th>
+                            <th style="min-width: 120px;">Card Payment<br><small>KAS7 - Amount Paid</small></th>
+                            <th style="min-width: 120px;">EFT Payment<br><small>KAS3 - Amount Paid</small></th>
+                            <th style="min-width: 100px;">Receipt No.</th>
+                            <th style="width: 44px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                    <tfoot>
+                        <tr class="table-light fw-bold">
+                            <td colspan="4" class="text-end">Total</td>
+                            <td class="text-end sheet-total-billed">R0.00</td>
+                            <td class="text-end sheet-total-card">R0.00</td>
+                            <td class="text-end sheet-total-eft">R0.00</td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
             </div>
         </div>
-        <div class="col-md-3">
-            <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeDentistRow(${dentistRowCount})">
-                <i class="bi bi-trash"></i> Remove
+        <div class="card-footer">
+            <button type="button" class="btn btn-outline-primary btn-sm" onclick="addBillingRow('${sheetId}')">
+                <i class="bi bi-plus-circle"></i> Add Patient Row
             </button>
         </div>
     `;
+    container.appendChild(card);
 
-    container.appendChild(row);
-    updateDentistOptions();
+    if (init && init.entries && init.entries.length > 0) {
+        init.entries.forEach(entry => addBillingRow(sheetId, entry));
+    } else {
+        for (let i = 0; i < BLANK_ROWS; i++) addBillingRow(sheetId);
+    }
+    recalc();
+    return card;
 }
 
-function removeDentistRow(rowNum) {
-    const row = document.getElementById(`dentistRow_${rowNum}`);
-    if (row) {
-        row.remove();
-        updateDentistOptions();
+function escapeAttr(text) {
+    return String(text).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+function providerChanged(select) {
+    const custom = select.closest('.card-header').querySelector('.provider-custom');
+    custom.style.display = (select.value === 'custom') ? 'block' : 'none';
+    recalc();
+}
+
+function removeSheet(sheetId) {
+    const sheet = document.getElementById(sheetId);
+    if (sheet && confirm('Remove this doctor sheet and all its rows?')) {
+        sheet.remove();
+        recalc();
     }
 }
 
-function updateDentistOptions() {
-    // Get all selected dentist IDs
-    const selectedIds = [];
-    document.querySelectorAll('.dentist-select').forEach(select => {
-        if (select.value) {
-            selectedIds.push(select.value);
-        }
+function addBillingRow(sheetId, entry = null) {
+    const tbody = document.querySelector(`#${sheetId} tbody`);
+    const row = document.createElement('tr');
+    row.className = 'billing-row';
+    const e = entry || {};
+    row.innerHTML = `
+        <td><input type="text" class="form-control form-control-sm in-computer" value="${escapeAttr(e.computer_no || '')}"></td>
+        <td><input type="text" class="form-control form-control-sm in-file" value="${escapeAttr(e.file_no || '')}"></td>
+        <td><input type="text" class="form-control form-control-sm in-patient" value="${escapeAttr(e.patient_name || '')}"></td>
+        <td><input type="text" class="form-control form-control-sm in-aid" value="${escapeAttr(e.medical_aid || '')}" placeholder=""></td>
+        <td><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end in-billed" value="${e.amount_billed || ''}"></td>
+        <td><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end in-card" value="${e.card_paid || ''}"></td>
+        <td><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end in-eft" value="${e.eft_paid || ''}"></td>
+        <td><input type="text" class="form-control form-control-sm in-receipt" value="${escapeAttr(e.receipt_no || '')}"></td>
+        <td class="cell-action">
+            <button type="button" class="btn btn-sm btn-outline-danger border-0" title="Remove row"
+                    onclick="this.closest('tr').remove(); recalc();">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </td>
+    `;
+    tbody.appendChild(row);
+}
+
+/* ---------- ERA payments ---------- */
+
+function addEraRow(payment = null) {
+    const tbody = document.querySelector('#eraTable tbody');
+    const row = document.createElement('tr');
+    row.className = 'era-row';
+    const p = payment || {};
+    row.innerHTML = `
+        <td><input type="text" class="form-control form-control-sm era-batch" value="${escapeAttr(p.batch_number || '')}"></td>
+        <td><input type="text" class="form-control form-control-sm era-aid" value="${escapeAttr(p.medical_aid_name || '')}"></td>
+        <td><input type="date" class="form-control form-control-sm era-date" value="${p.payment_date || ''}"></td>
+        <td><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end era-amount" value="${p.amount_paid || ''}"></td>
+        <td class="cell-action">
+            <button type="button" class="btn btn-sm btn-outline-danger border-0" title="Remove row"
+                    onclick="this.closest('tr').remove(); recalc();">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </td>
+    `;
+    tbody.appendChild(row);
+}
+
+/* ---------- Totals and summary ---------- */
+
+function sheetProviderName(sheet) {
+    const select = sheet.querySelector('.provider-select');
+    if (select.value === 'custom') {
+        return sheet.querySelector('.provider-custom').value.trim();
+    }
+    if (select.value) {
+        return select.options[select.selectedIndex].text;
+    }
+    return '';
+}
+
+function recalc() {
+    let totalBilled = 0, totalCard = 0, totalEft = 0;
+    const perDoctor = [];
+
+    document.querySelectorAll('.doctor-sheet').forEach(sheet => {
+        let billed = 0, card = 0, eft = 0;
+        sheet.querySelectorAll('.billing-row').forEach(row => {
+            billed += num(row.querySelector('.in-billed'));
+            card += num(row.querySelector('.in-card'));
+            eft += num(row.querySelector('.in-eft'));
+        });
+        sheet.querySelector('.sheet-total-billed').textContent = money(billed);
+        sheet.querySelector('.sheet-total-card').textContent = money(card);
+        sheet.querySelector('.sheet-total-eft').textContent = money(eft);
+
+        totalBilled += billed;
+        totalCard += card;
+        totalEft += eft;
+        perDoctor.push({ name: sheetProviderName(sheet) || 'Doctor (not selected)', billed: billed });
     });
 
-    // Update appointment input names based on selected doctor
-    document.querySelectorAll('.dentist-row').forEach(row => {
-        const select = row.querySelector('.dentist-select');
-        const input = row.querySelector('.appointment-input');
-        if (select && input && select.value) {
-            input.name = `appointments_${select.value}`;
-        }
+    let totalEra = 0;
+    document.querySelectorAll('#eraTable .era-row').forEach(row => {
+        totalEra += num(row.querySelector('.era-amount'));
+    });
+    document.querySelector('#eraTable .era-total').textContent = money(totalEra);
+
+    // Total Billed summary (one row per doctor)
+    const summaryBody = document.querySelector('#billedSummary tbody');
+    summaryBody.innerHTML = '';
+    perDoctor.forEach(d => {
+        const tr = document.createElement('tr');
+        const nameTd = document.createElement('td');
+        nameTd.textContent = d.name;
+        const amtTd = document.createElement('td');
+        amtTd.className = 'text-end';
+        amtTd.textContent = money(d.billed);
+        tr.appendChild(nameTd);
+        tr.appendChild(amtTd);
+        summaryBody.appendChild(tr);
+    });
+    document.getElementById('summaryBilledTotal').textContent = money(totalBilled);
+
+    // Money received summary
+    document.getElementById('summaryEra').textContent = money(totalEra);
+    document.getElementById('summaryCard').textContent = money(totalCard);
+    document.getElementById('summaryEft').textContent = money(totalEft);
+    document.getElementById('summaryReceivedTotal').textContent = money(totalEra + totalCard + totalEft);
+}
+
+/* ---------- Serialization ---------- */
+
+function serialize() {
+    const billing = [];
+    document.querySelectorAll('.doctor-sheet').forEach(sheet => {
+        const select = sheet.querySelector('.provider-select');
+        const providerName = sheetProviderName(sheet);
+        if (!providerName) return;
+        const providerId = (select.value && select.value !== 'custom') ? parseInt(select.value) : null;
+
+        const entries = [];
+        sheet.querySelectorAll('.billing-row').forEach(row => {
+            entries.push({
+                computer_no: row.querySelector('.in-computer').value,
+                file_no: row.querySelector('.in-file').value,
+                patient_name: row.querySelector('.in-patient').value,
+                medical_aid: row.querySelector('.in-aid').value,
+                amount_billed: row.querySelector('.in-billed').value,
+                card_paid: row.querySelector('.in-card').value,
+                eft_paid: row.querySelector('.in-eft').value,
+                receipt_no: row.querySelector('.in-receipt').value,
+            });
+        });
+        billing.push({ provider_id: providerId, provider_name: providerName, entries: entries });
     });
 
-    // Disable already-selected options in other dropdowns
-    document.querySelectorAll('.dentist-select').forEach(select => {
-        const currentValue = select.value;
-        select.querySelectorAll('option').forEach(option => {
-            if (option.value && option.value !== currentValue && selectedIds.includes(option.value)) {
-                option.disabled = true;
-            } else {
-                option.disabled = false;
-            }
+    const era = [];
+    document.querySelectorAll('#eraTable .era-row').forEach(row => {
+        era.push({
+            batch_number: row.querySelector('.era-batch').value,
+            medical_aid_name: row.querySelector('.era-aid').value,
+            payment_date: row.querySelector('.era-date').value,
+            amount_paid: row.querySelector('.era-amount').value,
         });
     });
+
+    document.getElementById('billingData').value = JSON.stringify(billing);
+    document.getElementById('eraData').value = JSON.stringify(era);
 }
+
+/* ---------- Init ---------- */
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize dentist rows from existing data (edit mode)
-    if (existingDentists.length > 0) {
-        existingDentists.forEach(dentistId => {
-            const appts = existingAppointments[dentistId] || existingAppointments[String(dentistId)] || 0;
-            addDentistRow(dentistId, appts);
-        });
+    if (billingInit.length > 0) {
+        billingInit.forEach(sheetData => addSheet(sheetData));
     } else {
-        // Add one empty row for new forms
-        addDentistRow();
+        addSheet();
     }
 
-    // Calculate totals
-    const moneyInFields = document.querySelectorAll('.money-in');
-    const refundsField = document.getElementById('refundsExpenses');
-    const goodxCollections = document.getElementById('goodxCollections');
-    const totalMoneyIn = document.getElementById('totalMoneyIn');
-    const netCollections = document.getElementById('netCollections');
-    const variance = document.getElementById('variance');
+    if (eraInit.length > 0) {
+        eraInit.forEach(payment => addEraRow(payment));
+    } else {
+        for (let i = 0; i < 2; i++) addEraRow();
+    }
 
-    function calculateTotals() {
-        let total = 0;
-        moneyInFields.forEach(field => {
-            total += parseFloat(field.value) || 0;
+    document.getElementById('reconciliationForm').addEventListener('input', recalc);
+    document.getElementById('reconciliationForm').addEventListener('submit', function(event) {
+        // Every sheet with data must have a doctor selected
+        let missingProvider = false;
+        document.querySelectorAll('.doctor-sheet').forEach(sheet => {
+            const hasData = Array.from(sheet.querySelectorAll('.billing-row input')).some(inp => inp.value.trim() !== '');
+            if (hasData && !sheetProviderName(sheet)) missingProvider = true;
         });
-
-        const refunds = parseFloat(refundsField.value) || 0;
-        const net = total - refunds;
-        const goodx = parseFloat(goodxCollections.value) || 0;
-        const var_ = net - goodx;
-
-        totalMoneyIn.value = total.toFixed(2);
-        netCollections.value = net.toFixed(2);
-        variance.value = var_.toFixed(2);
-
-        // Color variance
-        if (var_ === 0) {
-            variance.classList.remove('bg-danger', 'bg-warning');
-            variance.classList.add('bg-success', 'text-white');
-        } else if (Math.abs(var_) < 100) {
-            variance.classList.remove('bg-danger', 'bg-success');
-            variance.classList.add('bg-warning', 'text-dark');
-        } else {
-            variance.classList.remove('bg-success', 'bg-warning');
-            variance.classList.add('bg-danger', 'text-white');
+        if (missingProvider) {
+            event.preventDefault();
+            alert('Please select or type the doctor\'s name for every sheet that has patient rows.');
+            return;
         }
-    }
+        serialize();
+    });
 
-    moneyInFields.forEach(field => field.addEventListener('input', calculateTotals));
-    refundsField.addEventListener('input', calculateTotals);
-    goodxCollections.addEventListener('input', calculateTotals);
-
-    // Initial calculation
-    calculateTotals();
+    recalc();
 });
 </script>
 {% endblock %}

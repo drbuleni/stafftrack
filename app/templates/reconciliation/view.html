@@ -53,240 +53,170 @@
     </div>
 </div>
 
-<div class="row">
-    <div class="col-lg-8">
-        <!-- Section A: Morning Counts -->
-        <div class="card mb-4">
-            <div class="card-header bg-info text-white">
-                <h5 class="mb-0"><i class="bi bi-sunrise"></i> A) Morning Counts</h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <p><strong>Dentists on Duty:</strong></p>
-                        <ul class="mb-3">
-                            {% for name in dentist_names %}
-                            <li>{{ name }}</li>
-                            {% else %}
-                            <li class="text-muted">None recorded</li>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                    <div class="col-md-6">
-                        <p><strong>Appointments Booked:</strong></p>
-                        <ul class="mb-3">
-                            {% for name, count in appointments_display.items() %}
-                            <li>{{ name }}: {{ count }}</li>
-                            {% else %}
-                            <li class="text-muted">None recorded</li>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-6 col-md-3">
-                        <small class="text-muted">Staff on Duty</small>
-                        <p class="fw-bold mb-2">{{ rec.staff_on_duty }}</p>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <small class="text-muted">Confirmed</small>
-                        <p class="fw-bold mb-2">{{ rec.confirmed_appointments }}</p>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <small class="text-muted">Reminders Sent</small>
-                        <p class="fw-bold mb-2">{{ rec.reminder_messages_sent }}</p>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <small class="text-muted">New Patients</small>
-                        <p class="fw-bold mb-2">{{ rec.new_patients_booked }}</p>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <small class="text-muted">Pre-auth Received</small>
-                        <p class="fw-bold mb-2">{{ rec.medical_aid_preauth_received }}</p>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <small class="text-muted">Lab Cases</small>
-                        <p class="fw-bold mb-2">{{ rec.lab_cases }}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Section B: Patient Flow -->
-        <div class="card mb-4">
-            <div class="card-header bg-warning text-dark">
-                <h5 class="mb-0"><i class="bi bi-people"></i> B) End-of-Day Patient Flow</h5>
-            </div>
-            <div class="card-body">
-                <div class="row text-center">
-                    <div class="col">
-                        <div class="display-6 text-primary">{{ rec.patients_treated }}</div>
-                        <small class="text-muted">Treated</small>
-                    </div>
-                    <div class="col">
-                        <div class="display-6 text-danger">{{ rec.no_shows }}</div>
-                        <small class="text-muted">No-shows</small>
-                    </div>
-                    <div class="col">
-                        <div class="display-6 text-warning">{{ rec.cancelled }}</div>
-                        <small class="text-muted">Cancelled</small>
-                    </div>
-                    <div class="col">
-                        <div class="display-6 text-secondary">{{ rec.rescheduled }}</div>
-                        <small class="text-muted">Rescheduled</small>
-                    </div>
-                    <div class="col">
-                        <div class="display-6 text-info">{{ rec.walk_ins_treated }}</div>
-                        <small class="text-muted">Walk-ins</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Section C: Cash-Up -->
-        <div class="card mb-4">
-            <div class="card-header bg-success text-white">
-                <h5 class="mb-0"><i class="bi bi-cash-stack"></i> C) End-of-Day Cash-Up</h5>
-            </div>
-            <div class="card-body">
-                <h6 class="text-muted">Money In</h6>
-                <table class="table table-sm">
+<!-- Doctor Billing Sheets -->
+{% for provider in sheet.providers %}
+<div class="card mb-4">
+    <div class="card-header" style="background-color: #00e5e5; color: #000;">
+        <h5 class="mb-0"><i class="bi bi-person-badge"></i> {{ provider.provider_name }}</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-bordered table-sm mb-0">
+                <thead class="table-light">
                     <tr>
-                        <td>EFT Received</td>
-                        <td class="text-end">R {{ "%.2f"|format(rec.eft_received) }}</td>
+                        <th>Computer No.</th>
+                        <th>File No.</th>
+                        <th>Patient Name and Surname</th>
+                        <th>Medical Aid / Private</th>
+                        <th class="text-end">Amount Billed</th>
+                        <th class="text-end">Card Payment<br><small>KAS7 - Amount Paid</small></th>
+                        <th class="text-end">EFT Payment<br><small>KAS3 - Amount Paid</small></th>
+                        <th>Receipt No.</th>
                     </tr>
+                </thead>
+                <tbody>
+                    {% for entry in provider.entries %}
                     <tr>
-                        <td>Card (FNB)</td>
-                        <td class="text-end">R {{ "%.2f"|format(rec.card_fnb) }}</td>
+                        <td>{{ entry.computer_no or '' }}</td>
+                        <td>{{ entry.file_no or '' }}</td>
+                        <td>{{ entry.patient_name or '' }}</td>
+                        <td>{{ entry.medical_aid or '' }}</td>
+                        <td class="text-end">{{ 'R{:,.2f}'.format(entry.amount_billed) if entry.amount_billed else '' }}</td>
+                        <td class="text-end">{{ 'R{:,.2f}'.format(entry.card_paid) if entry.card_paid else '' }}</td>
+                        <td class="text-end">{{ 'R{:,.2f}'.format(entry.eft_paid) if entry.eft_paid else '' }}</td>
+                        <td>{{ entry.receipt_no or '' }}</td>
                     </tr>
-                    <tr>
-                        <td>Card (Capitec)</td>
-                        <td class="text-end">R {{ "%.2f"|format(rec.card_capitec) }}</td>
-                    </tr>
-                    <tr>
-                        <td>Medical Aid Payments</td>
-                        <td class="text-end">R {{ "%.2f"|format(rec.medical_aid_payments) }}</td>
-                    </tr>
-                    <tr>
-                        <td>Medical Aid Balance (Patient)</td>
-                        <td class="text-end">R {{ "%.2f"|format(rec.medical_aid_balance_payments) }}</td>
-                    </tr>
-                    {% if rec.other_payments > 0 %}
-                    <tr>
-                        <td>Other: {{ rec.other_payments_description or 'Not specified' }}</td>
-                        <td class="text-end">R {{ "%.2f"|format(rec.other_payments) }}</td>
-                    </tr>
-                    {% endif %}
+                    {% endfor %}
+                </tbody>
+                <tfoot>
                     <tr class="table-light fw-bold">
-                        <td>TOTAL MONEY IN</td>
-                        <td class="text-end">R {{ "%.2f"|format(rec.total_money_in) }}</td>
+                        <td colspan="4" class="text-end">Total</td>
+                        <td class="text-end">R{{ '{:,.2f}'.format(provider.total_billed) }}</td>
+                        <td class="text-end">R{{ '{:,.2f}'.format(provider.total_card) }}</td>
+                        <td class="text-end">R{{ '{:,.2f}'.format(provider.total_eft) }}</td>
+                        <td></td>
                     </tr>
-                </table>
-
-                <h6 class="text-muted mt-3">Money Out</h6>
-                <table class="table table-sm">
-                    <tr>
-                        <td>Refunds / Expenses</td>
-                        <td class="text-end">R {{ "%.2f"|format(rec.refunds_expenses) }}</td>
-                    </tr>
-                    <tr class="table-dark fw-bold">
-                        <td>NET COLLECTIONS</td>
-                        <td class="text-end">R {{ "%.2f"|format(rec.net_collections) }}</td>
-                    </tr>
-                </table>
-            </div>
-        </div>
-
-        <!-- Section D: Reconciliation -->
-        <div class="card mb-4">
-            <div class="card-header bg-secondary text-white">
-                <h5 class="mb-0"><i class="bi bi-calculator"></i> D) Reconciliation</h5>
-            </div>
-            <div class="card-body">
-                <table class="table table-sm">
-                    <tr>
-                        <td>GoodX Production</td>
-                        <td class="text-end">R {{ "%.2f"|format(rec.goodx_production) }}</td>
-                    </tr>
-                    <tr>
-                        <td>GoodX Collections</td>
-                        <td class="text-end">R {{ "%.2f"|format(rec.goodx_collections) }}</td>
-                    </tr>
-                    <tr class="fw-bold {{ 'table-success' if rec.variance == 0 else 'table-warning' if rec.variance|abs < 100 else 'table-danger' }}">
-                        <td>Variance</td>
-                        <td class="text-end">R {{ "%.2f"|format(rec.variance) }}</td>
-                    </tr>
-                </table>
-                {% if rec.variance != 0 and rec.variance_explanation %}
-                <div class="alert alert-info mt-3 mb-0">
-                    <strong>Explanation:</strong> {{ rec.variance_explanation }}
-                </div>
-                {% endif %}
-            </div>
+                </tfoot>
+            </table>
         </div>
     </div>
+</div>
+{% else %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle me-2"></i>
+    No patient billing rows were captured on this sheet.
+</div>
+{% endfor %}
 
-    <div class="col-lg-4">
-        <!-- Section E: Retail -->
-        {% if rec.retail_sales %}
-        <div class="card mb-4">
-            <div class="card-header" style="background-color: #6f42c1; color: white;">
-                <h5 class="mb-0"><i class="bi bi-bag"></i> E) Retail Sales</h5>
+<!-- ERA's Payments KAS6 -->
+<div class="card mb-4">
+    <div class="card-header bg-success text-white">
+        <h5 class="mb-0"><i class="bi bi-bank"></i> ERA's Payments KAS6</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-bordered table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Batch Number</th>
+                        <th>Medical Aid Name</th>
+                        <th>Payment Date</th>
+                        <th class="text-end">Amount Paid</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for payment in rec.era_payments %}
+                    <tr>
+                        <td>{{ payment.batch_number or '' }}</td>
+                        <td>{{ payment.medical_aid_name or '' }}</td>
+                        <td>{{ payment.payment_date.strftime('%d/%m/%Y') if payment.payment_date else '' }}</td>
+                        <td class="text-end">{{ 'R{:,.2f}'.format(payment.amount_paid) if payment.amount_paid else '' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-muted text-center py-3">No ERA payments recorded</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="table-light fw-bold">
+                        <td colspan="3" class="text-end">Total</td>
+                        <td class="text-end">R{{ '{:,.2f}'.format(sheet.era_total) }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Summary -->
+<div class="row mb-4">
+    <div class="col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0"><i class="bi bi-receipt"></i> Total Billed</h5>
             </div>
-            <div class="card-body">
-                <table class="table table-sm">
-                    <thead>
-                        <tr>
-                            <th>Item</th>
-                            <th>Qty</th>
-                            <th>Amount</th>
-                        </tr>
-                    </thead>
+            <div class="card-body p-0">
+                <table class="table table-bordered mb-0">
                     <tbody>
-                        {% for item, data in rec.retail_sales.items() %}
+                        {% for provider in sheet.providers %}
                         <tr>
-                            <td>{{ item }}</td>
-                            <td>{{ data.qty }}</td>
-                            <td>R {{ "%.2f"|format(data.amount) }}</td>
+                            <td>{{ provider.provider_name }}</td>
+                            <td class="text-end">R{{ '{:,.2f}'.format(provider.total_billed) }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
+                    <tfoot>
+                        <tr class="table-light fw-bold">
+                            <td>Total</td>
+                            <td class="text-end">R{{ '{:,.2f}'.format(sheet.total_billed if sheet.providers else rec.goodx_production) }}</td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
         </div>
-        {% endif %}
-
-        <!-- Section F: Payment References -->
-        <div class="card mb-4">
-            <div class="card-header" style="background-color: #fd7e14; color: white;">
-                <h5 class="mb-0"><i class="bi bi-hash"></i> F) Payment References</h5>
+    </div>
+    <div class="col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0"><i class="bi bi-cash-stack"></i> Total Money Received for the Day</h5>
             </div>
-            <div class="card-body">
-                <table class="table table-sm mb-0">
-                    <tr>
-                        <td class="text-muted">FNB Batch</td>
-                        <td>{{ rec.fnb_batch or '-' }}</td>
-                    </tr>
-                    <tr>
-                        <td class="text-muted">Capitec Batch</td>
-                        <td>{{ rec.capitec_batch or '-' }}</td>
-                    </tr>
-                    <tr>
-                        <td class="text-muted">EFT Ref</td>
-                        <td>{{ rec.eft_ref or '-' }}</td>
-                    </tr>
-                    <tr>
-                        <td class="text-muted">Cash Deposit</td>
-                        <td>{{ rec.cash_deposit or '-' }}</td>
-                    </tr>
-                    <tr>
-                        <td class="text-muted">Med Aid Ref</td>
-                        <td>{{ rec.med_aid_ref or '-' }}</td>
-                    </tr>
+            <div class="card-body p-0">
+                <table class="table table-bordered mb-0">
+                    <tbody>
+                        <tr>
+                            <td>KAS6 ERA's</td>
+                            <td class="text-end">R{{ '{:,.2f}'.format(rec.medical_aid_payments + rec.medical_aid_balance_payments) }}</td>
+                        </tr>
+                        <tr>
+                            <td>KAS7 Card</td>
+                            <td class="text-end">R{{ '{:,.2f}'.format(rec.card_fnb + rec.card_capitec) }}</td>
+                        </tr>
+                        <tr>
+                            <td>KAS3 EFT</td>
+                            <td class="text-end">R{{ '{:,.2f}'.format(rec.eft_received) }}</td>
+                        </tr>
+                        {% if rec.other_payments %}
+                        <tr>
+                            <td>Other{{ ': ' + rec.other_payments_description if rec.other_payments_description else '' }}</td>
+                            <td class="text-end">R{{ '{:,.2f}'.format(rec.other_payments) }}</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                    <tfoot>
+                        <tr class="table-light fw-bold">
+                            <td>Total</td>
+                            <td class="text-end">R{{ '{:,.2f}'.format(rec.total_money_in) }}</td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
         </div>
+    </div>
+</div>
 
+<div class="row">
+    <div class="col-lg-8">
         <!-- Notes -->
         {% if rec.notes %}
         <div class="card mb-4">
@@ -298,7 +228,9 @@
             </div>
         </div>
         {% endif %}
+    </div>
 
+    <div class="col-lg-4">
         <!-- Delete Button for Managers -->
         {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
         <div class="card border-danger">

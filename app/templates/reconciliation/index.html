@@ -28,43 +28,27 @@
 
 <!-- Monthly Summary Cards -->
 <div class="row mb-4">
-    <div class="col-md-3 mb-3">
-        <div class="card border-success">
+    <div class="col-md-4 mb-3">
+        <div class="card border-secondary">
             <div class="card-body text-center">
-                <h6 class="text-muted">Total Money In</h6>
-                <h3 class="text-success">R {{ "%.2f"|format(monthly_totals.total_money_in) }}</h3>
+                <h6 class="text-muted">Total Billed</h6>
+                <h3 class="text-secondary">R {{ "%.2f"|format(monthly_totals.total_billed) }}</h3>
             </div>
         </div>
     </div>
-    <div class="col-md-3 mb-3">
+    <div class="col-md-4 mb-3">
         <div class="card bg-primary text-white">
             <div class="card-body text-center">
-                <h6>Net Collections</h6>
-                <h3>R {{ "%.2f"|format(monthly_totals.net_collections) }}</h3>
+                <h6>Money Received</h6>
+                <h3>R {{ "%.2f"|format(monthly_totals.total_money_in) }}</h3>
             </div>
         </div>
     </div>
-    <div class="col-md-2 mb-3">
-        <div class="card border-primary">
+    <div class="col-md-4 mb-3">
+        <div class="card border-success">
             <div class="card-body text-center">
-                <h6 class="text-muted">Patients Treated</h6>
-                <h3 class="text-primary">{{ monthly_totals.patients_treated }}</h3>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-2 mb-3">
-        <div class="card border-danger">
-            <div class="card-body text-center">
-                <h6 class="text-muted">No-shows</h6>
-                <h3 class="text-danger">{{ monthly_totals.no_shows }}</h3>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-2 mb-3">
-        <div class="card border-info">
-            <div class="card-body text-center">
-                <h6 class="text-muted">Walk-ins</h6>
-                <h3 class="text-info">{{ monthly_totals.walk_ins }}</h3>
+                <h6 class="text-muted">Patients</h6>
+                <h3 class="text-success">{{ monthly_totals.patients_treated }}</h3>
             </div>
         </div>
     </div>
@@ -84,8 +68,8 @@
                         <th>Date</th>
                         <th>Day</th>
                         <th>Patients</th>
-                        <th>Net Collections</th>
-                        <th>Variance</th>
+                        <th>Total Billed</th>
+                        <th>Money Received</th>
                         <th>Status</th>
                         <th>Prepared By</th>
                         <th>Actions</th>
@@ -104,16 +88,8 @@
                         </td>
                         <td>{{ rec.day_of_week }}</td>
                         <td>{{ rec.patients_treated }}</td>
-                        <td>R {{ "%.2f"|format(rec.net_collections) }}</td>
-                        <td>
-                            {% if rec.variance == 0 %}
-                            <span class="badge bg-success">R 0.00</span>
-                            {% elif rec.variance|abs < 100 %}
-                            <span class="badge bg-warning text-dark">R {{ "%.2f"|format(rec.variance) }}</span>
-                            {% else %}
-                            <span class="badge bg-danger">R {{ "%.2f"|format(rec.variance) }}</span>
-                            {% endif %}
-                        </td>
+                        <td>R {{ "%.2f"|format(rec.goodx_production) }}</td>
+                        <td>R {{ "%.2f"|format(rec.total_money_in) }}</td>
                         <td>
                             {% if rec.status == 'Checked' %}
                             <span class="badge bg-success"><i class="bi bi-check-circle"></i> Checked</span>

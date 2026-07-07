@@ -6,11 +6,13 @@ from wtforms import (StringField, IntegerField, DecimalField, TextAreaField,
 from wtforms.validators import DataRequired, Optional, NumberRange
 from wtforms.widgets import ListWidget, CheckboxInput
 from app import db
-from app.models import DailyReconciliation, User
+from app.models import (DailyReconciliation, ReconciliationBillingEntry,
+                        ReconciliationEraPayment, User)
 from app.utils.decorators import manager_required
 from app.utils.audit import log_audit
 from datetime import date, datetime, timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+import json
 
 bp = Blueprint('reconciliation', __name__, url_prefix='/reconciliation')
 
@@ -42,6 +44,155 @@ def get_all_active_staff():
     return User.query.filter_by(status='Active').order_by(User.full_name).all()
 
 
+def _parse_money(value):
+    """Parse a money value from the billing sheet, tolerating R, commas and blanks."""
+    if value is None:
+        return Decimal('0')
+    cleaned = str(value).replace('R', '').replace(',', '').strip()
+    if not cleaned:
+        return Decimal('0')
+    try:
+        return Decimal(cleaned)
+    except InvalidOperation:
+        return Decimal('0')
+
+
+def _apply_sheet_data(rec):
+    """Rebuild billing entries and ERA payments from the submitted form JSON,
+    then map the sheet totals onto the reconciliation money fields."""
+    try:
+        billing_data = json.loads(request.form.get('billing_data', '[]'))
+    except ValueError:
+        billing_data = []
+    try:
+        era_data = json.loads(request.form.get('era_data', '[]'))
+    except ValueError:
+        era_data = []
+
+    # Replace all existing line items
+    rec.billing_entries = []
+    rec.era_payments = []
+
+    total_billed = Decimal('0')
+    total_card = Decimal('0')
+    total_eft = Decimal('0')
+    total_era = Decimal('0')
+    patient_count = 0
+
+    order = 0
+    for sheet in billing_data if isinstance(billing_data, list) else []:
+        provider_name = (sheet.get('provider_name') or '').strip()
+        if not provider_name:
+            continue
+        try:
+            provider_id = int(sheet.get('provider_id')) if sheet.get('provider_id') else None
+        except (TypeError, ValueError):
+            provider_id = None
+
+        for entry in sheet.get('entries', []):
+            computer_no = (entry.get('computer_no') or '').strip()
+            file_no = (entry.get('file_no') or '').strip()
+            patient_name = (entry.get('patient_name') or '').strip()
+            medical_aid = (entry.get('medical_aid') or '').strip()
+            receipt_no = (entry.get('receipt_no') or '').strip()
+            amount_billed = _parse_money(entry.get('amount_billed'))
+            card_paid = _parse_money(entry.get('card_paid'))
+            eft_paid = _parse_money(entry.get('eft_paid'))
+
+            # Skip completely empty rows
+            if not any([computer_no, file_no, patient_name, medical_aid, receipt_no,
+                        amount_billed, card_paid, eft_paid]):
+                continue
+
+            rec.billing_entries.append(ReconciliationBillingEntry(
+                provider_id=provider_id,
+                provider_name=provider_name,
+                computer_no=computer_no,
+                file_no=file_no,
+                patient_name=patient_name,
+                medical_aid=medical_aid,
+                amount_billed=amount_billed,
+                card_paid=card_paid,
+                eft_paid=eft_paid,
+                receipt_no=receipt_no,
+                sort_order=order
+            ))
+            order += 1
+            patient_count += 1
+            total_billed += amount_billed
+            total_card += card_paid
+            total_eft += eft_paid
+
+    order = 0
+    for payment in era_data if isinstance(era_data, list) else []:
+        batch_number = (payment.get('batch_number') or '').strip()
+        medical_aid_name = (payment.get('medical_aid_name') or '').strip()
+        amount_paid = _parse_money(payment.get('amount_paid'))
+        payment_date = None
+        if payment.get('payment_date'):
+            try:
+                payment_date = date.fromisoformat(payment['payment_date'])
+            except ValueError:
+                payment_date = None
+
+        if not any([batch_number, medical_aid_name, amount_paid, payment_date]):
+            continue
+
+        rec.era_payments.append(ReconciliationEraPayment(
+            batch_number=batch_number,
+            medical_aid_name=medical_aid_name,
+            payment_date=payment_date,
+            amount_paid=amount_paid,
+            sort_order=order
+        ))
+        order += 1
+        total_era += amount_paid
+
+    # Map sheet totals onto the money fields so history and analytics keep working
+    rec.card_fnb = total_card                 # KAS7 Card
+    rec.card_capitec = Decimal('0')
+    rec.eft_received = total_eft              # KAS3 EFT
+    rec.medical_aid_payments = total_era      # KAS6 ERA's
+    rec.medical_aid_balance_payments = Decimal('0')
+    rec.other_payments = Decimal('0')
+    rec.goodx_production = total_billed       # total billed for the day
+    rec.patients_treated = patient_count
+
+    rec.calculate_totals()
+
+
+def _sheet_display_data(rec):
+    """Group billing entries by provider and compute totals for display."""
+    providers = []
+    by_provider = {}
+    for entry in rec.billing_entries:
+        if entry.provider_name not in by_provider:
+            by_provider[entry.provider_name] = {
+                'provider_name': entry.provider_name,
+                'provider_id': entry.provider_id,
+                'entries': [],
+                'total_billed': Decimal('0'),
+                'total_card': Decimal('0'),
+                'total_eft': Decimal('0'),
+            }
+            providers.append(by_provider[entry.provider_name])
+        group = by_provider[entry.provider_name]
+        group['entries'].append(entry)
+        group['total_billed'] += entry.amount_billed or 0
+        group['total_card'] += entry.card_paid or 0
+        group['total_eft'] += entry.eft_paid or 0
+
+    era_total = sum((p.amount_paid or 0 for p in rec.era_payments), Decimal('0'))
+
+    return {
+        'providers': providers,
+        'era_total': era_total,
+        'total_billed': sum((p['total_billed'] for p in providers), Decimal('0')),
+        'total_card': sum((p['total_card'] for p in providers), Decimal('0')),
+        'total_eft': sum((p['total_eft'] for p in providers), Decimal('0')),
+    }
+
+
 @bp.route('/')
 @login_required
 def index():
@@ -65,11 +216,10 @@ def index():
 
     # Calculate monthly totals
     monthly_totals = {
+        'total_billed': sum(r.goodx_production or 0 for r in reconciliations),
         'total_money_in': sum(r.total_money_in or 0 for r in reconciliations),
         'net_collections': sum(r.net_collections or 0 for r in reconciliations),
         'patients_treated': sum(r.patients_treated or 0 for r in reconciliations),
-        'no_shows': sum(r.no_shows or 0 for r in reconciliations),
-        'walk_ins': sum(r.walk_ins_treated or 0 for r in reconciliations),
     }
 
     # Navigation
@@ -133,82 +283,16 @@ def new(selected_date=None):
             flash(f'A reconciliation sheet already exists for {rec_date}.', 'warning')
             return redirect(url_for('reconciliation.edit', rec_id=existing.id))
 
-        # Get dentists on duty
-        dentists_on_duty = request.form.getlist('dentists_on_duty')
-        dentists_on_duty = [int(d) for d in dentists_on_duty if d]
-
-        # Get appointments per dentist
-        appointments_booked = {}
-        for dentist_id in dentists_on_duty:
-            appt_count = request.form.get(f'appointments_{dentist_id}', 0, type=int)
-            appointments_booked[str(dentist_id)] = appt_count
-
-        # Get retail sales
-        retail_sales = {}
-        for item in RETAIL_ITEMS:
-            qty = request.form.get(f'retail_qty_{item}', 0, type=int)
-            amount = request.form.get(f'retail_amount_{item}', 0, type=float)
-            if qty > 0 or amount > 0:
-                retail_sales[item] = {'qty': qty, 'amount': amount}
-
-        # Create reconciliation record
         rec = DailyReconciliation(
             date=rec_date,
             day_of_week=DAYS_OF_WEEK[rec_date.weekday()],
-
-            # Section A
-            dentists_on_duty=dentists_on_duty,
-            staff_on_duty=request.form.get('staff_on_duty', 0, type=int),
-            appointments_booked=appointments_booked,
-            confirmed_appointments=request.form.get('confirmed_appointments', 0, type=int),
-            reminder_messages_sent=request.form.get('reminder_messages_sent', 0, type=int),
-            new_patients_booked=request.form.get('new_patients_booked', 0, type=int),
-            medical_aid_preauth_received=request.form.get('medical_aid_preauth_received', 0, type=int),
-            lab_cases=request.form.get('lab_cases', 0, type=int),
-
-            # Section B
-            patients_treated=request.form.get('patients_treated', 0, type=int),
-            no_shows=request.form.get('no_shows', 0, type=int),
-            cancelled=request.form.get('cancelled', 0, type=int),
-            rescheduled=request.form.get('rescheduled', 0, type=int),
-            walk_ins_treated=request.form.get('walk_ins_treated', 0, type=int),
-
-            # Section C - Money In
-            eft_received=Decimal(request.form.get('eft_received', '0') or '0'),
-            card_fnb=Decimal(request.form.get('card_fnb', '0') or '0'),
-            card_capitec=Decimal(request.form.get('card_capitec', '0') or '0'),
-            medical_aid_payments=Decimal(request.form.get('medical_aid_payments', '0') or '0'),
-            medical_aid_balance_payments=Decimal(request.form.get('medical_aid_balance_payments', '0') or '0'),
-            other_payments=Decimal(request.form.get('other_payments', '0') or '0'),
-            other_payments_description=request.form.get('other_payments_description', ''),
-
-            # Money Out
-            refunds_expenses=Decimal(request.form.get('refunds_expenses', '0') or '0'),
-
-            # Section D - Reconciliation
-            goodx_production=Decimal(request.form.get('goodx_production', '0') or '0'),
-            goodx_collections=Decimal(request.form.get('goodx_collections', '0') or '0'),
-            variance_explanation=request.form.get('variance_explanation', ''),
-
-            # Section E - Retail
-            retail_sales=retail_sales,
-
-            # Section F - References
-            fnb_batch=request.form.get('fnb_batch', ''),
-            capitec_batch=request.form.get('capitec_batch', ''),
-            eft_ref=request.form.get('eft_ref', ''),
-            cash_deposit=request.form.get('cash_deposit', ''),
-            med_aid_ref=request.form.get('med_aid_ref', ''),
-
-            # Sign-off
             prepared_by=current_user.id,
             prepared_at=datetime.utcnow(),
             notes=request.form.get('notes', ''),
             status='Submitted'
         )
 
-        # Calculate totals
-        rec.calculate_totals()
+        _apply_sheet_data(rec)
 
         db.session.add(rec)
         db.session.commit()
@@ -225,8 +309,9 @@ def new(selected_date=None):
                           rec=None,
                           rec_date=rec_date,
                           dentists=dentists,
-                          retail_items=RETAIL_ITEMS,
                           days_of_week=DAYS_OF_WEEK,
+                          billing_init=[],
+                          era_init=[],
                           is_edit=False)
 
 
@@ -249,65 +334,9 @@ def edit(rec_id):
     dentists = get_dentists()
 
     if request.method == 'POST':
-        # Get dentists on duty
-        dentists_on_duty = request.form.getlist('dentists_on_duty')
-        dentists_on_duty = [int(d) for d in dentists_on_duty if d]
-
-        # Get appointments per dentist
-        appointments_booked = {}
-        for dentist_id in dentists_on_duty:
-            appt_count = request.form.get(f'appointments_{dentist_id}', 0, type=int)
-            appointments_booked[str(dentist_id)] = appt_count
-
-        # Get retail sales
-        retail_sales = {}
-        for item in RETAIL_ITEMS:
-            qty = request.form.get(f'retail_qty_{item}', 0, type=int)
-            amount = request.form.get(f'retail_amount_{item}', 0, type=float)
-            if qty > 0 or amount > 0:
-                retail_sales[item] = {'qty': qty, 'amount': amount}
-
-        # Update record
-        rec.dentists_on_duty = dentists_on_duty
-        rec.staff_on_duty = request.form.get('staff_on_duty', 0, type=int)
-        rec.appointments_booked = appointments_booked
-        rec.confirmed_appointments = request.form.get('confirmed_appointments', 0, type=int)
-        rec.reminder_messages_sent = request.form.get('reminder_messages_sent', 0, type=int)
-        rec.new_patients_booked = request.form.get('new_patients_booked', 0, type=int)
-        rec.medical_aid_preauth_received = request.form.get('medical_aid_preauth_received', 0, type=int)
-        rec.lab_cases = request.form.get('lab_cases', 0, type=int)
-
-        rec.patients_treated = request.form.get('patients_treated', 0, type=int)
-        rec.no_shows = request.form.get('no_shows', 0, type=int)
-        rec.cancelled = request.form.get('cancelled', 0, type=int)
-        rec.rescheduled = request.form.get('rescheduled', 0, type=int)
-        rec.walk_ins_treated = request.form.get('walk_ins_treated', 0, type=int)
-
-        rec.eft_received = Decimal(request.form.get('eft_received', '0') or '0')
-        rec.card_fnb = Decimal(request.form.get('card_fnb', '0') or '0')
-        rec.card_capitec = Decimal(request.form.get('card_capitec', '0') or '0')
-        rec.medical_aid_payments = Decimal(request.form.get('medical_aid_payments', '0') or '0')
-        rec.medical_aid_balance_payments = Decimal(request.form.get('medical_aid_balance_payments', '0') or '0')
-        rec.other_payments = Decimal(request.form.get('other_payments', '0') or '0')
-        rec.other_payments_description = request.form.get('other_payments_description', '')
-        rec.refunds_expenses = Decimal(request.form.get('refunds_expenses', '0') or '0')
-
-        rec.goodx_production = Decimal(request.form.get('goodx_production', '0') or '0')
-        rec.goodx_collections = Decimal(request.form.get('goodx_collections', '0') or '0')
-        rec.variance_explanation = request.form.get('variance_explanation', '')
-
-        rec.retail_sales = retail_sales
-
-        rec.fnb_batch = request.form.get('fnb_batch', '')
-        rec.capitec_batch = request.form.get('capitec_batch', '')
-        rec.eft_ref = request.form.get('eft_ref', '')
-        rec.cash_deposit = request.form.get('cash_deposit', '')
-        rec.med_aid_ref = request.form.get('med_aid_ref', '')
-
         rec.notes = request.form.get('notes', '')
 
-        # Calculate totals
-        rec.calculate_totals()
+        _apply_sheet_data(rec)
 
         db.session.commit()
 
@@ -318,12 +347,37 @@ def edit(rec_id):
         flash('Reconciliation sheet updated!', 'success')
         return redirect(url_for('reconciliation.view', rec_id=rec.id))
 
+    # Serialize existing line items so the form can rebuild the sheets
+    display = _sheet_display_data(rec)
+    billing_init = [{
+        'provider_id': group['provider_id'],
+        'provider_name': group['provider_name'],
+        'entries': [{
+            'computer_no': e.computer_no or '',
+            'file_no': e.file_no or '',
+            'patient_name': e.patient_name or '',
+            'medical_aid': e.medical_aid or '',
+            'amount_billed': float(e.amount_billed or 0),
+            'card_paid': float(e.card_paid or 0),
+            'eft_paid': float(e.eft_paid or 0),
+            'receipt_no': e.receipt_no or '',
+        } for e in group['entries']]
+    } for group in display['providers']]
+
+    era_init = [{
+        'batch_number': p.batch_number or '',
+        'medical_aid_name': p.medical_aid_name or '',
+        'payment_date': p.payment_date.isoformat() if p.payment_date else '',
+        'amount_paid': float(p.amount_paid or 0),
+    } for p in rec.era_payments]
+
     return render_template('reconciliation/form.html',
                           rec=rec,
                           rec_date=rec.date,
                           dentists=dentists,
-                          retail_items=RETAIL_ITEMS,
                           days_of_week=DAYS_OF_WEEK,
+                          billing_init=billing_init,
+                          era_init=era_init,
                           is_edit=True)
 
 
@@ -333,27 +387,11 @@ def view(rec_id):
     """View a reconciliation sheet."""
     rec = DailyReconciliation.query.get_or_404(rec_id)
 
-    # Get dentist names for display
-    dentist_names = []
-    if rec.dentists_on_duty:
-        for d_id in rec.dentists_on_duty:
-            dentist = User.query.get(d_id)
-            if dentist:
-                dentist_names.append(dentist.full_name)
-
-    # Get appointments with dentist names
-    appointments_display = {}
-    if rec.appointments_booked:
-        for d_id, count in rec.appointments_booked.items():
-            dentist = User.query.get(int(d_id))
-            if dentist:
-                appointments_display[dentist.full_name] = count
+    sheet = _sheet_display_data(rec)
 
     return render_template('reconciliation/view.html',
                           rec=rec,
-                          dentist_names=dentist_names,
-                          appointments_display=appointments_display,
-                          retail_items=RETAIL_ITEMS)
+                          sheet=sheet)
 
 
 @bp.route('/check/<int:rec_id>', methods=['POST'])
