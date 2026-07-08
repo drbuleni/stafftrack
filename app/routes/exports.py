@@ -339,7 +339,7 @@ def staff_report_pdf(staff_id):
     title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=20, textColor=colors.HexColor('#16a34a'))
     elements.append(Paragraph(f"Staff Report: {staff.full_name}", title_style))
     elements.append(Paragraph(f"Role: {staff.role} | Status: {staff.status}", styles['Normal']))
-    elements.append(Paragraph(f"Generated: {datetime.now().strftime('%d %b %Y %H:%M')}", styles['Italic']))
+    elements.append(Paragraph(f"Generated: {datetime.now().strftime('%d/%m/%Y %H:%M')}", styles['Italic']))
     elements.append(Spacer(1, 20))
 
     # KPI Summary

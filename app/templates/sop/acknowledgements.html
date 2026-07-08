@@ -30,7 +30,7 @@
                             <br><small class="text-muted">{{ staff.role }}</small>
                         </div>
                         <small class="text-muted">
-                            {{ ack.acknowledged_at.strftime('%d %b %Y %H:%M') if ack else '' }}
+                            {{ ack.acknowledged_at.strftime('%d/%m/%Y %H:%M') if ack else '' }}
                         </small>
                     </li>
                     {% endfor %}

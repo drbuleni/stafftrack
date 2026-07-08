@@ -40,11 +40,11 @@
             <div class="card-footer text-muted d-flex justify-content-between">
                 <small>
                     Posted by <strong>{{ announcement.creator.full_name }}</strong>
-                    on {{ announcement.created_at.strftime('%d %b %Y at %H:%M') }}
+                    on {{ announcement.created_at.strftime('%d/%m/%Y at %H:%M') }}
                 </small>
                 {% if announcement.expires_at %}
                 <small>
-                    <i class="bi bi-clock"></i> Expires: {{ announcement.expires_at.strftime('%d %b %Y') }}
+                    <i class="bi bi-clock"></i> Expires: {{ announcement.expires_at.strftime('%d/%m/%Y') }}
                 </small>
                 {% endif %}
             </div>

@@ -108,7 +108,7 @@ def kpi_trends():
 
         percentage = (met / total * 100) if total > 0 else 0
 
-        weeks.append(week_start.strftime('%d %b'))
+        weeks.append(week_start.strftime('%d/%m'))
         scores.append(round(percentage, 1))
 
     return jsonify({

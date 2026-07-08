@@ -70,7 +70,7 @@
                         <td>{{ task.assignee.full_name if task.assignee else 'Unassigned' }}</td>
                         <td>
                             {% if task.due_date %}
-                                {{ task.due_date.strftime('%d %b %Y') }}
+                                {{ task.due_date.strftime('%d/%m/%Y') }}
                             {% else %}
                                 -
                             {% endif %}

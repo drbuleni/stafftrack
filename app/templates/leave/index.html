@@ -80,9 +80,9 @@
                     <tr>
                         <td>{{ leave.staff.full_name }}</td>
                         <td><span class="badge bg-info">{{ leave.leave_type }}</span></td>
-                        <td>{{ leave.start_date.strftime('%d %b') }} - {{ leave.end_date.strftime('%d %b %Y') }}</td>
+                        <td>{{ leave.start_date.strftime('%d/%m') }} - {{ leave.end_date.strftime('%d/%m/%Y') }}</td>
                         <td>{{ leave.reason or '-' }}</td>
-                        <td>{{ leave.created_at.strftime('%d %b %Y') }}</td>
+                        <td>{{ leave.created_at.strftime('%d/%m/%Y') }}</td>
                         {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
                         <td>
                             <a href="{{ url_for('leave.approve', leave_id=leave.id) }}" class="btn btn-sm btn-primary">
@@ -125,7 +125,7 @@
                     <tr>
                         <td>{{ leave.staff.full_name }}</td>
                         <td><span class="badge bg-info">{{ leave.leave_type }}</span></td>
-                        <td>{{ leave.start_date.strftime('%d %b') }} - {{ leave.end_date.strftime('%d %b %Y') }}</td>
+                        <td>{{ leave.start_date.strftime('%d/%m') }} - {{ leave.end_date.strftime('%d/%m/%Y') }}</td>
                         <td>
                             <span class="badge bg-{{ 'success' if leave.status == 'Approved' else 'danger' }}">
                                 {{ leave.status }}

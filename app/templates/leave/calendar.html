@@ -32,8 +32,8 @@
                     <tr>
                         <td>{{ leave.staff.full_name }}</td>
                         <td><span class="badge bg-info">{{ leave.leave_type }}</span></td>
-                        <td>{{ leave.start_date.strftime('%d %b %Y') }}</td>
-                        <td>{{ leave.end_date.strftime('%d %b %Y') }}</td>
+                        <td>{{ leave.start_date.strftime('%d/%m/%Y') }}</td>
+                        <td>{{ leave.end_date.strftime('%d/%m/%Y') }}</td>
                         <td>{{ (leave.end_date - leave.start_date).days + 1 }} day(s)</td>
                     </tr>
                     {% endfor %}

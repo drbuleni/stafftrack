@@ -29,7 +29,7 @@
         <i class="bi bi-chevron-left"></i> Previous Week
     </a>
     <div class="text-center">
-        <h5 class="mb-1">{{ week_start.strftime('%d %b') }} - {{ week_end.strftime('%d %b %Y') }}</h5>
+        <h5 class="mb-1">{{ week_start.strftime('%d/%m') }} - {{ week_end.strftime('%d/%m/%Y') }}</h5>
         {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
         <button type="button" class="btn btn-sm btn-outline-danger"
                 onclick="confirmAction('{{ url_for('schedule.clear_week') }}?week_start={{ week_start.isoformat() }}', 'Clear Week Schedule', 'Are you sure you want to clear ALL schedules for this week? This cannot be undone.', 'Clear Week', 'btn-danger')">
@@ -52,7 +52,7 @@
                         {% for day in days %}
                         <th class="text-center {{ 'table-primary' if day.is_today else '' }}" style="width: 120px;">
                             <div class="fw-bold">{{ day.name }}</div>
-                            <small>{{ day.date.strftime('%d %b') }}</small>
+                            <small>{{ day.date.strftime('%d/%m') }}</small>
                         </th>
                         {% endfor %}
                     </tr>

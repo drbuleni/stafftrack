@@ -223,8 +223,8 @@ def request_leave():
                     html = email_leave_request_submitted(
                         current_user.full_name,
                         leave.leave_type,
-                        leave.start_date.strftime('%d %b %Y'),
-                        leave.end_date.strftime('%d %b %Y'),
+                        leave.start_date.strftime('%d/%m/%Y'),
+                        leave.end_date.strftime('%d/%m/%Y'),
                         leave.reason
                     )
                     send_email(f'Leave Request from {current_user.full_name}', manager.email, html, mail)
@@ -319,16 +319,16 @@ def approve(leave_id):
                     html = email_leave_request_approved(
                         staff_member.full_name,
                         leave.leave_type,
-                        leave.start_date.strftime('%d %b %Y'),
-                        leave.end_date.strftime('%d %b %Y'),
+                        leave.start_date.strftime('%d/%m/%Y'),
+                        leave.end_date.strftime('%d/%m/%Y'),
                         leave.approval_notes
                     )
                 else:
                     html = email_leave_request_rejected(
                         staff_member.full_name,
                         leave.leave_type,
-                        leave.start_date.strftime('%d %b %Y'),
-                        leave.end_date.strftime('%d %b %Y'),
+                        leave.start_date.strftime('%d/%m/%Y'),
+                        leave.end_date.strftime('%d/%m/%Y'),
                         leave.approval_notes
                     )
                 send_email(f'Leave Request {leave.status}', staff_member.email, html, mail)

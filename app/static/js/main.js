@@ -76,3 +76,64 @@ function formatDate(dateString) {
     const options = { day: '2-digit', month: 'short', year: 'numeric' };
     return new Date(dateString).toLocaleDateString('en-ZA', options);
 }
+
+// ============================================
+// dd/mm/yyyy date pickers (flatpickr)
+// Native date inputs display year-first on many
+// locales; staff read dates as day/month/year.
+// The real input keeps submitting yyyy-mm-dd.
+// ============================================
+(function () {
+    function initDateInput(input) {
+        if (input._flatpickr || input.dataset.noFlatpickr !== undefined) return;
+        const isReadonly = input.hasAttribute('readonly');
+        const config = {
+            altInput: true,
+            altFormat: 'd/m/Y',
+            dateFormat: 'Y-m-d',
+            allowInput: false,
+            clickOpens: !isReadonly,
+        };
+        if (input.min) config.minDate = input.min;
+        if (input.max) config.maxDate = input.max;
+        flatpickr(input, config);
+    }
+
+    function initAllDateInputs(root) {
+        (root || document).querySelectorAll('input[type="date"]').forEach(initDateInput);
+    }
+
+    function start() {
+        initAllDateInputs();
+        // Cover date inputs added later (e.g. dynamic table rows)
+        new MutationObserver(function (mutations) {
+            mutations.forEach(function (m) {
+                m.addedNodes.forEach(function (node) {
+                    if (node.nodeType !== 1) return;
+                    if (node.matches && node.matches('input[type="date"]')) {
+                        initDateInput(node);
+                    } else if (node.querySelectorAll) {
+                        initAllDateInputs(node);
+                    }
+                });
+            });
+        }).observe(document.body, { childList: true, subtree: true });
+    }
+
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = 'https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css';
+    document.head.appendChild(css);
+
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js';
+    script.onload = function () {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', start);
+        } else {
+            start();
+        }
+    };
+    document.head.appendChild(script);
+    // If the CDN is unreachable, inputs stay native - still usable.
+})();

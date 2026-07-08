@@ -64,7 +64,7 @@ def generate_receipt_email(receipt):
                 </div>
                 <div class="receipt-row">
                     <span class="receipt-label">Date:</span>
-                    <span class="receipt-value">{receipt.date.strftime('%d %B %Y')}</span>
+                    <span class="receipt-value">{receipt.date.strftime('%d/%m/%Y')}</span>
                 </div>
                 <div class="receipt-row">
                     <span class="receipt-label">Service:</span>

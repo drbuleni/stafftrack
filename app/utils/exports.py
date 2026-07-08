@@ -46,7 +46,7 @@ def create_excel_report(title, headers, data, filename_prefix):
 
     # Date row
     ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=len(headers))
-    date_cell = ws.cell(row=2, column=1, value=f"Generated: {datetime.now().strftime('%d %b %Y %H:%M')}")
+    date_cell = ws.cell(row=2, column=1, value=f"Generated: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
     date_cell.alignment = Alignment(horizontal="center")
     date_cell.font = Font(italic=True, size=10)
 
@@ -126,7 +126,7 @@ def create_pdf_report(title, headers, data, filename_prefix, orientation='portra
 
     # Title
     elements.append(Paragraph(title, title_style))
-    elements.append(Paragraph(f"Generated: {datetime.now().strftime('%d %b %Y %H:%M')}", subtitle_style))
+    elements.append(Paragraph(f"Generated: {datetime.now().strftime('%d/%m/%Y %H:%M')}", subtitle_style))
     elements.append(Spacer(1, 10))
 
     # Table data
@@ -185,7 +185,7 @@ def format_date(dt):
         return "-"
     if isinstance(dt, str):
         return dt
-    return dt.strftime('%d %b %Y')
+    return dt.strftime('%d/%m/%Y')
 
 
 def format_datetime(dt):
@@ -194,4 +194,4 @@ def format_datetime(dt):
         return "-"
     if isinstance(dt, str):
         return dt
-    return dt.strftime('%d %b %Y %H:%M')
+    return dt.strftime('%d/%m/%Y %H:%M')

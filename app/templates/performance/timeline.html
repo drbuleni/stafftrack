@@ -56,7 +56,7 @@
         <div class="card">
             <div class="card-body text-center">
                 <h6 class="text-muted">Start Date</h6>
-                <h5>{{ staff.start_date.strftime('%d %b %Y') if staff.start_date else 'Not set' }}</h5>
+                <h5>{{ staff.start_date.strftime('%d/%m/%Y') if staff.start_date else 'Not set' }}</h5>
             </div>
         </div>
     </div>
@@ -111,7 +111,7 @@
                             <div class="flex-grow-1">
                                 <div class="d-flex justify-content-between">
                                     <strong>{{ event.event_type.replace('_', ' ') }}</strong>
-                                    <small class="text-muted">{{ event.created_at.strftime('%d %b %Y %H:%M') }}</small>
+                                    <small class="text-muted">{{ event.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
                                 </div>
                                 <p class="mb-0">{{ event.event_description }}</p>
                             </div>
@@ -139,7 +139,7 @@
                     <li class="mb-3 pb-3 border-bottom">
                         <div class="d-flex justify-content-between">
                             <strong>{{ warning.warning_type.replace('_', ' ') }}</strong>
-                            <small class="text-muted">{{ warning.issued_at.strftime('%d %b') }}</small>
+                            <small class="text-muted">{{ warning.issued_at.strftime('%d/%m') }}</small>
                         </div>
                         <p class="mb-0 small">{{ warning.reason }}</p>
                         {% if warning.auto_generated %}

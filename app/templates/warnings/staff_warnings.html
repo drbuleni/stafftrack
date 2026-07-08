@@ -40,7 +40,7 @@
                         <span class="badge bg-secondary">Auto-generated</span>
                         {% endif %}
                     </h6>
-                    <small class="text-muted">{{ warning.issued_at.strftime('%d %B %Y at %H:%M') }}</small>
+                    <small class="text-muted">{{ warning.issued_at.strftime('%d/%m/%Y at %H:%M') }}</small>
                 </div>
                 <p class="mb-1">{{ warning.reason }}</p>
                 <small class="text-muted">Issued by: {{ warning.issuer.full_name }}</small>

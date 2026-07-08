@@ -35,7 +35,7 @@
                     </tr>
                     <tr>
                         <th>Start Date:</th>
-                        <td>{{ user.start_date.strftime('%d %B %Y') if user.start_date else 'Not set' }}</td>
+                        <td>{{ user.start_date.strftime('%d/%m/%Y') if user.start_date else 'Not set' }}</td>
                     </tr>
                     <tr>
                         <th>Status:</th>
@@ -47,7 +47,7 @@
                     </tr>
                     <tr>
                         <th>Account Created:</th>
-                        <td>{{ user.created_at.strftime('%d %B %Y') }}</td>
+                        <td>{{ user.created_at.strftime('%d/%m/%Y') }}</td>
                     </tr>
                 </table>
             </div>

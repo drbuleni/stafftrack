@@ -45,7 +45,7 @@
                     {% for receipt in receipts.items %}
                     <tr>
                         <td><strong>{{ receipt.receipt_number }}</strong></td>
-                        <td>{{ receipt.date.strftime('%d %b %Y') }}</td>
+                        <td>{{ receipt.date.strftime('%d/%m/%Y') }}</td>
                         <td>
                             {% if receipt.patient_name %}
                                 <div>{{ receipt.patient_name }}</div>

@@ -53,8 +53,8 @@
                             {% endif %}
                         </td>
                         <td>{{ announcement.creator.full_name }}</td>
-                        <td>{{ announcement.created_at.strftime('%d %b %Y') }}</td>
-                        <td>{{ announcement.expires_at.strftime('%d %b %Y') if announcement.expires_at else '-' }}</td>
+                        <td>{{ announcement.created_at.strftime('%d/%m/%Y') }}</td>
+                        <td>{{ announcement.expires_at.strftime('%d/%m/%Y') if announcement.expires_at else '-' }}</td>
                         <td>
                             <a href="{{ url_for('announcements.edit', announcement_id=announcement.id) }}" class="btn btn-sm btn-outline-primary">
                                 Edit

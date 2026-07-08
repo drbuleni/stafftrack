@@ -461,7 +461,7 @@ def analytics():
     if period == 'week':
         start_date = today_date - timedelta(days=today_date.weekday())
         end_date = today_date
-        period_label = f"This Week ({start_date.strftime('%d %b')} - {end_date.strftime('%d %b %Y')})"
+        period_label = f"This Week ({start_date.strftime('%d/%m')} - {end_date.strftime('%d/%m/%Y')})"
     elif period == 'month':
         start_date = date(today_date.year, today_date.month, 1)
         end_date = today_date
@@ -486,7 +486,7 @@ def analytics():
         except ValueError:
             start_date = date(today_date.year, today_date.month, 1)
             end_date = today_date
-        period_label = f"{start_date.strftime('%d %b %Y')} - {end_date.strftime('%d %b %Y')}"
+        period_label = f"{start_date.strftime('%d/%m/%Y')} - {end_date.strftime('%d/%m/%Y')}"
 
     # Get all reconciliations in the period
     reconciliations = DailyReconciliation.query.filter(
@@ -544,7 +544,7 @@ def analytics():
     daily_data = []
     for r in reconciliations:
         daily_data.append({
-            'date': r.date.strftime('%d %b'),
+            'date': r.date.strftime('%d/%m'),
             'date_full': r.date.isoformat(),
             'net_collections': float(r.net_collections or 0),
             'production': float(r.goodx_production or 0),

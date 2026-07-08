@@ -61,7 +61,7 @@
                 <tbody>
                     {% for log in logs.items %}
                     <tr>
-                        <td><small>{{ log.created_at.strftime('%d %b %Y %H:%M:%S') }}</small></td>
+                        <td><small>{{ log.created_at.strftime('%d/%m/%Y %H:%M:%S') }}</small></td>
                         <td>{{ log.user.full_name if log.user else 'System' }}</td>
                         <td><span class="badge bg-secondary">{{ log.action }}</span></td>
                         <td>

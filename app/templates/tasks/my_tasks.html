@@ -38,7 +38,7 @@
                             <small class="text-muted">{{ task.description }}</small>
                             {% endif %}
                             {% if task.due_date %}
-                            <br><small class="text-muted"><i class="bi bi-calendar"></i> Due: {{ task.due_date.strftime('%d %b %Y') }}</small>
+                            <br><small class="text-muted"><i class="bi bi-calendar"></i> Due: {{ task.due_date.strftime('%d/%m/%Y') }}</small>
                             {% endif %}
                         </div>
                         <form action="{{ url_for('tasks.update_status', task_id=task.id) }}" method="POST">

@@ -80,7 +80,7 @@
                     <tr class="{{ 'table-success' if rec.status == 'Checked' else 'table-warning' if rec.status == 'Submitted' else '' }}">
                         <td>
                             <a href="{{ url_for('reconciliation.view', rec_id=rec.id) }}">
-                                {{ rec.date.strftime('%d %b %Y') }}
+                                {{ rec.date.strftime('%d/%m/%Y') }}
                             </a>
                             {% if rec.date == today %}
                             <span class="badge bg-primary ms-1">Today</span>

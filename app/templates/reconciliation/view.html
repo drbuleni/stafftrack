@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Reconciliation {{ rec.date.strftime('%d %b %Y') }} - StaffTrack{% endblock %}
+{% block title %}Reconciliation {{ rec.date.strftime('%d/%m/%Y') }} - StaffTrack{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -35,7 +35,7 @@
             {% if rec.status == 'Checked' %}
             <i class="bi bi-check-circle-fill me-2"></i>
             <strong>Checked</strong> by {{ rec.checker.full_name if rec.checker else 'Unknown' }}
-            on {{ rec.checked_at.strftime('%d %b %Y at %H:%M') if rec.checked_at else '-' }}
+            on {{ rec.checked_at.strftime('%d/%m/%Y at %H:%M') if rec.checked_at else '-' }}
             {% elif rec.status == 'Submitted' %}
             <i class="bi bi-clock-fill me-2"></i>
             <strong>Submitted</strong> - Awaiting review
@@ -47,7 +47,7 @@
         <div class="text-end">
             <small>Prepared by: <strong>{{ rec.preparer.full_name if rec.preparer else '-' }}</strong></small>
             {% if rec.prepared_at %}
-            <small class="text-muted ms-2">{{ rec.prepared_at.strftime('%d %b %Y at %H:%M') }}</small>
+            <small class="text-muted ms-2">{{ rec.prepared_at.strftime('%d/%m/%Y at %H:%M') }}</small>
             {% endif %}
         </div>
     </div>
@@ -240,7 +240,7 @@
             <div class="card-body">
                 <p class="small text-muted">Permanently delete this reconciliation sheet.</p>
                 <button type="button" class="btn btn-danger btn-sm"
-                        onclick="confirmAction('{{ url_for('reconciliation.delete', rec_id=rec.id) }}', 'Delete Reconciliation', 'Are you sure you want to delete the reconciliation sheet for {{ rec.date.strftime('%d %b %Y') }}?', 'Delete', 'btn-danger')">
+                        onclick="confirmAction('{{ url_for('reconciliation.delete', rec_id=rec.id) }}', 'Delete Reconciliation', 'Are you sure you want to delete the reconciliation sheet for {{ rec.date.strftime('%d/%m/%Y') }}?', 'Delete', 'btn-danger')">
                     <i class="bi bi-trash"></i> Delete Sheet
                 </button>
             </div>

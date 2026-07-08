@@ -766,7 +766,7 @@ def send_daily_room_notifications():
         notification = Notification(
             user_id=schedule.staff_id,
             title=f"Today's Room Assignment: {schedule.room}",
-            message=f"You are assigned to {schedule.room} today ({today.strftime('%d %b %Y')}){time_str}. Have a great day!",
+            message=f"You are assigned to {schedule.room} today ({today.strftime('%d/%m/%Y')}){time_str}. Have a great day!",
             notification_type='room_assignment',
             link='/schedule/rooms'
         )

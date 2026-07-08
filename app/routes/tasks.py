@@ -121,7 +121,7 @@ def create():
                     assignee.full_name,
                     task.title,
                     task.description,
-                    task.due_date.strftime('%d %b %Y') if task.due_date else None
+                    task.due_date.strftime('%d/%m/%Y') if task.due_date else None
                 )
                 send_email('New Task Assigned', assignee.email, html, mail)
 

@@ -251,7 +251,7 @@
                     <div class="col-6 text-center border-end">
                         <i class="bi bi-trophy-fill text-warning display-5"></i>
                         <h6 class="text-success mt-2">Best Day</h6>
-                        <p class="mb-1"><strong>{{ best_day.date.strftime('%d %b %Y') }}</strong></p>
+                        <p class="mb-1"><strong>{{ best_day.date.strftime('%d/%m/%Y') }}</strong></p>
                         <p class="mb-1">({{ best_day.day_of_week }})</p>
                         <h4 class="text-success">R {{ "%.2f"|format(best_day.net_collections) }}</h4>
                         <small class="text-muted">{{ best_day.patients_treated }} patients</small>
@@ -259,7 +259,7 @@
                     <div class="col-6 text-center">
                         <i class="bi bi-emoji-frown text-muted display-5"></i>
                         <h6 class="text-danger mt-2">Lowest Day</h6>
-                        <p class="mb-1"><strong>{{ worst_day.date.strftime('%d %b %Y') }}</strong></p>
+                        <p class="mb-1"><strong>{{ worst_day.date.strftime('%d/%m/%Y') }}</strong></p>
                         <p class="mb-1">({{ worst_day.day_of_week }})</p>
                         <h4 class="text-danger">R {{ "%.2f"|format(worst_day.net_collections) }}</h4>
                         <small class="text-muted">{{ worst_day.patients_treated }} patients</small>

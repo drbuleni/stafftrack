@@ -44,7 +44,7 @@
                                 {{ user.status }}
                             </span>
                         </td>
-                        <td>{{ user.start_date.strftime('%d %b %Y') if user.start_date else '-' }}</td>
+                        <td>{{ user.start_date.strftime('%d/%m/%Y') if user.start_date else '-' }}</td>
                         {% if current_user.role == 'Super Admin' %}
                         <td>
                             <a href="{{ url_for('users.edit', user_id=user.id) }}" class="btn btn-sm btn-outline-primary">
