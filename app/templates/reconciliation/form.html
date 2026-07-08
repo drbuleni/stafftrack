@@ -27,13 +27,13 @@
             <div class="row">
                 <div class="col-md-4">
                     <label class="form-label">Date</label>
-                    <input type="date" name="date" class="form-control"
+                    <input type="date" name="date" id="recDate" class="form-control"
                            value="{{ rec.date.isoformat() if rec else rec_date.isoformat() }}"
                            {{ 'readonly' if is_edit else '' }}>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Day</label>
-                    <input type="text" class="form-control"
+                    <input type="text" id="recDay" class="form-control"
                            value="{{ days_of_week[rec.date.weekday()] if rec else days_of_week[rec_date.weekday()] }}" readonly>
                 </div>
                 <div class="col-md-4">
@@ -454,7 +454,22 @@ function serialize() {
 
 /* ---------- Init ---------- */
 
+// Keep the Day field in sync with the selected date
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+function updateDay() {
+    const dateInput = document.getElementById('recDate');
+    if (!dateInput.value) return;
+    const selected = new Date(dateInput.value + 'T00:00:00');
+    if (!isNaN(selected)) {
+        document.getElementById('recDay').value = WEEKDAYS[selected.getDay()];
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('recDate').addEventListener('change', updateDay);
+    updateDay();
+
     if (billingInit.length > 0) {
         billingInit.forEach(sheetData => addSheet(sheetData));
     } else {
