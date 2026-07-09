@@ -533,6 +533,14 @@ h4 { font-size: 1.125rem; }
     color: var(--gray-700);
 }
 
+/* Colored table rows (.table-dark, .table-success, ...) keep their
+   own text color - the grey cell color above otherwise leaves dark
+   text on dark rows, e.g. the NET COLLECTIONS total */
+.table tbody tr[class*="table-"] td,
+.table tfoot tr[class*="table-"] td {
+    color: var(--bs-table-color);
+}
+
 .table tbody tr:hover {
     background-color: var(--gray-50);
 }
