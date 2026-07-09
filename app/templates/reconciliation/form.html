@@ -28,8 +28,7 @@
                 <div class="col-md-4">
                     <label class="form-label">Date</label>
                     <input type="date" name="date" id="recDate" class="form-control"
-                           value="{{ rec.date.isoformat() if rec else rec_date.isoformat() }}"
-                           {{ 'readonly' if is_edit else '' }}>
+                           value="{{ rec.date.isoformat() if rec else rec_date.isoformat() }}">
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Day</label>

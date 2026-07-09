@@ -334,17 +334,43 @@ def edit(rec_id):
     dentists = get_dentists()
 
     if request.method == 'POST':
+        # Allow correcting a sheet that was saved under the wrong date
+        old_date = rec.date
+        form_date = request.form.get('date')
+        if form_date:
+            try:
+                new_date = date.fromisoformat(form_date)
+            except ValueError:
+                new_date = rec.date
+            if new_date != rec.date:
+                clash = DailyReconciliation.query.filter(
+                    DailyReconciliation.date == new_date,
+                    DailyReconciliation.id != rec.id
+                ).first()
+                if clash:
+                    flash(f"A reconciliation sheet already exists for {new_date.strftime('%d/%m/%Y')}, "
+                          f"so the date was kept as {rec.date.strftime('%d/%m/%Y')}. "
+                          f"Everything else was saved.", 'warning')
+                else:
+                    rec.date = new_date
+                    rec.day_of_week = DAYS_OF_WEEK[new_date.weekday()]
+
         rec.notes = request.form.get('notes', '')
 
         _apply_sheet_data(rec)
 
         db.session.commit()
 
-        log_audit('Updated Daily Reconciliation', 'DailyReconciliation', rec.id, {
-            'date': rec.date.isoformat()
-        })
+        audit_details = {'date': rec.date.isoformat()}
+        if rec.date != old_date:
+            audit_details['date_changed_from'] = old_date.isoformat()
+        log_audit('Updated Daily Reconciliation', 'DailyReconciliation', rec.id, audit_details)
 
-        flash('Reconciliation sheet updated!', 'success')
+        if rec.date != old_date:
+            flash(f"Reconciliation sheet updated and moved from {old_date.strftime('%d/%m/%Y')} "
+                  f"to {rec.date.strftime('%d/%m/%Y')}.", 'success')
+        else:
+            flash('Reconciliation sheet updated!', 'success')
         return redirect(url_for('reconciliation.view', rec_id=rec.id))
 
     # Serialize existing line items so the form can rebuild the sheets
