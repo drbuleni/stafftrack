@@ -32,10 +32,15 @@ DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturda
 
 
 def get_dentists():
-    """Get all users who can be dentists on duty (Dentist, Practice Manager, Super Admin)."""
+    """Get all users who can be dentists on duty (Dentist, Practice Manager, Super Admin).
+
+    The shared 'admin' account is excluded: it belongs to Dr. Thembeka Buleni,
+    who already appears under her personal account - listing both created
+    duplicate practitioners on billing sheets and analytics."""
     return User.query.filter(
         User.status == 'Active',
-        User.role.in_(['Dentist', 'Practice Manager', 'Super Admin'])
+        User.role.in_(['Dentist', 'Practice Manager', 'Super Admin']),
+        User.username != 'admin'
     ).order_by(User.full_name).all()
 
 
