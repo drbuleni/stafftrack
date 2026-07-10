@@ -305,6 +305,66 @@
     {% endif %}
 </div>
 
+<!-- Per Practitioner Billing & Cash Flow -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header" style="background-color: #00e5e5; color: #000;">
+                <h5 class="mb-0"><i class="bi bi-person-badge"></i> Billing &amp; Cash Flow per Practitioner</h5>
+            </div>
+            <div class="card-body p-0">
+                {% if practitioner_stats %}
+                <div class="table-responsive">
+                    <table class="table table-bordered mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Practitioner</th>
+                                <th class="text-end">Patients</th>
+                                <th class="text-end">Total Billed</th>
+                                <th class="text-end">KAS7 Card</th>
+                                <th class="text-end">KAS3 EFT</th>
+                                <th class="text-end">Cash Received (Card + EFT)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in practitioner_stats %}
+                            <tr>
+                                <td>{{ p.name }}</td>
+                                <td class="text-end">{{ p.patients }}</td>
+                                <td class="text-end">R{{ '{:,.2f}'.format(p.billed) }}</td>
+                                <td class="text-end">R{{ '{:,.2f}'.format(p.card) }}</td>
+                                <td class="text-end">R{{ '{:,.2f}'.format(p.eft) }}</td>
+                                <td class="text-end fw-bold">R{{ '{:,.2f}'.format(p.received) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-light fw-bold">
+                                <td>Total</td>
+                                <td class="text-end">{{ practitioner_totals.patients }}</td>
+                                <td class="text-end">R{{ '{:,.2f}'.format(practitioner_totals.billed) }}</td>
+                                <td class="text-end">R{{ '{:,.2f}'.format(practitioner_totals.card) }}</td>
+                                <td class="text-end">R{{ '{:,.2f}'.format(practitioner_totals.eft) }}</td>
+                                <td class="text-end">R{{ '{:,.2f}'.format(practitioner_totals.received) }}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-4 mb-0">No billing sheet entries captured in this period.</p>
+                {% endif %}
+            </div>
+            <div class="card-footer">
+                <small class="text-muted">
+                    <i class="bi bi-info-circle"></i>
+                    KAS6 ERA payments for this period: <strong>R{{ '{:,.2f}'.format(era_period_total) }}</strong>
+                    &mdash; medical aids pay the practice number directly, so ERA money cannot be split per practitioner.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Financial Summary -->
 <div class="row mb-4">
     <div class="col-12">

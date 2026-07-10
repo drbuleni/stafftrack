@@ -631,6 +631,47 @@ def analytics():
     else:
         best_day = worst_day = None
 
+    # Per-practitioner billing and cash flow from the billing sheets.
+    # ERA (KAS6) payments are made to the practice number and cannot be
+    # split per practitioner, so they are reported at practice level.
+    practitioner_rows = db.session.query(
+        ReconciliationBillingEntry.provider_name,
+        func.count(ReconciliationBillingEntry.id),
+        func.coalesce(func.sum(ReconciliationBillingEntry.amount_billed), 0),
+        func.coalesce(func.sum(ReconciliationBillingEntry.card_paid), 0),
+        func.coalesce(func.sum(ReconciliationBillingEntry.eft_paid), 0),
+    ).join(
+        DailyReconciliation,
+        ReconciliationBillingEntry.reconciliation_id == DailyReconciliation.id
+    ).filter(
+        DailyReconciliation.date >= start_date,
+        DailyReconciliation.date <= end_date
+    ).group_by(
+        ReconciliationBillingEntry.provider_name
+    ).order_by(
+        ReconciliationBillingEntry.provider_name
+    ).all()
+
+    practitioner_stats = [{
+        'name': name,
+        'patients': patients,
+        'billed': float(billed),
+        'card': float(card),
+        'eft': float(eft),
+        'received': float(card) + float(eft),
+    } for name, patients, billed, card, eft in practitioner_rows]
+
+    practitioner_totals = {
+        'patients': sum(p['patients'] for p in practitioner_stats),
+        'billed': sum(p['billed'] for p in practitioner_stats),
+        'card': sum(p['card'] for p in practitioner_stats),
+        'eft': sum(p['eft'] for p in practitioner_stats),
+        'received': sum(p['received'] for p in practitioner_stats),
+    }
+
+    # Practice-level ERA money received in the period (KAS6)
+    era_period_total = sum(float(r.medical_aid_payments or 0) for r in reconciliations)
+
     return render_template('reconciliation/analytics.html',
                           period=period,
                           period_label=period_label,
@@ -646,4 +687,7 @@ def analytics():
                           doctor_stats=doctor_stats,
                           best_day=best_day,
                           worst_day=worst_day,
+                          practitioner_stats=practitioner_stats,
+                          practitioner_totals=practitioner_totals,
+                          era_period_total=era_period_total,
                           days_of_week=DAYS_OF_WEEK)
