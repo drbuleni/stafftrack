@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}Turnover Report {{ month_names[report.month] }} {{ report.year }} - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>
+        <i class="bi bi-file-earmark-bar-graph"></i>
+        Turnover &amp; Cash Flow - {{ month_names[report.month] }} {{ report.year }}
+    </h1>
+    <div>
+        <a href="{{ url_for('turnover.pdf', report_id=report.id) }}" class="btn btn-success">
+            <i class="bi bi-file-earmark-pdf"></i> Download PDF
+        </a>
+        <a href="{{ url_for('turnover.edit', report_id=report.id) }}" class="btn btn-outline-primary">
+            <i class="bi bi-pencil"></i> Edit
+        </a>
+        <a href="{{ url_for('turnover.index') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back
+        </a>
+    </div>
+</div>
+
+<div class="alert alert-light border mb-4">
+    <strong>Purpose of the report:</strong> a summary of the monthly billing performance for each practitioner,
+    including turnover, credit notes, cash flow, journal adjustments and the final movement balance.
+    <span class="text-muted">Source: GoodX Practice Management System.</span>
+</div>
+
+{% for section in report.sections %}
+<div class="card mb-4">
+    <div class="card-header" style="background-color: #00e5e5; color: #000;">
+        <h5 class="mb-0">
+            <i class="bi bi-person-badge"></i> {{ loop.index }}. {{ section.practitioner_name }}
+            {% if section.room %}<small>({{ section.room }})</small>{% endif %}
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-lg-6 mb-3">
+                <h6 class="text-muted">Turnover</h6>
+                <table class="table table-sm table-bordered mb-0">
+                    <tr><td>Gross Turnover (Patient Invoices)</td><td class="text-end">R{{ '{:,.2f}'.format(section.gross_turnover or 0) }}</td></tr>
+                    {% if section.additional_turnover %}
+                    <tr><td>Additional Turnover</td><td class="text-end">R{{ '{:,.2f}'.format(section.additional_turnover) }}</td></tr>
+                    {% endif %}
+                    <tr><td>Credit Notes</td><td class="text-end text-danger">(R{{ '{:,.2f}'.format(section.credit_notes or 0) }})</td></tr>
+                    <tr class="table-light fw-bold"><td>Net Turnover</td><td class="text-end">R{{ '{:,.2f}'.format(section.net_turnover) }}</td></tr>
+                </table>
+            </div>
+            <div class="col-lg-6 mb-3">
+                <h6 class="text-muted">Cash Flow</h6>
+                <table class="table table-sm table-bordered mb-0">
+                    {% for attr, label in [
+                        ('kas1_cash', 'KAS1 Cash Deposits'),
+                        ('kas3_eft', 'KAS3 EFT Deposits'),
+                        ('kas6_era', 'KAS6 ERA Deposits'),
+                        ('kas7_card', 'KAS7 Card Deposits'),
+                        ('kas8_linking', 'KAS8 Linking Deposits (not added)'),
+                        ('kas1_corrections', 'KAS1 Corrections'),
+                        ('kas3_corrections', 'KAS3 EFT Corrections'),
+                        ('kas6_corrections', 'KAS6 ERA Corrections'),
+                        ('kas7_corrections', 'KAS7 Card Corrections'),
+                        ('kas8_corrections', 'KAS8 Linking Corrections'),
+                    ] %}
+                    {% set value = section[attr] %}
+                    {% if value %}
+                    <tr><td>{{ label }}</td><td class="text-end">R{{ '{:,.2f}'.format(value) }}</td></tr>
+                    {% endif %}
+                    {% endfor %}
+                    <tr class="table-light fw-bold"><td>Total Cash Flow</td><td class="text-end">R{{ '{:,.2f}'.format(section.cash_flow_total) }}</td></tr>
+                </table>
+            </div>
+        </div>
+
+        {% if section.journals %}
+        <h6 class="text-muted">General Journal Adjustments</h6>
+        <table class="table table-sm table-bordered" style="max-width: 700px;">
+            {% for j in section.journals %}
+            <tr>
+                <td>{{ j.description }}</td>
+                <td class="text-end {{ 'text-danger' if j.amount < 0 else '' }}">
+                    {{ '(R{:,.2f})'.format(j.amount|abs) if j.amount < 0 else 'R{:,.2f}'.format(j.amount) }}
+                </td>
+            </tr>
+            {% endfor %}
+            <tr class="table-light fw-bold"><td>Total Journals</td><td class="text-end">R{{ '{:,.2f}'.format(section.journals_total) }}</td></tr>
+        </table>
+        <p class="small text-muted">Journal entries are accounting adjustments; they are not cash received.</p>
+        {% endif %}
+
+        <div class="alert alert-dark mb-0 py-2">
+            <strong>Movement Balance:</strong> R{{ '{:,.2f}'.format(section.movement_balance or 0) }}
+            <small class="text-muted ms-2">(GoodX control total - not profit or bank cash)</small>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Overall summary -->
+<div class="row mb-4">
+    <div class="col-lg-6 mb-3">
+        <div class="card h-100">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0"><i class="bi bi-receipt"></i> Overall Practice Summary</h5>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-bordered mb-0">
+                    <tr><td>Total Gross Turnover</td><td class="text-end">R{{ '{:,.2f}'.format(totals.gross_turnover) }}</td></tr>
+                    <tr><td>Total Credit Notes</td><td class="text-end text-danger">(R{{ '{:,.2f}'.format(totals.credit_notes) }})</td></tr>
+                    <tr class="table-light fw-bold"><td>Total Net Turnover</td><td class="text-end">R{{ '{:,.2f}'.format(totals.net_turnover) }}</td></tr>
+                    <tr class="fw-bold"><td>Consolidated Movement Balance</td><td class="text-end">R{{ '{:,.2f}'.format(totals.movement_balance) }}</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6 mb-3">
+        <div class="card h-100">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0"><i class="bi bi-cash-stack"></i> Total Cash Flow</h5>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-bordered mb-0">
+                    <tr><td>KAS1 Cash (incl. corrections)</td><td class="text-end">R{{ '{:,.2f}'.format(totals.kas1) }}</td></tr>
+                    <tr><td>KAS3 EFT (incl. corrections)</td><td class="text-end">R{{ '{:,.2f}'.format(totals.kas3) }}</td></tr>
+                    <tr><td>KAS6 ERA (incl. corrections)</td><td class="text-end">R{{ '{:,.2f}'.format(totals.kas6) }}</td></tr>
+                    <tr><td>KAS7 Card (incl. corrections)</td><td class="text-end">R{{ '{:,.2f}'.format(totals.kas7) }}</td></tr>
+                    <tr><td>KAS8 Linking <small class="text-muted">(not added)</small></td><td class="text-end">R{{ '{:,.2f}'.format(totals.kas8) }}</td></tr>
+                    <tr class="table-light fw-bold"><td>Total Cash Flow</td><td class="text-end">R{{ '{:,.2f}'.format(totals.cash_flow) }}</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if report.vat_inclusive is not none or report.vat_exclusive is not none %}
+<div class="card mb-4" style="max-width: 500px;">
+    <div class="card-header"><h6 class="mb-0">VAT Summary</h6></div>
+    <div class="card-body p-0">
+        <table class="table table-bordered mb-0">
+            {% if report.vat_inclusive is not none %}
+            <tr><td>VAT Inclusive</td><td class="text-end">R{{ '{:,.2f}'.format(report.vat_inclusive) }}</td></tr>
+            {% endif %}
+            {% if report.vat_exclusive is not none %}
+            <tr><td>VAT Exclusive</td><td class="text-end">R{{ '{:,.2f}'.format(report.vat_exclusive) }}</td></tr>
+            {% endif %}
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% if report.notes %}
+<div class="card mb-4">
+    <div class="card-header"><h6 class="mb-0"><i class="bi bi-sticky"></i> Additional Notes</h6></div>
+    <div class="card-body"><p class="mb-0" style="white-space: pre-wrap;">{{ report.notes }}</p></div>
+</div>
+{% endif %}
+
+<div class="text-muted small mb-3">
+    <p class="mb-1"><i class="bi bi-info-circle"></i> KAS8 linking deposits re-allocate money already received and are never added to cash flow totals.</p>
+    <p class="mb-1"><i class="bi bi-info-circle"></i> The movement balance is a GoodX reconciliation control total, not profit or cash in the bank.</p>
+    <p class="mb-0">Compiled by <strong>{{ report.preparer.full_name if report.preparer else '-' }}</strong>
+        &bull; last updated {{ report.updated_at.strftime('%d/%m/%Y %H:%M') if report.updated_at else '-' }}</p>
+</div>
+
+{% if current_user.role in ['Practice Manager', 'Super Admin'] %}
+<div class="card border-danger mb-4" style="max-width: 400px;">
+    <div class="card-body">
+        <button type="button" class="btn btn-danger btn-sm"
+                onclick="confirmAction('{{ url_for('turnover.delete', report_id=report.id) }}', 'Delete Report', 'Delete the turnover report for {{ month_names[report.month] }} {{ report.year }}?', 'Delete', 'btn-danger')">
+            <i class="bi bi-trash"></i> Delete Report
+        </button>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -490,6 +490,94 @@ class ReconciliationEraPayment(db.Model):
         return f'<ReconciliationEraPayment {self.batch_number} - {self.medical_aid_name}>'
 
 
+class TurnoverReport(db.Model):
+    """Monthly Turnover & Cash Flow report. Figures are captured from GoodX;
+    StaffTrack standardises the layout and computes all totals."""
+    __tablename__ = 'turnover_reports'
+
+    id = db.Column(db.Integer, primary_key=True)
+    month = db.Column(db.Integer, nullable=False)  # 1-12
+    year = db.Column(db.Integer, nullable=False)
+
+    # Optional VAT summary
+    vat_inclusive = db.Column(db.Numeric(12, 2))
+    vat_exclusive = db.Column(db.Numeric(12, 2))
+
+    notes = db.Column(db.Text)
+
+    prepared_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    preparer = db.relationship('User', foreign_keys=[prepared_by])
+
+    __table_args__ = (db.UniqueConstraint('year', 'month', name='unique_turnover_report_period'),)
+
+    def __repr__(self):
+        return f'<TurnoverReport {self.month}/{self.year}>'
+
+
+class TurnoverReportSection(db.Model):
+    """One practitioner's figures on a monthly turnover report."""
+    __tablename__ = 'turnover_report_sections'
+
+    id = db.Column(db.Integer, primary_key=True)
+    report_id = db.Column(db.Integer, db.ForeignKey('turnover_reports.id'), nullable=False)
+
+    practitioner_name = db.Column(db.String(100), nullable=False)
+    room = db.Column(db.String(50))  # optional room allocation
+
+    # Turnover
+    gross_turnover = db.Column(db.Numeric(12, 2), default=0)
+    additional_turnover = db.Column(db.Numeric(12, 2), default=0)
+    credit_notes = db.Column(db.Numeric(12, 2), default=0)  # stored positive, subtracted
+
+    # Cash flow deposits per cashbook
+    kas1_cash = db.Column(db.Numeric(12, 2), default=0)
+    kas3_eft = db.Column(db.Numeric(12, 2), default=0)
+    kas6_era = db.Column(db.Numeric(12, 2), default=0)
+    kas7_card = db.Column(db.Numeric(12, 2), default=0)
+    kas8_linking = db.Column(db.Numeric(12, 2), default=0)  # allocations, never added to cash totals
+
+    # Corrections per cashbook
+    kas1_corrections = db.Column(db.Numeric(12, 2), default=0)
+    kas3_corrections = db.Column(db.Numeric(12, 2), default=0)
+    kas6_corrections = db.Column(db.Numeric(12, 2), default=0)
+    kas7_corrections = db.Column(db.Numeric(12, 2), default=0)
+    kas8_corrections = db.Column(db.Numeric(12, 2), default=0)
+
+    # General journal adjustments: list of {"description": str, "amount": float}
+    journals = db.Column(db.JSON)
+
+    movement_balance = db.Column(db.Numeric(12, 2), default=0)  # GoodX control total, captured not computed
+    sort_order = db.Column(db.Integer, default=0)
+
+    report = db.relationship(
+        'TurnoverReport',
+        backref=db.backref('sections', cascade='all, delete-orphan',
+                           order_by='TurnoverReportSection.sort_order')
+    )
+
+    @property
+    def net_turnover(self):
+        return (self.gross_turnover or 0) + (self.additional_turnover or 0) - (self.credit_notes or 0)
+
+    @property
+    def cash_flow_total(self):
+        """Actual money received: KAS1/3/6/7 deposits plus their corrections.
+        KAS8 linking is excluded - it re-allocates money already received."""
+        return ((self.kas1_cash or 0) + (self.kas3_eft or 0) + (self.kas6_era or 0) +
+                (self.kas7_card or 0) + (self.kas1_corrections or 0) + (self.kas3_corrections or 0) +
+                (self.kas6_corrections or 0) + (self.kas7_corrections or 0))
+
+    @property
+    def journals_total(self):
+        return sum((j.get('amount') or 0) for j in (self.journals or []))
+
+    def __repr__(self):
+        return f'<TurnoverReportSection {self.practitioner_name}>'
+
+
 # =====================================================================
 # Quoting & Lead Pipeline module
 # =====================================================================

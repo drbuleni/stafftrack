@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if is_edit else 'New' }} Turnover Report - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>
+        <i class="bi bi-file-earmark-bar-graph"></i>
+        {{ 'Edit' if is_edit else 'New' }} Turnover &amp; Cash Flow Report
+    </h1>
+    <a href="{{ url_for('turnover.index') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Reports
+    </a>
+</div>
+
+<form method="POST" id="turnoverForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="sections_data" id="sectionsData">
+
+    <!-- Period -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-calendar3"></i> Reporting Period</h5>
+        </div>
+        <div class="card-body">
+            <div class="row align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">Month</label>
+                    <select name="month" id="periodMonth" class="form-select" {{ 'disabled' if is_edit else '' }}>
+                        {% for m in range(1, 13) %}
+                        <option value="{{ m }}" {{ 'selected' if m == month else '' }}>{{ month_names[m] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Year</label>
+                    <input type="number" name="year" id="periodYear" class="form-control" min="2020" max="2100"
+                           value="{{ year }}" {{ 'readonly' if is_edit else '' }}>
+                </div>
+                {% if not is_edit %}
+                <div class="col-md-4">
+                    <button type="button" class="btn btn-outline-primary" onclick="reloadPeriod()">
+                        <i class="bi bi-arrow-repeat"></i> Load StaffTrack figures for this period
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- StaffTrack reference figures -->
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="bi bi-clipboard-check"></i> StaffTrack Figures for {{ month_names[month] }} {{ year }} (for cross-checking)</h5>
+        </div>
+        <div class="card-body p-0">
+            {% if reference.practitioners %}
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Practitioner (daily sheets)</th>
+                            <th class="text-end">Billed</th>
+                            <th class="text-end">KAS7 Card</th>
+                            <th class="text-end">KAS3 EFT</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in reference.practitioners %}
+                        <tr>
+                            <td>{{ p.name }}</td>
+                            <td class="text-end">R{{ '{:,.2f}'.format(p.billed) }}</td>
+                            <td class="text-end">R{{ '{:,.2f}'.format(p.card) }}</td>
+                            <td class="text-end">R{{ '{:,.2f}'.format(p.eft) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr class="table-light">
+                            <td colspan="4"><small class="text-muted">KAS6 ERA received (practice level): <strong>R{{ '{:,.2f}'.format(reference.era_total) }}</strong></small></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted text-center py-3 mb-0">No daily reconciliation sheets captured for this month.</p>
+            {% endif %}
+        </div>
+        <div class="card-footer">
+            <small class="text-muted"><i class="bi bi-info-circle"></i>
+                These are StaffTrack's own daily-sheet figures, shown only to help you cross-check.
+                The report itself prints the GoodX figures you enter below.</small>
+        </div>
+    </div>
+
+    <!-- Practitioner sections -->
+    <div id="practitionerSections"></div>
+
+    <div class="mb-4">
+        <button type="button" class="btn btn-outline-primary" onclick="addSection()">
+            <i class="bi bi-plus-circle"></i> Add Practitioner
+        </button>
+    </div>
+
+    <!-- Optional VAT summary -->
+    <div class="card mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0"><i class="bi bi-percent"></i> VAT Summary (optional)</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4 mb-2">
+                    <label class="form-label">VAT Inclusive</label>
+                    <div class="input-group">
+                        <span class="input-group-text">R</span>
+                        <input type="number" step="0.01" name="vat_inclusive" class="form-control"
+                               value="{{ report.vat_inclusive if report and report.vat_inclusive is not none else '' }}">
+                    </div>
+                </div>
+                <div class="col-md-4 mb-2">
+                    <label class="form-label">VAT Exclusive</label>
+                    <div class="input-group">
+                        <span class="input-group-text">R</span>
+                        <input type="number" step="0.01" name="vat_exclusive" class="form-control"
+                               value="{{ report.vat_exclusive if report and report.vat_exclusive is not none else '' }}">
+                    </div>
+                </div>
+            </div>
+            <small class="text-muted">Leave blank to omit the VAT section from the report.</small>
+        </div>
+    </div>
+
+    <!-- Notes -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-sticky"></i> Additional Notes (optional)</h5>
+        </div>
+        <div class="card-body">
+            <textarea name="notes" class="form-control" rows="3"
+                      placeholder="Anything specific to this month...">{{ report.notes if report else '' }}</textarea>
+        </div>
+    </div>
+
+    <!-- Submit -->
+    <div class="d-flex gap-2 mb-5">
+        <button type="submit" class="btn btn-primary btn-lg">
+            <i class="bi bi-check-circle"></i> {{ 'Update' if is_edit else 'Save' }} Report
+        </button>
+        <a href="{{ url_for('turnover.index') }}" class="btn btn-outline-secondary btn-lg">Cancel</a>
+    </div>
+</form>
+
+<script>
+const practitionerOptions = [
+    {% for dentist in dentists %}
+    { id: {{ dentist.id }}, name: {{ dentist.full_name | tojson }} }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+const sectionsInit = {{ sections_init | tojson }};
+
+const MONEY_FIELDS = [
+    ['gross_turnover', 'Gross Turnover (Patient Invoices)'],
+    ['additional_turnover', 'Additional Turnover'],
+    ['credit_notes', 'Credit Notes (entered as a positive amount)'],
+];
+const KAS_FIELDS = [
+    ['kas1_cash', 'KAS1 Cash Deposits'],
+    ['kas3_eft', 'KAS3 EFT Deposits'],
+    ['kas6_era', 'KAS6 ERA Deposits'],
+    ['kas7_card', 'KAS7 Card Deposits'],
+    ['kas8_linking', 'KAS8 Linking Deposits'],
+];
+const CORRECTION_FIELDS = [
+    ['kas1_corrections', 'KAS1 Corrections'],
+    ['kas3_corrections', 'KAS3 EFT Corrections'],
+    ['kas6_corrections', 'KAS6 ERA Corrections'],
+    ['kas7_corrections', 'KAS7 Card Corrections'],
+    ['kas8_corrections', 'KAS8 Linking Corrections'],
+];
+
+let sectionCount = 0;
+
+function money(v) {
+    return 'R' + (v || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function esc(t) {
+    return String(t === undefined || t === null ? '' : t)
+        .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+function moneyInput(cls, value) {
+    const v = value ? value : '';
+    return `<div class="input-group input-group-sm"><span class="input-group-text">R</span>
+            <input type="number" step="0.01" class="form-control ${cls}" value="${v}"></div>`;
+}
+
+function fieldCols(fields, init) {
+    return fields.map(([key, label]) => `
+        <div class="col-md-4 mb-2">
+            <label class="form-label small mb-1">${label}</label>
+            ${moneyInput('in-' + key, init[key])}
+        </div>`).join('');
+}
+
+function addSection(init = null) {
+    sectionCount++;
+    const id = 'section_' + sectionCount;
+    init = init || {};
+
+    let optionsHtml = '<option value="">-- Select Practitioner --</option>';
+    let matched = false;
+    practitionerOptions.forEach(p => {
+        const selected = (init.practitioner_name === p.name) ? 'selected' : '';
+        if (selected) matched = true;
+        optionsHtml += `<option value="${esc(p.name)}" ${selected}>${esc(p.name)}</option>`;
+    });
+    const isCustom = init.practitioner_name && !matched;
+    optionsHtml += `<option value="custom" ${isCustom ? 'selected' : ''}>Other (type name)...</option>`;
+
+    const card = document.createElement('div');
+    card.className = 'card mb-4 practitioner-section';
+    card.id = id;
+    card.innerHTML = `
+        <div class="card-header d-flex flex-wrap align-items-center gap-2" style="background-color: #00e5e5; color: #000;">
+            <strong><i class="bi bi-person-badge"></i> Practitioner:</strong>
+            <select class="form-select form-select-sm section-name" style="max-width: 240px;" onchange="nameChanged(this)">
+                ${optionsHtml}
+            </select>
+            <input type="text" class="form-control form-control-sm section-custom" style="max-width: 200px; display: ${isCustom ? 'block' : 'none'};"
+                   placeholder="Type name" value="${isCustom ? esc(init.practitioner_name) : ''}">
+            <input type="text" class="form-control form-control-sm section-room" style="max-width: 160px;"
+                   placeholder="Room (optional)" value="${esc(init.room)}">
+            <button type="button" class="btn btn-sm btn-outline-danger ms-auto" onclick="removeSection('${id}')">
+                <i class="bi bi-trash"></i> Remove
+            </button>
+        </div>
+        <div class="card-body">
+            <h6 class="text-muted">Turnover</h6>
+            <div class="row">${fieldCols(MONEY_FIELDS, init)}</div>
+            <div class="mb-3"><span class="badge bg-secondary">Net Turnover: <span class="net-turnover">R0.00</span></span></div>
+
+            <h6 class="text-muted">Cash Flow Deposits</h6>
+            <div class="row">${fieldCols(KAS_FIELDS, init)}</div>
+
+            <h6 class="text-muted mt-2">
+                <a class="text-decoration-none" data-bs-toggle="collapse" href="#corr_${id}">
+                    Corrections <i class="bi bi-chevron-down small"></i>
+                </a>
+            </h6>
+            <div class="collapse ${hasCorrections(init) ? 'show' : ''}" id="corr_${id}">
+                <div class="row">${fieldCols(CORRECTION_FIELDS, init)}</div>
+            </div>
+            <div class="mb-3"><span class="badge bg-dark">Total Cash Flow: <span class="cash-total">R0.00</span></span>
+                <small class="text-muted ms-2">KAS8 linking is not added to cash flow.</small></div>
+
+            <h6 class="text-muted">General Journal Adjustments</h6>
+            <table class="table table-sm table-bordered align-middle journals-table" style="max-width: 700px;">
+                <thead class="table-light">
+                    <tr><th>Description</th><th style="width: 180px;">Amount (negative reduces)</th><th style="width: 44px;"></th></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <button type="button" class="btn btn-outline-secondary btn-sm mb-3" onclick="addJournalRow('${id}')">
+                <i class="bi bi-plus-circle"></i> Add Journal Entry
+            </button>
+
+            <h6 class="text-muted">Movement Balance (GoodX control total)</h6>
+            <div class="row"><div class="col-md-4">${moneyInput('in-movement_balance', init.movement_balance)}</div></div>
+        </div>
+    `;
+    document.getElementById('practitionerSections').appendChild(card);
+
+    (init.journals || []).forEach(j => addJournalRow(id, j));
+    recalc();
+}
+
+function hasCorrections(init) {
+    return CORRECTION_FIELDS.some(([key]) => init[key]);
+}
+
+function nameChanged(select) {
+    const custom = select.closest('.card-header').querySelector('.section-custom');
+    custom.style.display = (select.value === 'custom') ? 'block' : 'none';
+}
+
+function removeSection(id) {
+    const el = document.getElementById(id);
+    if (el && confirm('Remove this practitioner section?')) { el.remove(); recalc(); }
+}
+
+function addJournalRow(sectionId, j = null) {
+    const tbody = document.querySelector(`#${sectionId} .journals-table tbody`);
+    const row = document.createElement('tr');
+    j = j || {};
+    row.innerHTML = `
+        <td><input type="text" class="form-control form-control-sm j-desc" value="${esc(j.description)}" placeholder="e.g. Journal Bad Debt"></td>
+        <td><input type="number" step="0.01" class="form-control form-control-sm text-end j-amount" value="${j.amount !== undefined && j.amount !== null && j.amount !== 0 ? j.amount : ''}"></td>
+        <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger border-0"
+            onclick="this.closest('tr').remove(); recalc();"><i class="bi bi-x-lg"></i></button></td>
+    `;
+    tbody.appendChild(row);
+}
+
+function num(el) { return parseFloat(el.value) || 0; }
+
+function recalc() {
+    document.querySelectorAll('.practitioner-section').forEach(section => {
+        const get = cls => num(section.querySelector('.' + cls));
+        const net = get('in-gross_turnover') + get('in-additional_turnover') - get('in-credit_notes');
+        const cash = get('in-kas1_cash') + get('in-kas3_eft') + get('in-kas6_era') + get('in-kas7_card')
+                   + get('in-kas1_corrections') + get('in-kas3_corrections')
+                   + get('in-kas6_corrections') + get('in-kas7_corrections');
+        section.querySelector('.net-turnover').textContent = money(net);
+        section.querySelector('.cash-total').textContent = money(cash);
+    });
+}
+
+function sectionName(section) {
+    const select = section.querySelector('.section-name');
+    if (select.value === 'custom') return section.querySelector('.section-custom').value.trim();
+    return select.value;
+}
+
+function serialize() {
+    const sections = [];
+    document.querySelectorAll('.practitioner-section').forEach(section => {
+        const name = sectionName(section);
+        if (!name) return;
+        const data = { practitioner_name: name, room: section.querySelector('.section-room').value };
+        [...MONEY_FIELDS, ...KAS_FIELDS, ...CORRECTION_FIELDS].forEach(([key]) => {
+            data[key] = section.querySelector('.in-' + key).value;
+        });
+        data.movement_balance = section.querySelector('.in-movement_balance').value;
+        data.journals = [];
+        section.querySelectorAll('.journals-table tbody tr').forEach(row => {
+            data.journals.push({
+                description: row.querySelector('.j-desc').value,
+                amount: row.querySelector('.j-amount').value,
+            });
+        });
+        sections.push(data);
+    });
+    document.getElementById('sectionsData').value = JSON.stringify(sections);
+}
+
+function reloadPeriod() {
+    const m = document.getElementById('periodMonth').value;
+    const y = document.getElementById('periodYear').value;
+    window.location = `{{ url_for('turnover.new') }}?month=${m}&year=${y}`;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (sectionsInit.length > 0) {
+        sectionsInit.forEach(s => addSection(s));
+    } else {
+        // Start with a section per practitioner
+        practitionerOptions.forEach(p => addSection({ practitioner_name: p.name }));
+        if (practitionerOptions.length === 0) addSection();
+    }
+
+    document.getElementById('turnoverForm').addEventListener('input', recalc);
+    document.getElementById('turnoverForm').addEventListener('submit', function(event) {
+        let hasNamed = false, missingName = false;
+        document.querySelectorAll('.practitioner-section').forEach(section => {
+            const name = sectionName(section);
+            const hasData = Array.from(section.querySelectorAll('input')).some(i => i.value.trim() !== '' && !i.classList.contains('section-room'));
+            if (name) hasNamed = true;
+            if (hasData && !name) missingName = true;
+        });
+        if (missingName) {
+            event.preventDefault();
+            alert('Please select or type the practitioner\'s name for every section that has figures.');
+            return;
+        }
+        if (!hasNamed) {
+            event.preventDefault();
+            alert('Add at least one practitioner section.');
+            return;
+        }
+        serialize();
+    });
+
+    recalc();
+});
+</script>
+{% endblock %}

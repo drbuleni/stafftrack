@@ -94,12 +94,18 @@
                 </a>
             </li>
 
-            {% if current_user.role in ['Receptionist', 'Practice Manager', 'Super Admin'] %}
+            {% if current_user.role in ['Receptionist', 'Billing', 'Practice Manager', 'Super Admin'] %}
             <li class="sidebar-nav-section">Finance</li>
             <li class="sidebar-nav-item">
                 <a href="{{ url_for('reconciliation.today') }}" class="sidebar-nav-link {{ 'active' if 'reconciliation' in request.endpoint else '' }}">
                     <i class="bi bi-clipboard-data"></i>
                     Daily Reconciliation
+                </a>
+            </li>
+            <li class="sidebar-nav-item">
+                <a href="{{ url_for('turnover.index') }}" class="sidebar-nav-link {{ 'active' if 'turnover' in request.endpoint else '' }}">
+                    <i class="bi bi-file-earmark-bar-graph"></i>
+                    Turnover Reports
                 </a>
             </li>
             {% endif %}

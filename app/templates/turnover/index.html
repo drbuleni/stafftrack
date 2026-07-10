@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Turnover Reports - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-file-earmark-bar-graph"></i> Turnover &amp; Cash Flow Reports</h1>
+    <a href="{{ url_for('turnover.new') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> New Report
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Monthly Reports</h5>
+    </div>
+    <div class="card-body p-0">
+        {% if reports %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Period</th>
+                        <th>Practitioners</th>
+                        <th>Prepared By</th>
+                        <th>Last Updated</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for report in reports %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('turnover.view', report_id=report.id) }}">
+                                <strong>{{ month_names[report.month] }} {{ report.year }}</strong>
+                            </a>
+                        </td>
+                        <td>{{ report.sections | map(attribute='practitioner_name') | join(', ') }}</td>
+                        <td>{{ report.preparer.full_name if report.preparer else '-' }}</td>
+                        <td>{{ report.updated_at.strftime('%d/%m/%Y %H:%M') if report.updated_at else '-' }}</td>
+                        <td>
+                            <a href="{{ url_for('turnover.view', report_id=report.id) }}" class="btn btn-sm btn-outline-primary" title="View">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{{ url_for('turnover.edit', report_id=report.id) }}" class="btn btn-sm btn-outline-secondary" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{{ url_for('turnover.pdf', report_id=report.id) }}" class="btn btn-sm btn-outline-success" title="Download PDF">
+                                <i class="bi bi-file-earmark-pdf"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-file-earmark-bar-graph display-4 text-muted"></i>
+            <p class="text-muted mt-3">No turnover reports yet.</p>
+            <a href="{{ url_for('turnover.new') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Create First Report
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

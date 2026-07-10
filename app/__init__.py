@@ -87,6 +87,9 @@ def create_app(config_class=Config):
     from app.routes.reconciliation import bp as reconciliation_bp
     app.register_blueprint(reconciliation_bp)
 
+    from app.routes.turnover import bp as turnover_bp
+    app.register_blueprint(turnover_bp)
+
     # Register CLI commands
     @app.cli.command('send-room-notifications')
     def send_room_notifications_command():

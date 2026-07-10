@@ -12,9 +12,25 @@ from app.utils.decorators import manager_required
 from app.utils.audit import log_audit
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
+from functools import wraps
 import json
 
 bp = Blueprint('reconciliation', __name__, url_prefix='/reconciliation')
+
+# Roles allowed to see practice financials (reconciliation, turnover reports).
+# Dentists, dental assistants and cleaners are deliberately excluded.
+FINANCE_ROLES = ['Receptionist', 'Billing', 'Practice Manager', 'Super Admin']
+
+
+def finance_access_required(f):
+    """Restrict a view to roles that may see practice financials."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or current_user.role not in FINANCE_ROLES:
+            flash('You do not have permission to view this page.', 'danger')
+            return redirect(url_for('dashboard.index'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 # Retail items sold at the practice
 RETAIL_ITEMS = [
@@ -200,6 +216,7 @@ def _sheet_display_data(rec):
 
 @bp.route('/')
 @login_required
+@finance_access_required
 def index():
     """View reconciliation history."""
     # Get filter parameters
@@ -252,10 +269,11 @@ def index():
 @bp.route('/new', methods=['GET', 'POST'])
 @bp.route('/new/<selected_date>', methods=['GET', 'POST'])
 @login_required
+@finance_access_required
 def new(selected_date=None):
     """Create a new daily reconciliation sheet."""
     # Only receptionist, practice manager, or super admin can create
-    if current_user.role not in ['Receptionist', 'Practice Manager', 'Super Admin']:
+    if current_user.role not in ['Receptionist', 'Billing', 'Practice Manager', 'Super Admin']:
         flash('You do not have permission to create reconciliation sheets.', 'danger')
         return redirect(url_for('reconciliation.index'))
 
@@ -322,12 +340,13 @@ def new(selected_date=None):
 
 @bp.route('/edit/<int:rec_id>', methods=['GET', 'POST'])
 @login_required
+@finance_access_required
 def edit(rec_id):
     """Edit an existing reconciliation sheet."""
     rec = DailyReconciliation.query.get_or_404(rec_id)
 
     # Check permissions
-    if current_user.role not in ['Receptionist', 'Practice Manager', 'Super Admin']:
+    if current_user.role not in ['Receptionist', 'Billing', 'Practice Manager', 'Super Admin']:
         flash('You do not have permission to edit reconciliation sheets.', 'danger')
         return redirect(url_for('reconciliation.index'))
 
@@ -414,6 +433,7 @@ def edit(rec_id):
 
 @bp.route('/view/<int:rec_id>')
 @login_required
+@finance_access_required
 def view(rec_id):
     """View a reconciliation sheet."""
     rec = DailyReconciliation.query.get_or_404(rec_id)
@@ -467,6 +487,7 @@ def delete(rec_id):
 
 @bp.route('/today')
 @login_required
+@finance_access_required
 def today():
     """Redirect to today's reconciliation (create or edit)."""
     today_date = date.today()
@@ -480,6 +501,7 @@ def today():
 
 @bp.route('/analytics')
 @login_required
+@finance_access_required
 def analytics():
     """View analytics and statistics for reconciliation data."""
     import calendar

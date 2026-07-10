@@ -23,6 +23,7 @@ STAFF_ROLES = [
     ('Receptionist', 'Receptionist'),
     ('Dentist', 'Dentist'),
     ('Dental Assistant', 'Dental Assistant'),
+    ('Billing', 'Billing'),
     ('Cleaner', 'Cleaner'),
 ]
 
