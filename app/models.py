@@ -453,6 +453,8 @@ class ReconciliationBillingEntry(db.Model):
     amount_billed = db.Column(db.Numeric(10, 2), default=0)
     card_paid = db.Column(db.Numeric(10, 2), default=0)   # Card Payment KAS7
     eft_paid = db.Column(db.Numeric(10, 2), default=0)    # EFT Payment KAS3
+    credit_note = db.Column(db.Numeric(10, 2), default=0)  # reduces the billed amount
+    credit_note_reason = db.Column(db.String(50))  # e.g. Wrong patient
     receipt_no = db.Column(db.String(50))
     sort_order = db.Column(db.Integer, default=0)
 

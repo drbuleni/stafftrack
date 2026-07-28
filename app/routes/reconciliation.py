@@ -46,6 +46,14 @@ RETAIL_ITEMS = [
 
 DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
+# Reasons a credit note can be issued (per Sinah / GoodX workflow)
+CREDIT_NOTE_REASONS = [
+    'Wrong patient',
+    'Incorrect dependent code',
+    'Wrong date of service',
+    'Corrections',
+]
+
 
 def get_dentists():
     """Get all users who can be dentists on duty (Dentist, Practice Manager, Super Admin).
@@ -119,10 +127,14 @@ def _apply_sheet_data(rec):
             amount_billed = _parse_money(entry.get('amount_billed'))
             card_paid = _parse_money(entry.get('card_paid'))
             eft_paid = _parse_money(entry.get('eft_paid'))
+            credit_note = _parse_money(entry.get('credit_note'))
+            credit_note_reason = (entry.get('credit_note_reason') or '').strip()
+            if not credit_note:
+                credit_note_reason = ''
 
             # Skip completely empty rows
             if not any([computer_no, file_no, patient_name, medical_aid, receipt_no,
-                        amount_billed, card_paid, eft_paid]):
+                        amount_billed, card_paid, eft_paid, credit_note]):
                 continue
 
             rec.billing_entries.append(ReconciliationBillingEntry(
@@ -135,6 +147,8 @@ def _apply_sheet_data(rec):
                 amount_billed=amount_billed,
                 card_paid=card_paid,
                 eft_paid=eft_paid,
+                credit_note=credit_note,
+                credit_note_reason=credit_note_reason,
                 receipt_no=receipt_no,
                 sort_order=order
             ))
@@ -195,6 +209,7 @@ def _sheet_display_data(rec):
                 'total_billed': Decimal('0'),
                 'total_card': Decimal('0'),
                 'total_eft': Decimal('0'),
+                'total_credit': Decimal('0'),
             }
             providers.append(by_provider[entry.provider_name])
         group = by_provider[entry.provider_name]
@@ -202,6 +217,7 @@ def _sheet_display_data(rec):
         group['total_billed'] += entry.amount_billed or 0
         group['total_card'] += entry.card_paid or 0
         group['total_eft'] += entry.eft_paid or 0
+        group['total_credit'] += entry.credit_note or 0
 
     era_total = sum((p.amount_paid or 0 for p in rec.era_payments), Decimal('0'))
 
@@ -211,6 +227,7 @@ def _sheet_display_data(rec):
         'total_billed': sum((p['total_billed'] for p in providers), Decimal('0')),
         'total_card': sum((p['total_card'] for p in providers), Decimal('0')),
         'total_eft': sum((p['total_eft'] for p in providers), Decimal('0')),
+        'total_credit': sum((p['total_credit'] for p in providers), Decimal('0')),
     }
 
 
@@ -335,6 +352,7 @@ def new(selected_date=None):
                           days_of_week=DAYS_OF_WEEK,
                           billing_init=[],
                           era_init=[],
+                          credit_note_reasons=CREDIT_NOTE_REASONS,
                           is_edit=False)
 
 
@@ -410,6 +428,8 @@ def edit(rec_id):
             'amount_billed': float(e.amount_billed or 0),
             'card_paid': float(e.card_paid or 0),
             'eft_paid': float(e.eft_paid or 0),
+            'credit_note': float(e.credit_note or 0),
+            'credit_note_reason': e.credit_note_reason or '',
             'receipt_no': e.receipt_no or '',
         } for e in group['entries']]
     } for group in display['providers']]
@@ -428,6 +448,7 @@ def edit(rec_id):
                           days_of_week=DAYS_OF_WEEK,
                           billing_init=billing_init,
                           era_init=era_init,
+                          credit_note_reasons=CREDIT_NOTE_REASONS,
                           is_edit=True)
 
 

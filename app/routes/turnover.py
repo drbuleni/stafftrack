@@ -109,6 +109,7 @@ def _stafftrack_reference(month, year):
         func.coalesce(func.sum(ReconciliationBillingEntry.amount_billed), 0),
         func.coalesce(func.sum(ReconciliationBillingEntry.card_paid), 0),
         func.coalesce(func.sum(ReconciliationBillingEntry.eft_paid), 0),
+        func.coalesce(func.sum(ReconciliationBillingEntry.credit_note), 0),
     ).join(
         DailyReconciliation,
         ReconciliationBillingEntry.reconciliation_id == DailyReconciliation.id
@@ -134,7 +135,8 @@ def _stafftrack_reference(month, year):
             'billed': float(billed),
             'card': float(card),
             'eft': float(eft),
-        } for name, billed, card, eft in rows],
+            'credit_notes': float(credit),
+        } for name, billed, card, eft, credit in rows],
         'era_total': float(era_total or 0),
     }
 
@@ -184,12 +186,25 @@ def new():
         flash(f'Turnover report for {calendar.month_name[month]} {year} saved!', 'success')
         return redirect(url_for('turnover.view', report_id=report.id))
 
+    # Prefill each practitioner's section from the daily sheets (billed, KAS7
+    # card, KAS3 EFT, credit notes). KAS6 ERA stays manual: medical aids pay
+    # the practice number, so StaffTrack cannot split ERA per practitioner.
+    reference = _stafftrack_reference(month, year)
+    sections_init = [{
+        'practitioner_name': p['name'],
+        'gross_turnover': p['billed'] or '',
+        'kas7_card': p['card'] or '',
+        'kas3_eft': p['eft'] or '',
+        'credit_notes': p['credit_notes'] or '',
+        'journals': [],
+    } for p in reference['practitioners']]
+
     return render_template('turnover/form.html',
                           report=None,
                           month=month,
                           year=year,
-                          sections_init=[],
-                          reference=_stafftrack_reference(month, year),
+                          sections_init=sections_init,
+                          reference=reference,
                           dentists=get_dentists(),
                           month_names=calendar.month_name,
                           is_edit=False)
