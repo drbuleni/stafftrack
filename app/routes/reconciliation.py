@@ -98,7 +98,15 @@ def _apply_sheet_data(rec):
     except ValueError:
         era_data = []
 
-    # Replace all existing line items
+    # Replace all existing line items. Old rows are removed with single bulk
+    # DELETE statements on purpose: per-row ORM deletes go through psycopg's
+    # executemany, whose prepared statements collide on Supabase's transaction
+    # pooler ("prepared statement _pg3_1 already exists").
+    if rec.id:
+        ReconciliationBillingEntry.query.filter_by(reconciliation_id=rec.id).delete(synchronize_session=False)
+        ReconciliationEraPayment.query.filter_by(reconciliation_id=rec.id).delete(synchronize_session=False)
+        db.session.expire(rec, ['billing_entries', 'era_payments'])
+
     rec.billing_entries = []
     rec.era_payments = []
 
@@ -498,6 +506,12 @@ def delete(rec_id):
     log_audit('Deleted Daily Reconciliation', 'DailyReconciliation', rec.id, {
         'date': rec.date.isoformat()
     })
+
+    # Bulk-delete child rows first to avoid executemany prepared-statement
+    # collisions on the connection pooler (see _apply_sheet_data)
+    ReconciliationBillingEntry.query.filter_by(reconciliation_id=rec.id).delete(synchronize_session=False)
+    ReconciliationEraPayment.query.filter_by(reconciliation_id=rec.id).delete(synchronize_session=False)
+    db.session.expire(rec, ['billing_entries', 'era_payments'])
 
     db.session.delete(rec)
     db.session.commit()

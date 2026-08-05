@@ -37,6 +37,13 @@ def _apply_report_data(report):
     except ValueError:
         sections_data = []
 
+    # Bulk-delete old sections in one statement: per-row ORM deletes use
+    # psycopg executemany, whose prepared statements collide on Supabase's
+    # transaction pooler ("prepared statement _pg3_1 already exists").
+    if report.id:
+        TurnoverReportSection.query.filter_by(report_id=report.id).delete(synchronize_session=False)
+        db.session.expire(report, ['sections'])
+
     report.sections = []
 
     order = 0
@@ -291,6 +298,9 @@ def delete(report_id):
     period = f'{calendar.month_name[report.month]} {report.year}'
 
     log_audit('Deleted Turnover Report', 'TurnoverReport', report.id, {'period': period})
+    # Bulk-delete child rows first (see _apply_report_data)
+    TurnoverReportSection.query.filter_by(report_id=report.id).delete(synchronize_session=False)
+    db.session.expire(report, ['sections'])
     db.session.delete(report)
     db.session.commit()
 
