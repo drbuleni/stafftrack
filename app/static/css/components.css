@@ -1,0 +1,457 @@
+/* ============================================================
+   StaffTrack Component Layer
+   Cards, buttons, tables, forms, badges, alerts, modals — plus
+   the Bootstrap utility overrides that let existing templates
+   inherit the new palette without being edited.
+   Reads tokens.css. Loads after base.css.
+   ============================================================ */
+
+/* ============================================
+   Cards
+   ============================================ */
+.card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--r-panel);
+    box-shadow: none;
+    overflow: hidden;
+    transition: border-color var(--ease);
+}
+.card:hover { box-shadow: none; }
+
+/* Coloured card headers are retired by design. A hairline and a
+   heavier label do the same job without the noise — and this is
+   what makes dark-on-dark header text structurally impossible. */
+.card-header {
+    background: transparent;
+    border-bottom: 1px solid var(--line);
+    color: var(--ink);
+    font-weight: 650;
+    padding: 0.9rem 1.15rem;
+}
+.card-header h1, .card-header h2, .card-header h3,
+.card-header h4, .card-header h5, .card-header h6 {
+    color: var(--ink);
+    margin: 0;
+    font-size: var(--t-base);
+}
+
+/* Templates still carrying .bg-primary / .bg-success / inline
+   background on a header render as the neutral header instead.
+   !important is required to beat Bootstrap's own utility. */
+.card-header[class*="bg-"],
+.card-header[style*="background"] {
+    background: transparent !important;
+    background-color: transparent !important;
+    color: var(--ink) !important;
+}
+.card-header[class*="bg-"] :is(h1, h2, h3, h4, h5, h6),
+.card-header[style*="background"] :is(h1, h2, h3, h4, h5, h6),
+.card-header[class*="bg-"] i,
+.card-header[style*="background"] i {
+    color: var(--ink) !important;
+}
+
+.card-body { padding: 1.15rem; }
+.card-body > :last-child { margin-bottom: 0; }
+
+.card-footer {
+    background: var(--panel-alt);
+    border-top: 1px solid var(--line);
+    padding: 0.85rem 1.15rem;
+}
+
+/* Coloured card bodies (stat tiles) keep readable text */
+.card[class*="bg-"]:not(.bg-white) .card-body,
+.card[class*="bg-"]:not(.bg-white) .card-body :is(h1,h2,h3,h4,h5,h6) {
+    color: var(--on-accent);
+}
+
+/* ============================================
+   Buttons
+   ============================================ */
+.btn {
+    border-radius: var(--r-control);
+    font-weight: 600;
+    font-size: var(--t-cap);
+    padding: 0.5rem 0.95rem;
+    border: 1px solid transparent;
+    box-shadow: none !important;   /* Bootstrap adds one on focus */
+    transition: background var(--ease), color var(--ease), border-color var(--ease);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+.btn-lg { font-size: var(--t-base); padding: 0.65rem 1.2rem; }
+.btn-sm { font-size: var(--t-sm); padding: 0.35rem 0.65rem; }
+
+.btn-primary,
+.btn-success {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
+}
+.btn-primary:hover, .btn-primary:focus, .btn-primary:active,
+.btn-success:hover, .btn-success:focus, .btn-success:active {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+    color: var(--on-accent);
+}
+
+.btn-secondary {
+    background: var(--panel);
+    border-color: var(--line);
+    color: var(--body);
+}
+.btn-secondary:hover { background: var(--ground); color: var(--ink); border-color: var(--line); }
+
+.btn-danger { background: var(--danger); border-color: var(--danger); color: var(--on-accent); }
+.btn-danger:hover, .btn-danger:focus { background: #862A2A; border-color: #862A2A; color: var(--on-accent); }
+
+.btn-outline-primary, .btn-outline-secondary, .btn-outline-success,
+.btn-outline-info, .btn-outline-dark {
+    background: var(--panel);
+    border-color: var(--line);
+    color: var(--body);
+}
+.btn-outline-primary:hover, .btn-outline-secondary:hover, .btn-outline-success:hover,
+.btn-outline-info:hover, .btn-outline-dark:hover {
+    background: var(--accent-wash);
+    border-color: var(--accent-line);
+    color: var(--accent);
+}
+
+.btn-outline-danger { background: var(--panel); border-color: var(--line); color: var(--danger); }
+.btn-outline-danger:hover { background: var(--danger-wash); border-color: var(--danger); color: var(--danger); }
+
+.btn-link { color: var(--accent); text-decoration: none; }
+.btn-link:hover { color: var(--accent-hover); text-decoration: underline; }
+
+/* ============================================
+   Tables
+   ============================================ */
+.table {
+    margin: 0;
+    color: var(--body);
+    border-color: var(--line);
+    --bs-table-bg: transparent;
+}
+
+.table > thead > tr > th {
+    background: var(--panel-alt);
+    color: var(--muted);
+    font-size: var(--t-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: var(--track-label);
+    padding: 0.7rem 0.9rem;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.table > tbody > tr > td {
+    padding: 0.7rem 0.9rem;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--line-soft);
+    /* Never set a blanket colour here: variant rows (.table-dark,
+       .table-success ...) must keep their own. This is the fix for
+       the unreadable NET COLLECTIONS row. */
+    color: inherit;
+}
+
+.table > tbody > tr:last-child > td { border-bottom: 0; }
+.table > tbody > tr { color: var(--body); }
+.table-hover > tbody > tr:hover { background: var(--accent-wash); color: var(--body); }
+
+.table > tfoot > tr > td,
+.table > tfoot > tr > th {
+    background: var(--panel-alt);
+    border-top: 1px solid var(--line);
+    font-weight: 700;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+    padding: 0.7rem 0.9rem;
+}
+
+/* Totals rows marked with .fw-bold in existing templates */
+.table tbody tr.fw-bold > td,
+.table tr.table-light.fw-bold > td {
+    background: var(--panel-alt);
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+}
+
+.table-bordered, .table-bordered > :not(caption) > * > * { border-color: var(--line); }
+.table-sm > :not(caption) > * > * { padding: 0.45rem 0.7rem; }
+
+/* Bootstrap contextual row variants, remapped to semantic washes */
+.table > tbody > tr.table-success { background: var(--success-wash); color: var(--ink); }
+.table > tbody > tr.table-warning { background: var(--warning-wash); color: var(--ink); }
+.table > tbody > tr.table-danger  { background: var(--danger-wash);  color: var(--ink); }
+.table > tbody > tr.table-info    { background: var(--info-wash);    color: var(--ink); }
+.table > tbody > tr.table-light,
+.table > tfoot > tr.table-light   { background: var(--panel-alt);    color: var(--ink); }
+.table > tbody > tr.table-dark,
+.table > tfoot > tr.table-dark    { background: var(--ink);          color: var(--panel); }
+.table > tbody > tr.table-dark > td,
+.table > tfoot > tr.table-dark > td { color: var(--panel); }
+
+.table-responsive { border-radius: var(--r-panel); }
+
+/* ============================================
+   Badges — semantic state only
+   ============================================ */
+.badge {
+    font-weight: 600;
+    font-size: var(--t-xs);
+    letter-spacing: 0.03em;
+    padding: 0.3rem 0.6rem;
+    border-radius: var(--r-pill);
+    line-height: 1.35;
+}
+.badge.bg-primary   { background: var(--accent-wash) !important;  color: var(--accent) !important; }
+.badge.bg-success   { background: var(--success-wash) !important; color: var(--success) !important; }
+.badge.bg-warning   { background: var(--warning-wash) !important; color: var(--warning) !important; }
+.badge.bg-danger    { background: var(--danger-wash) !important;  color: var(--danger) !important; }
+.badge.bg-info      { background: var(--info-wash) !important;    color: var(--info) !important; }
+.badge.bg-secondary { background: var(--ground) !important;       color: var(--muted) !important; }
+.badge.bg-dark      { background: var(--ink) !important;          color: var(--panel) !important; }
+.badge.text-dark    { color: var(--warning) !important; }
+
+/* ============================================
+   Alerts
+   ============================================ */
+.alert {
+    border-radius: var(--r-panel);
+    border: 1px solid transparent;
+    padding: 0.85rem 1.05rem;
+    font-size: var(--t-cap);
+}
+.alert-success   { background: var(--success-wash); border-color: var(--success); color: var(--success); }
+.alert-warning   { background: var(--warning-wash); border-color: var(--warning); color: var(--warning); }
+.alert-danger    { background: var(--danger-wash);  border-color: var(--danger);  color: var(--danger); }
+.alert-info      { background: var(--info-wash);    border-color: var(--info);    color: var(--info); }
+.alert-secondary,
+.alert-light     { background: var(--panel-alt);    border-color: var(--line);    color: var(--body); }
+.alert-dark      { background: var(--ink);          border-color: var(--ink);     color: var(--panel); }
+.alert :is(h1,h2,h3,h4,h5,h6), .alert strong { color: inherit; }
+
+/* ============================================
+   Forms
+   ============================================ */
+.form-label {
+    font-size: var(--t-sm);
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 0.3rem;
+}
+
+.form-control, .form-select {
+    border: 1px solid var(--line);
+    border-radius: var(--r-control);
+    padding: 0.5rem 0.7rem;
+    font-size: var(--t-cap);
+    color: var(--ink);
+    background-color: var(--panel);
+    transition: border-color var(--ease), box-shadow var(--ease);
+}
+.form-control::placeholder { color: var(--muted); opacity: 1; }
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-wash);
+    outline: none;
+}
+.form-control:disabled, .form-control[readonly],
+.form-select:disabled { background-color: var(--panel-alt); color: var(--muted); }
+
+.form-control-lg { font-size: var(--t-base); padding: 0.7rem 0.9rem; }
+.form-control-sm, .form-select-sm { font-size: var(--t-sm); padding: 0.35rem 0.5rem; }
+
+.input-group-text {
+    background: var(--panel-alt);
+    border: 1px solid var(--line);
+    border-radius: var(--r-control);
+    color: var(--muted);
+    font-size: var(--t-cap);
+}
+
+.form-check-input { border-color: var(--line); }
+.form-check-input:checked { background-color: var(--accent); border-color: var(--accent); }
+.form-check-input:focus { box-shadow: 0 0 0 3px var(--accent-wash); border-color: var(--accent); }
+
+textarea.form-control { min-height: 90px; line-height: 1.55; }
+
+/* ============================================
+   Modals, dropdowns — the only shadows in the app
+   ============================================ */
+.modal-content {
+    border: 1px solid var(--line);
+    border-radius: var(--r-panel);
+    box-shadow: var(--shadow-pop);
+    background: var(--panel);
+}
+.modal-header, .modal-footer { border-color: var(--line); padding: 1rem 1.15rem; }
+.modal-header { color: var(--ink); }
+.modal-title { color: var(--ink); font-size: var(--t-lg); }
+.modal-body { padding: 1.15rem; }
+
+.dropdown-menu {
+    border: 1px solid var(--line);
+    border-radius: var(--r-panel);
+    box-shadow: var(--shadow-pop);
+    padding: 0.35rem;
+    background: var(--panel);
+}
+.dropdown-item { border-radius: var(--r-control); font-size: var(--t-cap); color: var(--body); padding: 0.45rem 0.6rem; }
+.dropdown-item:hover, .dropdown-item:focus { background: var(--accent-wash); color: var(--accent); }
+
+/* ============================================
+   Tabs, pagination, progress
+   ============================================ */
+.nav-tabs { border-bottom: 1px solid var(--line); gap: 0.15rem; }
+.nav-tabs .nav-link {
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    color: var(--muted);
+    font-weight: 600;
+    font-size: var(--t-cap);
+    padding: 0.6rem 0.9rem;
+}
+.nav-tabs .nav-link:hover { color: var(--ink); border-bottom-color: var(--line); }
+.nav-tabs .nav-link.active { color: var(--accent); border-bottom-color: var(--accent); background: transparent; }
+
+.page-link { color: var(--body); border-color: var(--line); font-size: var(--t-cap); }
+.page-link:hover { background: var(--accent-wash); color: var(--accent); border-color: var(--accent-line); }
+.page-item.active .page-link { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+
+.progress { background: var(--ground); border-radius: var(--r-pill); height: 8px; }
+.progress-bar { background: var(--accent); }
+.progress-bar.bg-success { background: var(--success) !important; }
+.progress-bar.bg-warning { background: var(--warning) !important; }
+.progress-bar.bg-danger  { background: var(--danger) !important; }
+
+/* ============================================
+   Bootstrap utility remap
+   Existing templates use these on non-header elements
+   (stat tiles, banners). Point them at our tokens so the
+   palette is consistent without editing 60+ templates.
+   ============================================ */
+.bg-primary   { background-color: var(--accent) !important; }
+.bg-success   { background-color: var(--success) !important; }
+.bg-warning   { background-color: var(--warning) !important; }
+.bg-danger    { background-color: var(--danger) !important; }
+.bg-info      { background-color: var(--info) !important; }
+.bg-secondary { background-color: var(--muted) !important; }
+.bg-dark      { background-color: var(--ink) !important; }
+.bg-light     { background-color: var(--panel-alt) !important; }
+.bg-white     { background-color: var(--panel) !important; }
+
+.text-primary   { color: var(--accent) !important; }
+.text-success   { color: var(--success) !important; }
+.text-warning   { color: var(--warning) !important; }
+.text-danger    { color: var(--danger) !important; }
+.text-info      { color: var(--info) !important; }
+.text-secondary { color: var(--muted) !important; }
+.text-dark      { color: var(--ink) !important; }
+
+.border-primary   { border-color: var(--accent) !important; }
+.border-success   { border-color: var(--success) !important; }
+.border-warning   { border-color: var(--warning) !important; }
+.border-danger    { border-color: var(--danger) !important; }
+.border-info      { border-color: var(--info) !important; }
+.border-secondary { border-color: var(--line) !important; }
+
+/* Any element with a solid semantic background gets readable text */
+.bg-primary, .bg-success, .bg-danger, .bg-info, .bg-dark, .bg-secondary,
+.bg-primary :is(h1,h2,h3,h4,h5,h6), .bg-success :is(h1,h2,h3,h4,h5,h6),
+.bg-danger :is(h1,h2,h3,h4,h5,h6), .bg-info :is(h1,h2,h3,h4,h5,h6),
+.bg-dark :is(h1,h2,h3,h4,h5,h6), .bg-secondary :is(h1,h2,h3,h4,h5,h6) {
+    color: var(--on-accent);
+}
+/* ...except badges and card headers, handled above */
+.badge.bg-primary, .badge.bg-success, .badge.bg-danger,
+.badge.bg-info, .badge.bg-secondary { color: inherit; }
+
+/* Display numerals (dashboard counters) */
+.display-1, .display-2, .display-3, .display-4, .display-5, .display-6 {
+    font-weight: 700;
+    letter-spacing: var(--track-tight);
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+}
+
+/* Bootstrap Icons sit slightly high next to text */
+.bi { vertical-align: -0.115em; }
+
+/* ============================================
+   Empty states — what a prospect sees in a demo
+   before any data exists, so they matter
+   ============================================ */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    color: var(--muted);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.empty-state-icon {
+    font-size: 2rem;
+    color: var(--muted);
+    opacity: 0.55;
+    margin-bottom: 0.35rem;
+}
+
+.empty-state-title {
+    font-size: var(--t-base);
+    font-weight: 650;
+    color: var(--ink);
+}
+
+.empty-state-text {
+    font-size: var(--t-cap);
+    color: var(--muted);
+    max-width: 44ch;
+    margin: 0;
+}
+
+/* ============================================
+   Timeline (performance, warnings history)
+   ============================================ */
+.timeline {
+    position: relative;
+    padding-left: 1.5rem;
+    margin: 0;
+    list-style: none;
+}
+.timeline::before {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 0.35rem;
+    bottom: 0.35rem;
+    width: 1px;
+    background: var(--line);
+}
+
+.timeline-item {
+    position: relative;
+    padding: 0 0 1.25rem 0;
+}
+.timeline-item::before {
+    content: "";
+    position: absolute;
+    left: -1.5rem;
+    top: 0.45rem;
+    width: 11px;
+    height: 11px;
+    border-radius: var(--r-pill);
+    background: var(--panel);
+    border: 2px solid var(--accent);
+}
+.timeline-item:last-child { padding-bottom: 0; }

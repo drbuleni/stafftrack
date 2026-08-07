@@ -1,0 +1,269 @@
+/* ============================================================
+   StaffTrack Page Layer
+   Screen-specific styling: login, dashboard tiles, and the
+   money tables on reconciliation and turnover reports.
+   Reads tokens.css. Loads last.
+   ============================================================ */
+
+/* ============================================
+   Login — the first thing a prospect sees
+   ============================================ */
+.login-shell {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    background: var(--panel);
+}
+
+/* Left: the pitch */
+.login-pitch {
+    background: var(--accent);
+    color: var(--on-accent);
+    padding: 3.5rem 3rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 3rem;
+    position: relative;
+    overflow: hidden;
+}
+
+/* A single quiet geometric wash — no gradient, no noise */
+.login-pitch::after {
+    content: "";
+    position: absolute;
+    right: -140px;
+    bottom: -160px;
+    width: 420px;
+    height: 420px;
+    border-radius: 50%;
+    background: rgb(255 255 255 / 0.05);
+    pointer-events: none;
+}
+
+.login-pitch > * { position: relative; z-index: 1; }
+
+.login-wordmark {
+    font-size: var(--t-xl);
+    font-weight: 700;
+    letter-spacing: var(--track-tight);
+    color: var(--on-accent);
+}
+.login-wordmark span { opacity: 0.72; }
+
+.login-lede {
+    font-size: 27px;
+    line-height: 1.3;
+    font-weight: 650;
+    letter-spacing: var(--track-tight);
+    color: var(--on-accent);
+    max-width: 17ch;
+    text-wrap: balance;
+    margin: 0;
+}
+
+.login-points {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+.login-points li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    font-size: var(--t-cap);
+    color: rgb(255 255 255 / 0.88);
+    line-height: 1.5;
+}
+.login-points i {
+    flex: none;
+    margin-top: 0.15rem;
+    font-size: 1rem;
+    color: rgb(255 255 255 / 0.75);
+}
+
+.login-foot {
+    font-size: var(--t-sm);
+    color: rgb(255 255 255 / 0.7);
+}
+
+/* Right: the form */
+.login-panel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 2rem;
+    background: var(--panel);
+}
+
+.login-card {
+    width: 100%;
+    max-width: 370px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.login-heading h1 {
+    font-size: var(--t-xl);
+    color: var(--ink);
+    font-weight: 700;
+    margin: 0 0 0.3rem;
+}
+.login-heading p {
+    color: var(--muted);
+    font-size: var(--t-cap);
+    margin: 0;
+}
+
+.login-card .form-control {
+    padding: 0.65rem 0.8rem;
+    font-size: var(--t-base);
+}
+
+.login-card .btn {
+    justify-content: center;
+    padding: 0.7rem 1rem;
+    font-size: var(--t-base);
+}
+
+.login-legal {
+    font-size: var(--t-sm);
+    color: var(--muted);
+    text-align: center;
+}
+
+@media (max-width: 900px) {
+    .login-shell { grid-template-columns: 1fr; }
+    .login-pitch {
+        padding: 2.25rem 1.5rem;
+        gap: 1.75rem;
+    }
+    .login-pitch::after { display: none; }
+    .login-lede { font-size: 22px; max-width: 26ch; }
+    .login-points { flex-direction: row; flex-wrap: wrap; gap: 0.5rem 1.5rem; }
+    .login-points li { font-size: var(--t-sm); }
+    .login-panel { padding: 2rem 1.25rem 3rem; }
+}
+
+@media (max-width: 575.98px) {
+    .login-points { display: none; }
+}
+
+/* ============================================
+   Dashboard stat tiles
+   ============================================ */
+.stat-card { position: relative; overflow: hidden; }
+
+/* The old accent bar across the top of every tile was decoration.
+   Keep the tile plain; the figure carries the weight. */
+.stat-card::before { content: none; }
+
+.stat-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--r-control);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    flex: none;
+}
+.stat-icon.primary { background: var(--accent-wash);  color: var(--accent); }
+.stat-icon.success { background: var(--success-wash); color: var(--success); }
+.stat-icon.warning { background: var(--warning-wash); color: var(--warning); }
+.stat-icon.danger  { background: var(--danger-wash);  color: var(--danger); }
+.stat-icon.info    { background: var(--info-wash);    color: var(--info); }
+
+.stat-value {
+    font-size: var(--t-2xl);
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: var(--track-tight);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+}
+
+.stat-label {
+    font-size: var(--t-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: var(--track-label);
+    color: var(--muted);
+}
+
+/* ============================================
+   Money screens — reconciliation & turnover
+   ============================================ */
+
+/* The per-doctor banner on a billing sheet. Replaces the cyan
+   block with a rule and a strong name. */
+.mk-doctor,
+.sheet-provider {
+    padding: 0.7rem 0.9rem;
+    font-weight: 650;
+    font-size: var(--t-cap);
+    color: var(--accent);
+    background: transparent;
+    border-bottom: 1px solid var(--accent-line);
+}
+
+/* Every figure on a money screen lines up */
+.billing-table td, .billing-table th,
+#eraTable td, #eraTable th {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Dense capture grids: borderless inputs so the table reads as
+   a sheet rather than a wall of boxes */
+.billing-table input.form-control,
+.billing-table select.form-select,
+#eraTable input.form-control {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    min-width: 90px;
+    font-size: var(--t-cap);
+    padding: 0.45rem 0.55rem;
+}
+.billing-table input.form-control:focus,
+.billing-table select.form-select:focus,
+#eraTable input.form-control:focus {
+    background: var(--accent-wash);
+    box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.billing-table td, #eraTable td { padding: 0; }
+.billing-table td.cell-action, #eraTable td.cell-action {
+    padding: 0.25rem;
+    text-align: center;
+}
+.billing-table tfoot td, #eraTable tfoot td { padding: 0.55rem 0.7rem; }
+
+/* Summary panels: label left, figure right, hairline between */
+.summary-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--line-soft);
+}
+.summary-row:last-child { border-bottom: 0; }
+.summary-row .label { color: var(--body); font-size: var(--t-cap); }
+.summary-row .value {
+    color: var(--ink);
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+}
+.summary-row.total {
+    border-top: 1px solid var(--line);
+    border-bottom: 0;
+    margin-top: 0.25rem;
+    padding-top: 0.7rem;
+}
+.summary-row.total .label,
+.summary-row.total .value { font-weight: 700; color: var(--ink); }
