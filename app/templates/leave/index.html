@@ -79,7 +79,7 @@
                     {% for leave in pending %}
                     <tr>
                         <td>{{ leave.staff.full_name }}</td>
-                        <td><span class="badge bg-info">{{ leave.leave_type }}</span></td>
+                        <td><span class="badge bg-info">{{ leave.leave_type }}</span>{% if leave.documents %} <i class="bi bi-paperclip text-muted" title="Doctor's note attached"></i>{% endif %}</td>
                         <td>{{ leave.start_date.strftime('%d/%m') }} - {{ leave.end_date.strftime('%d/%m/%Y') }}</td>
                         <td>{{ leave.reason or '-' }}</td>
                         <td>{{ leave.created_at.strftime('%d/%m/%Y') }}</td>
@@ -124,7 +124,7 @@
                     {% for leave in processed %}
                     <tr>
                         <td>{{ leave.staff.full_name }}</td>
-                        <td><span class="badge bg-info">{{ leave.leave_type }}</span></td>
+                        <td><span class="badge bg-info">{{ leave.leave_type }}</span>{% if leave.documents %} <i class="bi bi-paperclip text-muted" title="Doctor's note attached"></i>{% endif %}</td>
                         <td>{{ leave.start_date.strftime('%d/%m') }} - {{ leave.end_date.strftime('%d/%m/%Y') }}</td>
                         <td>
                             <span class="badge bg-{{ 'success' if leave.status == 'Approved' else 'danger' }}">

@@ -90,6 +90,13 @@ def create_app(config_class=Config):
     from app.routes.turnover import bp as turnover_bp
     app.register_blueprint(turnover_bp)
 
+    # A file bigger than MAX_CONTENT_LENGTH is refused by Werkzeug before any
+    # view runs. Show a readable message instead of the default 413 page.
+    @app.errorhandler(413)
+    def file_too_large(error):
+        from flask import flash, redirect, request as flask_request, url_for
+        flash('That file is too large to upload. Please keep files under 5MB.', 'danger')
+        return redirect(flask_request.referrer or url_for('dashboard.index')), 302
     # Register CLI commands
     @app.cli.command('send-room-notifications')
     def send_room_notifications_command():

@@ -10,7 +10,7 @@
                 <h4 class="mb-0"><i class="bi bi-calendar-plus"></i> Request Leave</h4>
             </div>
             <div class="card-body">
-                <form method="POST">
+                <form method="POST" enctype="multipart/form-data">
                     {{ form.hidden_tag() }}
 
                     <div class="mb-3">
@@ -43,11 +43,41 @@
                         {{ form.reason(class="form-control", rows="3", placeholder="Please provide a reason for your leave request") }}
                     </div>
 
+                    <!-- Doctor's note: sick leave only, always optional -->
+                    <div class="mb-3" id="sickNoteField" style="display: none;">
+                        <label for="sick_note" class="form-label">Doctor's note <span class="text-muted">(optional)</span></label>
+                        <input type="file" name="sick_note" id="sick_note" class="form-control"
+                               accept=".pdf,.jpg,.jpeg,.png,.webp">
+                        <div class="form-text">
+                            Attach the certificate if you have one &mdash; a photo of it is fine.
+                            PDF, JPG, PNG or WEBP, up to 5MB.
+                        </div>
+                    </div>
+
                     <div class="d-grid gap-2">
                         {{ form.submit(class="btn btn-primary btn-lg") }}
                         <a href="{{ url_for('leave.index') }}" class="btn btn-outline-secondary">Cancel</a>
                     </div>
                 </form>
+
+<script>
+// The doctor's note field belongs to sick leave only.
+(function () {
+    const type = document.getElementById('leave_type');
+    const field = document.getElementById('sickNoteField');
+    const input = document.getElementById('sick_note');
+    if (!type || !field) return;
+
+    function sync() {
+        const isSick = type.value === 'Sick';
+        field.style.display = isSick ? 'block' : 'none';
+        if (!isSick && input) input.value = '';
+    }
+
+    type.addEventListener('change', sync);
+    sync();
+})();
+</script>
             </div>
         </div>
     </div>

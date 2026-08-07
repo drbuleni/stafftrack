@@ -1,10 +1,15 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
+from io import BytesIO
+
+from flask import (Blueprint, render_template, redirect, url_for, flash, request,
+                  current_app, send_file, abort)
 from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
+from werkzeug.utils import secure_filename
 from wtforms import SelectField, DateField, TextAreaField, SubmitField
 from wtforms.validators import DataRequired
 from app import db, mail
-from app.models import LeaveRequest, User, PerformanceEvent, Schedule, Notification
+from app.models import (LeaveRequest, LeaveDocument, User, PerformanceEvent,
+                        Schedule, Notification)
 from app.utils.decorators import manager_required
 from app.utils.audit import log_audit
 from app.utils.email import (
@@ -100,6 +105,61 @@ class LeaveRequestForm(FlaskForm):
     submit = SubmitField('Submit Request')
 
 
+# Doctor's note upload rules. A note is always optional - staff who have
+# one can attach it, staff who do not are never blocked from applying.
+SICK_NOTE_EXTENSIONS = {'pdf', 'jpg', 'jpeg', 'png', 'webp'}
+SICK_NOTE_MAX_BYTES = 5 * 1024 * 1024
+SICK_NOTE_TYPES = {
+    'pdf': 'application/pdf',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'png': 'image/png',
+    'webp': 'image/webp',
+}
+
+
+def _read_sick_note(file_storage):
+    """Validate and read an uploaded doctor's note.
+
+    Returns (document_kwargs, error_message). Both are None when no file
+    was supplied, which is a normal outcome - the note is optional.
+    """
+    if not file_storage or not file_storage.filename:
+        return None, None
+
+    filename = secure_filename(file_storage.filename)
+    extension = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+
+    if extension not in SICK_NOTE_EXTENSIONS:
+        return None, ('That file type is not accepted. Please upload a PDF, '
+                      'JPG, PNG or WEBP.')
+
+    data = file_storage.read()
+    if not data:
+        # An empty selection is treated as no file at all
+        return None, None
+
+    if len(data) > SICK_NOTE_MAX_BYTES:
+        actual = len(data) / (1024 * 1024)
+        return None, (f'That file is {actual:.1f}MB. Sick notes must be 5MB or '
+                      f'smaller - try photographing it at a lower resolution.')
+
+    return {
+        'filename': filename,
+        'content_type': SICK_NOTE_TYPES[extension],
+        'byte_size': len(data),
+        'data': data,
+    }, None
+
+
+def _can_view_document(document):
+    """A note is visible to the staff member it belongs to, and to the
+    managers who approve leave. Nobody else."""
+    if current_user.role in ('Practice Manager', 'Super Admin'):
+        return True
+    return document.leave_request.staff_id == current_user.id
+
+
 class ApprovalForm(FlaskForm):
     approval_notes = TextAreaField('Notes')
     submit_approve = SubmitField('Approve')
@@ -184,6 +244,16 @@ def request_leave():
             flash('End date cannot be before start date.', 'danger')
             return render_template('leave/request.html', form=form)
 
+        # A doctor's note may be attached to sick leave of any length.
+        # It is never required, but a bad file stops the submission so the
+        # staff member can fix it rather than silently losing the note.
+        note_kwargs = None
+        if form.leave_type.data == 'Sick':
+            note_kwargs, note_error = _read_sick_note(request.files.get('sick_note'))
+            if note_error:
+                flash(note_error, 'danger')
+                return render_template('leave/request.html', form=form)
+
         leave = LeaveRequest(
             staff_id=current_user.id,
             leave_type=form.leave_type.data,
@@ -192,6 +262,11 @@ def request_leave():
             reason=form.reason.data
         )
         db.session.add(leave)
+
+        if note_kwargs:
+            leave.documents.append(LeaveDocument(
+                uploaded_by=current_user.id, **note_kwargs))
+
         db.session.commit()
 
         log_audit('Submitted Leave Request', 'LeaveRequest', leave.id, {
@@ -229,10 +304,35 @@ def request_leave():
                     )
                     send_email(f'Leave Request from {current_user.full_name}', manager.email, html, mail)
 
-        flash('Leave request submitted successfully.', 'success')
+        if note_kwargs:
+            flash('Leave request submitted with your doctor\'s note attached.', 'success')
+        else:
+            flash('Leave request submitted successfully.', 'success')
         return redirect(url_for('leave.index'))
 
     return render_template('leave/request.html', form=form)
+
+
+@bp.route('/document/<int:doc_id>')
+@login_required
+def document(doc_id):
+    """Serve a doctor's note to the staff member it belongs to, or to a
+    manager who approves leave. The document ID alone is never enough."""
+    doc = LeaveDocument.query.get_or_404(doc_id)
+
+    if not _can_view_document(doc):
+        # 404 rather than 403: don't confirm the document exists
+        abort(404)
+
+    response = send_file(
+        BytesIO(doc.data),
+        mimetype=doc.content_type or 'application/octet-stream',
+        as_attachment=False,
+        download_name=doc.filename or f'sick-note-{doc.id}',
+    )
+    # A disguised file must never be executed as a web page
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    return response
 
 
 @bp.route('/<int:leave_id>/approve', methods=['GET', 'POST'])

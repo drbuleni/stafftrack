@@ -16,15 +16,24 @@ class Config:
         'sqlite:///' + os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance', 'stafftrack.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    # PostgreSQL connection pool settings for Supabase
+    # PostgreSQL connection pool settings for Supabase.
+    # `prepare_threshold=None` disables server-side prepared statements, required when
+    # using Supabase's transaction pooler (port 6543) which doesn't keep client-side
+    # statement state across pooled connections. Only applied when we're on Postgres.
     SQLALCHEMY_ENGINE_OPTIONS = {
         'pool_pre_ping': True,
         'pool_recycle': 300,
     }
+    if SQLALCHEMY_DATABASE_URI.startswith('postgresql'):
+        SQLALCHEMY_ENGINE_OPTIONS['connect_args'] = {'prepare_threshold': None}
 
     # File upload settings
     UPLOAD_FOLDER = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'uploads', 'sop_documents')
-    MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5MB max file size
+    # Hard request cap. Kept above the per-feature limits (sick notes and SOP
+    # documents are both capped at 5MB in their own routes) so that an
+    # oversized upload reaches our validator and gets a friendly message,
+    # rather than being cut off by Werkzeug with a bare 413 page.
+    MAX_CONTENT_LENGTH = 8 * 1024 * 1024
     ALLOWED_EXTENSIONS = {'pdf', 'docx', 'doc'}
 
     # Session settings

@@ -48,6 +48,29 @@
                     </table>
                 </div>
 
+                {% if leave.leave_type == 'Sick' %}
+                <hr>
+                <h6 class="mb-2"><i class="bi bi-paperclip"></i> Doctor's note</h6>
+                {% if leave.documents %}
+                    {% for doc in leave.documents %}
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 border rounded p-3 mb-2">
+                        <div>
+                            <div class="fw-semibold">{{ doc.filename }}</div>
+                            <small class="text-muted">
+                                {{ doc.size_display }} &middot; uploaded {{ doc.uploaded_at.strftime('%d/%m/%Y at %H:%M') }}
+                            </small>
+                        </div>
+                        <a href="{{ url_for('leave.document', doc_id=doc.id) }}" target="_blank"
+                           rel="noopener" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-box-arrow-up-right"></i> Open note
+                        </a>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted mb-0">No doctor's note was attached to this request.</p>
+                {% endif %}
+                {% endif %}
+
                 <hr>
 
                 <form method="POST">

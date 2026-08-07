@@ -126,6 +126,48 @@ class LeaveRequest(db.Model):
         return f'<LeaveRequest {self.staff_id} {self.leave_type}>'
 
 
+class LeaveDocument(db.Model):
+    """A doctor's note attached to a sick leave request.
+
+    Stored in the database rather than on disk: the server filesystem is
+    ephemeral on Render, and a sick note is exactly the document someone
+    needs to produce months later. Kept in its own table so that bulk
+    queries over leave_requests never pull file bytes into memory.
+    """
+    __tablename__ = 'leave_documents'
+
+    id = db.Column(db.Integer, primary_key=True)
+    leave_request_id = db.Column(db.Integer, db.ForeignKey('leave_requests.id'),
+                                 nullable=False, index=True)
+
+    filename = db.Column(db.String(255))
+    content_type = db.Column(db.String(100))
+    byte_size = db.Column(db.Integer)
+    data = db.Column(db.LargeBinary, nullable=False)
+
+    uploaded_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    leave_request = db.relationship(
+        'LeaveRequest',
+        backref=db.backref('documents', cascade='all, delete-orphan', lazy='select')
+    )
+    uploader = db.relationship('User', foreign_keys=[uploaded_by])
+
+    @property
+    def size_display(self):
+        """Human-readable file size."""
+        size = self.byte_size or 0
+        if size < 1024:
+            return f'{size} B'
+        if size < 1024 * 1024:
+            return f'{size / 1024:.0f} KB'
+        return f'{size / (1024 * 1024):.1f} MB'
+
+    def __repr__(self):
+        return f'<LeaveDocument {self.filename} for leave {self.leave_request_id}>'
+
+
 class KPIScore(db.Model):
     """Monthly KPI scores for staff members."""
     __tablename__ = 'kpi_scores'
