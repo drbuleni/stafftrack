@@ -29,7 +29,7 @@
 
 {% for section in report.sections %}
 <div class="card mb-4">
-    <div class="card-header" style="background-color: #00e5e5; color: #000;">
+    <div class="card-header">
         <h5 class="mb-0">
             <i class="bi bi-person-badge"></i> {{ loop.index }}. {{ section.practitioner_name }}
             {% if section.room %}<small>({{ section.room }})</small>{% endif %}
@@ -101,7 +101,7 @@
 <div class="row mb-4">
     <div class="col-lg-6 mb-3">
         <div class="card h-100">
-            <div class="card-header bg-secondary text-white">
+            <div class="card-header">
                 <h5 class="mb-0"><i class="bi bi-receipt"></i> Overall Practice Summary</h5>
             </div>
             <div class="card-body p-0">
@@ -116,7 +116,7 @@
     </div>
     <div class="col-lg-6 mb-3">
         <div class="card h-100">
-            <div class="card-header bg-dark text-white">
+            <div class="card-header">
                 <h5 class="mb-0"><i class="bi bi-cash-stack"></i> Total Cash Flow</h5>
             </div>
             <div class="card-body p-0">

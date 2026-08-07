@@ -336,7 +336,7 @@ def staff_report_pdf(staff_id):
     styles = getSampleStyleSheet()
 
     # Title
-    title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=20, textColor=colors.HexColor('#16a34a'))
+    title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=20, textColor=colors.HexColor('#1F5F4E'))
     elements.append(Paragraph(f"Staff Report: {staff.full_name}", title_style))
     elements.append(Paragraph(f"Role: {staff.role} | Status: {staff.status}", styles['Normal']))
     elements.append(Paragraph(f"Generated: {datetime.now().strftime('%d/%m/%Y %H:%M')}", styles['Italic']))

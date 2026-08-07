@@ -19,7 +19,7 @@
 
     <!-- Period -->
     <div class="card mb-4">
-        <div class="card-header bg-primary text-white">
+        <div class="card-header">
             <h5 class="mb-0"><i class="bi bi-calendar3"></i> Reporting Period</h5>
         </div>
         <div class="card-body">
@@ -50,7 +50,7 @@
 
     <!-- StaffTrack reference figures -->
     <div class="card mb-4">
-        <div class="card-header bg-info text-white">
+        <div class="card-header">
             <h5 class="mb-0"><i class="bi bi-clipboard-check"></i> StaffTrack Figures for {{ month_names[month] }} {{ year }} (for cross-checking)</h5>
         </div>
         <div class="card-body p-0">
@@ -106,7 +106,7 @@
 
     <!-- Optional VAT summary -->
     <div class="card mb-4">
-        <div class="card-header bg-secondary text-white">
+        <div class="card-header">
             <h5 class="mb-0"><i class="bi bi-percent"></i> VAT Summary (optional)</h5>
         </div>
         <div class="card-body">
@@ -232,7 +232,7 @@ function addSection(init = null) {
     card.className = 'card mb-4 practitioner-section';
     card.id = id;
     card.innerHTML = `
-        <div class="card-header d-flex flex-wrap align-items-center gap-2" style="background-color: #00e5e5; color: #000;">
+        <div class="card-header d-flex flex-wrap align-items-center gap-2">
             <strong><i class="bi bi-person-badge"></i> Practitioner:</strong>
             <select class="form-select form-select-sm section-name" style="max-width: 240px;" onchange="nameChanged(this)">
                 ${optionsHtml}

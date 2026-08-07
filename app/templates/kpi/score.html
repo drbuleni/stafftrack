@@ -62,7 +62,7 @@
     <input type="hidden" name="year" value="{{ selected_year }}">
 
     <div class="card mb-4">
-        <div class="card-header bg-primary text-white">
+        <div class="card-header">
             <h5 class="mb-0">
                 <i class="bi bi-clipboard-check"></i>
                 KPIs for {{ selected_staff.full_name }} - {{ month_names[selected_month] }} {{ selected_year }}
@@ -76,7 +76,7 @@
 
             {% for item in kpi_data %}
             <div class="card mb-3">
-                <div class="card-header bg-light">
+                <div class="card-header">
                     <h6 class="mb-0">
                         <i class="bi bi-folder"></i> {{ item.category.name }}
                         <span class="badge bg-secondary ms-2">{{ item.category.weight }}% weight</span>

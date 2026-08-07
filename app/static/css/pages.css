@@ -201,7 +201,7 @@
 
 /* The per-doctor banner on a billing sheet. Replaces the cyan
    block with a rule and a strong name. */
-.mk-doctor,
+.sheet-header,
 .sheet-provider {
     padding: 0.7rem 0.9rem;
     font-weight: 650;

@@ -35,16 +35,16 @@ def generate_receipt_email(receipt):
     <style>
         body {{ font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; }}
         .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-        .header {{ background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }}
+        .header {{ background: #1F5F4E; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }}
         .header h1 {{ margin: 0; font-size: 24px; }}
-        .content {{ background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; }}
-        .receipt-box {{ background: #f9fafb; border: 2px dashed #d1d5db; padding: 20px; margin: 20px 0; border-radius: 8px; }}
-        .receipt-row {{ display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e5e7eb; }}
+        .content {{ background: #ffffff; padding: 30px; border: 1px solid #E2E7E4; }}
+        .receipt-box {{ background: #FAFBFA; border: 2px dashed #E2E7E4; padding: 20px; margin: 20px 0; border-radius: 8px; }}
+        .receipt-row {{ display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #E2E7E4; }}
         .receipt-row:last-child {{ border-bottom: none; }}
-        .receipt-label {{ color: #6b7280; }}
+        .receipt-label {{ color: #5D6E69; }}
         .receipt-value {{ font-weight: 600; }}
-        .total-row {{ font-size: 1.25rem; color: #16a34a; }}
-        .footer {{ background: #f9fafb; padding: 15px; text-align: center; font-size: 12px; color: #6b7280; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb; border-top: none; }}
+        .total-row {{ font-size: 1.25rem; color: #1F5F4E; }}
+        .footer {{ background: #FAFBFA; padding: 15px; text-align: center; font-size: 12px; color: #5D6E69; border-radius: 0 0 8px 8px; border: 1px solid #E2E7E4; border-top: none; }}
     </style>
 </head>
 <body>

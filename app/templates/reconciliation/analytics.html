@@ -128,7 +128,7 @@
 <div class="row mb-4">
     <div class="col-lg-6 mb-4">
         <div class="card h-100">
-            <div class="card-header bg-warning text-dark">
+            <div class="card-header">
                 <h5 class="mb-0"><i class="bi bi-people"></i> Patient Flow Summary</h5>
             </div>
             <div class="card-body">
@@ -309,7 +309,7 @@
 <div class="row mb-4">
     <div class="col-12">
         <div class="card">
-            <div class="card-header" style="background-color: #00e5e5; color: #000;">
+            <div class="card-header">
                 <h5 class="mb-0"><i class="bi bi-person-badge"></i> Billing &amp; Cash Flow per Practitioner</h5>
             </div>
             <div class="card-body p-0">
@@ -369,7 +369,7 @@
 <div class="row mb-4">
     <div class="col-12">
         <div class="card">
-            <div class="card-header bg-success text-white">
+            <div class="card-header">
                 <h5 class="mb-0"><i class="bi bi-cash-stack"></i> Financial Summary</h5>
             </div>
             <div class="card-body">
@@ -464,7 +464,7 @@ new Chart(collectionsCtx, {
             {
                 label: 'Net Collections',
                 data: dailyData.map(d => d.net_collections),
-                borderColor: '#198754',
+                borderColor: '#1F5F4E',
                 backgroundColor: 'rgba(25, 135, 84, 0.1)',
                 fill: true,
                 tension: 0.3
@@ -472,7 +472,7 @@ new Chart(collectionsCtx, {
             {
                 label: 'Production',
                 data: dailyData.map(d => d.production),
-                borderColor: '#0d6efd',
+                borderColor: '#2A6480',
                 backgroundColor: 'transparent',
                 borderDash: [5, 5],
                 tension: 0.3
@@ -510,7 +510,7 @@ new Chart(paymentCtx, {
         datasets: [{
             data: paymentValues,
             backgroundColor: [
-                '#0d6efd', '#198754', '#ffc107', '#dc3545', '#6f42c1', '#fd7e14'
+                '#2A6480', '#1F5F4E', '#845812', '#9E3232', '#6B4A7A', '#A8632B'
             ]
         }]
     },
@@ -538,7 +538,7 @@ new Chart(patientsCtx, {
             {
                 label: 'No-shows',
                 data: dailyData.map(d => d.no_shows),
-                backgroundColor: '#dc3545',
+                backgroundColor: '#9E3232',
             }
         ]
     },
@@ -566,7 +566,7 @@ new Chart(dayCtx, {
             label: 'Avg Collections (R)',
             data: daysOfWeek.filter(d => dayAnalysis[d] && dayAnalysis[d].count > 0)
                            .map(d => dayAnalysis[d].avg_collections),
-            backgroundColor: '#198754',
+            backgroundColor: '#1F5F4E',
             yAxisID: 'y'
         }, {
             label: 'Avg Patients',

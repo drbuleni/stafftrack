@@ -17,7 +17,7 @@
     {% for announcement in announcements %}
     <div class="col-12 mb-4">
         <div class="card {{ 'border-danger' if announcement.priority == 'Urgent' else 'border-warning' if announcement.priority == 'Important' else '' }}">
-            <div class="card-header d-flex justify-content-between align-items-center {{ 'bg-danger text-white' if announcement.priority == 'Urgent' else 'bg-warning' if announcement.priority == 'Important' else '' }}">
+            <div class="card-header d-flex justify-content-between align-items-center {{ '' if announcement.priority == 'Urgent' else '' if announcement.priority == 'Important' else '' }}">
                 <div>
                     {% if announcement.priority == 'Urgent' %}
                     <i class="bi bi-exclamation-triangle-fill"></i>

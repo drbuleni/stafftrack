@@ -47,15 +47,15 @@ EMAIL_HEADER = """
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .header { background: #1F5F4E; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
         .header h1 { margin: 0; font-size: 24px; }
         .content { background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; }
         .footer { background: #f9fafb; padding: 15px; text-align: center; font-size: 12px; color: #6b7280; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb; border-top: none; }
-        .btn { display: inline-block; background: #16a34a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 15px; }
-        .btn:hover { background: #15803d; }
+        .btn { display: inline-block; background: #1F5F4E; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 15px; }
+        .btn:hover { background: #17493C; }
         .alert-warning { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 15px 0; }
         .alert-danger { background: #fee2e2; border-left: 4px solid #ef4444; padding: 15px; margin: 15px 0; }
-        .alert-success { background: #dcfce7; border-left: 4px solid #22c55e; padding: 15px; margin: 15px 0; }
+        .alert-success { background: #E6F2EB; border-left: 4px solid #1F5F4E; padding: 15px; margin: 15px 0; }
         .alert-info { background: #e0f2fe; border-left: 4px solid #0ea5e9; padding: 15px; margin: 15px 0; }
     </style>
 </head>

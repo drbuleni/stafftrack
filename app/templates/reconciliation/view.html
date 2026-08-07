@@ -56,7 +56,7 @@
 <!-- Doctor Billing Sheets -->
 {% for provider in sheet.providers %}
 <div class="card mb-4">
-    <div class="card-header" style="background-color: #00e5e5; color: #000;">
+    <div class="card-header">
         <h5 class="mb-0"><i class="bi bi-person-badge"></i> {{ provider.provider_name }}</h5>
     </div>
     <div class="card-body p-0">
@@ -116,7 +116,7 @@
 
 <!-- ERA's Payments KAS6 -->
 <div class="card mb-4">
-    <div class="card-header bg-success text-white">
+    <div class="card-header">
         <h5 class="mb-0"><i class="bi bi-bank"></i> ERA's Payments KAS6</h5>
     </div>
     <div class="card-body p-0">
@@ -159,7 +159,7 @@
 <div class="row mb-4">
     <div class="col-md-6 mb-3">
         <div class="card h-100">
-            <div class="card-header bg-secondary text-white">
+            <div class="card-header">
                 <h5 class="mb-0"><i class="bi bi-receipt"></i> Total Billed</h5>
             </div>
             <div class="card-body p-0">
@@ -194,7 +194,7 @@
     </div>
     <div class="col-md-6 mb-3">
         <div class="card h-100">
-            <div class="card-header bg-dark text-white">
+            <div class="card-header">
                 <h5 class="mb-0"><i class="bi bi-cash-stack"></i> Total Money Received for the Day</h5>
             </div>
             <div class="card-body p-0">
@@ -250,7 +250,7 @@
         <!-- Delete Button for Managers -->
         {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
         <div class="card border-danger">
-            <div class="card-header bg-danger text-white">
+            <div class="card-header">
                 <h6 class="mb-0"><i class="bi bi-trash"></i> Delete</h6>
             </div>
             <div class="card-body">

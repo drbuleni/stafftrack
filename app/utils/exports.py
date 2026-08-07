@@ -112,7 +112,7 @@ def create_pdf_report(title, headers, data, filename_prefix, orientation='portra
         'CustomTitle',
         parent=styles['Heading1'],
         fontSize=18,
-        textColor=colors.HexColor('#16a34a'),
+        textColor=colors.HexColor('#1F5F4E'),
         spaceAfter=10
     )
 
@@ -141,7 +141,7 @@ def create_pdf_report(title, headers, data, filename_prefix, orientation='portra
     # Table styling
     table_style = TableStyle([
         # Header styling
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#16a34a')),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1F5F4E')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, 0), 10),
@@ -157,10 +157,10 @@ def create_pdf_report(title, headers, data, filename_prefix, orientation='portra
         ('TOPPADDING', (0, 1), (-1, -1), 6),
 
         # Alternating row colors
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f0fdf4')]),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#EAF2EE')]),
 
         # Grid
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e5e7eb')),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E2E7E4')),
     ])
 
     table.setStyle(table_style)

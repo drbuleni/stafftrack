@@ -9,10 +9,10 @@ from reportlab.lib.units import mm
 from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table,
                                 TableStyle, HRFlowable)
 
-ACCENT = colors.HexColor('#16a34a')
-LIGHT = colors.HexColor('#f0fdf4')
-GRID = colors.HexColor('#e5e7eb')
-DARK = colors.HexColor('#111827')
+ACCENT = colors.HexColor('#1F5F4E')
+LIGHT = colors.HexColor('#EAF2EE')
+GRID = colors.HexColor('#E2E7E4')
+DARK = colors.HexColor('#16211E')
 
 PURPOSE_TEXT = ("This report provides a summary of the monthly billing performance for each "
                 "practitioner, including turnover, credit notes, cash flow, journal adjustments "
@@ -71,7 +71,7 @@ def build_turnover_pdf(report, totals):
     sub_style = ParagraphStyle('Sub2', parent=styles['Heading3'], fontSize=10.5,
                                textColor=ACCENT, spaceBefore=8, spaceAfter=2)
     body_style = ParagraphStyle('Body2', parent=styles['Normal'], fontSize=9,
-                                textColor=colors.HexColor('#374151'), spaceAfter=4)
+                                textColor=colors.HexColor('#4A5A55'), spaceAfter=4)
     note_style = ParagraphStyle('Note2', parent=styles['Normal'], fontSize=8,
                                 textColor=colors.grey, spaceAfter=4)
 

@@ -74,14 +74,14 @@
                 <a href="{{ url_for('notifications.index') }}" class="sidebar-nav-link {{ 'active' if 'notifications' in request.endpoint else '' }}">
                     <i class="bi bi-bell"></i>
                     Notifications
-                    <span id="notificationBadge" class="badge ms-auto" style="display: none; background-color: #d4a017; color: white;">0</span>
+                    <span id="notificationBadge" class="badge ms-auto" style="display: none; background-color: var(--accent); color: var(--on-accent);">0</span>
                 </a>
             </li>
             <li class="sidebar-nav-item">
                 <a href="{{ url_for('announcements.index') }}" class="sidebar-nav-link {{ 'active' if 'announcements' in request.endpoint else '' }}">
                     <i class="bi bi-megaphone"></i>
                     Announcements
-                    <span id="announcementBadge" class="badge ms-auto" style="display: none; background-color: #d4a017; color: white;">0</span>
+                    <span id="announcementBadge" class="badge ms-auto" style="display: none; background-color: var(--accent); color: var(--on-accent);">0</span>
                 </a>
             </li>
             <li class="sidebar-nav-item">

@@ -41,7 +41,7 @@
         {% if score_summary %}
         <!-- Score Summary Card -->
         <div class="card mb-4">
-            <div class="card-header {% if score_summary.percentage >= 70 %}bg-success{% else %}bg-danger{% endif %} text-white">
+            <div class="card-header {% if score_summary.percentage >= 70 %}{% else %}{% endif %}">
                 <h5 class="mb-0">
                     <i class="bi bi-clipboard-data"></i>
                     {{ month_name }} {{ year }} Score: {{ score_summary.percentage|round|int }}%
@@ -94,7 +94,7 @@
                 {% if kpi_data %}
                     {% for item in kpi_data %}
                     <div class="card mb-3">
-                        <div class="card-header bg-light">
+                        <div class="card-header">
                             <h6 class="mb-0">
                                 <i class="bi bi-folder"></i> {{ item.category.name }}
                                 <span class="badge bg-secondary">{{ item.category.weight }}% weight</span>
