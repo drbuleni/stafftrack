@@ -132,8 +132,24 @@
                                 <td class="text-end" id="summaryCard">R0.00</td>
                             </tr>
                             <tr>
+                                <td class="ps-4 text-muted small">FNB speedpoint</td>
+                                <td class="text-end text-muted small" id="summaryCardFnb">R0.00</td>
+                            </tr>
+                            <tr>
+                                <td class="ps-4 text-muted small">Capitec speedpoint</td>
+                                <td class="text-end text-muted small" id="summaryCardCapitec">R0.00</td>
+                            </tr>
+                            <tr>
                                 <td>KAS3 EFT</td>
                                 <td class="text-end" id="summaryEft">R0.00</td>
+                            </tr>
+                            <tr>
+                                <td class="ps-4 text-muted small">FNB account</td>
+                                <td class="text-end text-muted small" id="summaryEftFnb">R0.00</td>
+                            </tr>
+                            <tr>
+                                <td class="ps-4 text-muted small">Capitec account</td>
+                                <td class="text-end text-muted small" id="summaryEftCapitec">R0.00</td>
                             </tr>
                         </tbody>
                         <tfoot>
@@ -181,6 +197,14 @@ const billingInit = {{ billing_init | tojson }};
 const eraInit = {{ era_init | tojson }};
 
 const creditReasons = {{ credit_note_reasons | tojson }};
+const bankChoices = {{ banks | tojson }};
+
+function bankOptions(selected) {
+    const chosen = selected || 'FNB';
+    return bankChoices.map(bank =>
+        `<option value="${escapeAttr(bank)}" ${bank === chosen ? 'selected' : ''}>${escapeAttr(bank)}</option>`
+    ).join('');
+}
 
 function creditReasonOptions(selected) {
     let html = '<option value="">--</option>';
@@ -243,7 +267,9 @@ function addSheet(init = null) {
                             <th style="min-width: 150px;">Medical Aid / Private</th>
                             <th style="min-width: 120px;">Amount Billed</th>
                             <th style="min-width: 120px;">Card Payment<br><small>KAS7 - Amount Paid</small></th>
+                            <th style="min-width: 105px;">Speedpoint</th>
                             <th style="min-width: 120px;">EFT Payment<br><small>KAS3 - Amount Paid</small></th>
+                            <th style="min-width: 105px;">EFT Account</th>
                             <th style="min-width: 110px;">Credit Note</th>
                             <th style="min-width: 160px;">Credit Note Reason</th>
                             <th style="min-width: 100px;">Receipt No.</th>
@@ -256,7 +282,9 @@ function addSheet(init = null) {
                             <td colspan="4" class="text-end">Total</td>
                             <td class="text-end sheet-total-billed">R0.00</td>
                             <td class="text-end sheet-total-card">R0.00</td>
+                            <td></td>
                             <td class="text-end sheet-total-eft">R0.00</td>
+                            <td></td>
                             <td class="text-end sheet-total-credit">R0.00</td>
                             <td></td>
                             <td></td>
@@ -313,7 +341,9 @@ function addBillingRow(sheetId, entry = null) {
         <td><input type="text" class="form-control form-control-sm in-aid" value="${escapeAttr(e.medical_aid || '')}" placeholder=""></td>
         <td><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end in-billed" value="${e.amount_billed || ''}"></td>
         <td><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end in-card" value="${e.card_paid || ''}"></td>
+        <td><select class="form-select form-select-sm in-card-bank">${bankOptions(e.card_bank)}</select></td>
         <td><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end in-eft" value="${e.eft_paid || ''}"></td>
+        <td><select class="form-select form-select-sm in-eft-bank">${bankOptions(e.eft_bank)}</select></td>
         <td><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end in-credit" value="${e.credit_note || ''}"></td>
         <td><select class="form-select form-select-sm in-credit-reason">${creditReasonOptions(e.credit_note_reason || '')}</select></td>
         <td><input type="text" class="form-control form-control-sm in-receipt" value="${escapeAttr(e.receipt_no || '')}"></td>
@@ -364,15 +394,29 @@ function sheetProviderName(sheet) {
 
 function recalc() {
     let totalBilled = 0, totalCard = 0, totalEft = 0, totalCredit = 0;
+    const banks = { cardFnb: 0, cardCapitec: 0, eftFnb: 0, eftCapitec: 0 };
     const perDoctor = [];
 
     document.querySelectorAll('.doctor-sheet').forEach(sheet => {
         let billed = 0, card = 0, eft = 0, credit = 0;
         sheet.querySelectorAll('.billing-row').forEach(row => {
+            const cardAmount = num(row.querySelector('.in-card'));
+            const eftAmount = num(row.querySelector('.in-eft'));
             billed += num(row.querySelector('.in-billed'));
-            card += num(row.querySelector('.in-card'));
-            eft += num(row.querySelector('.in-eft'));
+            card += cardAmount;
+            eft += eftAmount;
             credit += num(row.querySelector('.in-credit'));
+
+            if (row.querySelector('.in-card-bank').value === 'Capitec') {
+                banks.cardCapitec += cardAmount;
+            } else {
+                banks.cardFnb += cardAmount;
+            }
+            if (row.querySelector('.in-eft-bank').value === 'Capitec') {
+                banks.eftCapitec += eftAmount;
+            } else {
+                banks.eftFnb += eftAmount;
+            }
         });
         sheet.querySelector('.sheet-total-billed').textContent = money(billed);
         sheet.querySelector('.sheet-total-card').textContent = money(card);
@@ -410,10 +454,14 @@ function recalc() {
     document.getElementById('summaryCreditTotal').textContent = '(' + money(totalCredit) + ')';
     document.getElementById('summaryNetBilled').textContent = money(totalBilled - totalCredit);
 
-    // Money received summary
+    // Money received summary, split per bank statement
     document.getElementById('summaryEra').textContent = money(totalEra);
     document.getElementById('summaryCard').textContent = money(totalCard);
+    document.getElementById('summaryCardFnb').textContent = money(banks.cardFnb);
+    document.getElementById('summaryCardCapitec').textContent = money(banks.cardCapitec);
     document.getElementById('summaryEft').textContent = money(totalEft);
+    document.getElementById('summaryEftFnb').textContent = money(banks.eftFnb);
+    document.getElementById('summaryEftCapitec').textContent = money(banks.eftCapitec);
     document.getElementById('summaryReceivedTotal').textContent = money(totalEra + totalCard + totalEft);
 }
 
@@ -436,7 +484,9 @@ function serialize() {
                 medical_aid: row.querySelector('.in-aid').value,
                 amount_billed: row.querySelector('.in-billed').value,
                 card_paid: row.querySelector('.in-card').value,
+                card_bank: row.querySelector('.in-card-bank').value,
                 eft_paid: row.querySelector('.in-eft').value,
+                eft_bank: row.querySelector('.in-eft-bank').value,
                 credit_note: row.querySelector('.in-credit').value,
                 credit_note_reason: row.querySelector('.in-credit-reason').value,
                 receipt_no: row.querySelector('.in-receipt').value,

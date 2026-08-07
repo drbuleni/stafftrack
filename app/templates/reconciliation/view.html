@@ -70,7 +70,9 @@
                         <th>Medical Aid / Private</th>
                         <th class="text-end">Amount Billed</th>
                         <th class="text-end">Card Payment<br><small>KAS7 - Amount Paid</small></th>
+                        <th>Speedpoint</th>
                         <th class="text-end">EFT Payment<br><small>KAS3 - Amount Paid</small></th>
+                        <th>EFT Account</th>
                         <th class="text-end">Credit Note</th>
                         <th>Credit Note Reason</th>
                         <th>Receipt No.</th>
@@ -85,7 +87,9 @@
                         <td>{{ entry.medical_aid or '' }}</td>
                         <td class="text-end">{{ 'R{:,.2f}'.format(entry.amount_billed) if entry.amount_billed else '' }}</td>
                         <td class="text-end">{{ 'R{:,.2f}'.format(entry.card_paid) if entry.card_paid else '' }}</td>
+                        <td class="text-muted small">{{ entry.card_bank if entry.card_paid else '' }}</td>
                         <td class="text-end">{{ 'R{:,.2f}'.format(entry.eft_paid) if entry.eft_paid else '' }}</td>
+                        <td class="text-muted small">{{ entry.eft_bank if entry.eft_paid else '' }}</td>
                         <td class="text-end text-danger">{{ '(R{:,.2f})'.format(entry.credit_note) if entry.credit_note else '' }}</td>
                         <td>{{ entry.credit_note_reason or '' }}</td>
                         <td>{{ entry.receipt_no or '' }}</td>
@@ -97,7 +101,9 @@
                         <td colspan="4" class="text-end">Total</td>
                         <td class="text-end">R{{ '{:,.2f}'.format(provider.total_billed) }}</td>
                         <td class="text-end">R{{ '{:,.2f}'.format(provider.total_card) }}</td>
+                        <td></td>
                         <td class="text-end">R{{ '{:,.2f}'.format(provider.total_eft) }}</td>
+                        <td></td>
                         <td class="text-end text-danger">{{ '(R{:,.2f})'.format(provider.total_credit) if provider.total_credit else '' }}</td>
                         <td></td>
                         <td></td>
@@ -209,8 +215,24 @@
                             <td class="text-end">R{{ '{:,.2f}'.format(rec.card_fnb + rec.card_capitec) }}</td>
                         </tr>
                         <tr>
+                            <td class="ps-4 text-muted small">FNB speedpoint</td>
+                            <td class="text-end text-muted small">R{{ '{:,.2f}'.format(rec.card_fnb or 0) }}</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-4 text-muted small">Capitec speedpoint</td>
+                            <td class="text-end text-muted small">R{{ '{:,.2f}'.format(rec.card_capitec or 0) }}</td>
+                        </tr>
+                        <tr>
                             <td>KAS3 EFT</td>
                             <td class="text-end">R{{ '{:,.2f}'.format(rec.eft_received) }}</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-4 text-muted small">FNB account</td>
+                            <td class="text-end text-muted small">R{{ '{:,.2f}'.format(rec.eft_fnb or 0) }}</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-4 text-muted small">Capitec account</td>
+                            <td class="text-end text-muted small">R{{ '{:,.2f}'.format(rec.eft_capitec or 0) }}</td>
                         </tr>
                         {% if rec.other_payments %}
                         <tr>

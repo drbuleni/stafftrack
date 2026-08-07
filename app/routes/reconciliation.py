@@ -54,6 +54,21 @@ CREDIT_NOTE_REASONS = [
     'Corrections',
 ]
 
+# The practice runs two speedpoints and two bank accounts. Card and EFT
+# money must be split per bank because each reconciles against its own
+# bank statement.
+BANKS = ['FNB', 'Capitec']
+DEFAULT_BANK = 'FNB'
+
+
+def _clean_bank(value):
+    """Normalise a submitted bank choice, defaulting to FNB."""
+    value = (value or '').strip()
+    for bank in BANKS:
+        if value.lower() == bank.lower():
+            return bank
+    return DEFAULT_BANK
+
 
 def get_dentists():
     """Get all users who can be dentists on duty (Dentist, Practice Manager, Super Admin).
@@ -111,8 +126,8 @@ def _apply_sheet_data(rec):
     rec.era_payments = []
 
     total_billed = Decimal('0')
-    total_card = Decimal('0')
-    total_eft = Decimal('0')
+    total_card = {'FNB': Decimal('0'), 'Capitec': Decimal('0')}
+    total_eft = {'FNB': Decimal('0'), 'Capitec': Decimal('0')}
     total_era = Decimal('0')
     patient_count = 0
 
@@ -135,6 +150,8 @@ def _apply_sheet_data(rec):
             amount_billed = _parse_money(entry.get('amount_billed'))
             card_paid = _parse_money(entry.get('card_paid'))
             eft_paid = _parse_money(entry.get('eft_paid'))
+            card_bank = _clean_bank(entry.get('card_bank'))
+            eft_bank = _clean_bank(entry.get('eft_bank'))
             credit_note = _parse_money(entry.get('credit_note'))
             credit_note_reason = (entry.get('credit_note_reason') or '').strip()
             if not credit_note:
@@ -154,7 +171,9 @@ def _apply_sheet_data(rec):
                 medical_aid=medical_aid,
                 amount_billed=amount_billed,
                 card_paid=card_paid,
+                card_bank=card_bank,
                 eft_paid=eft_paid,
+                eft_bank=eft_bank,
                 credit_note=credit_note,
                 credit_note_reason=credit_note_reason,
                 receipt_no=receipt_no,
@@ -163,8 +182,8 @@ def _apply_sheet_data(rec):
             order += 1
             patient_count += 1
             total_billed += amount_billed
-            total_card += card_paid
-            total_eft += eft_paid
+            total_card[card_bank] += card_paid
+            total_eft[eft_bank] += eft_paid
 
     order = 0
     for payment in era_data if isinstance(era_data, list) else []:
@@ -191,10 +210,14 @@ def _apply_sheet_data(rec):
         order += 1
         total_era += amount_paid
 
-    # Map sheet totals onto the money fields so history and analytics keep working
-    rec.card_fnb = total_card                 # KAS7 Card
-    rec.card_capitec = Decimal('0')
-    rec.eft_received = total_eft              # KAS3 EFT
+    # Map sheet totals onto the money fields so history and analytics keep
+    # working. Card and EFT are split per bank: each reconciles against its
+    # own bank statement.
+    rec.card_fnb = total_card['FNB']              # KAS7 Card, FNB speedpoint
+    rec.card_capitec = total_card['Capitec']      # KAS7 Card, Capitec speedpoint
+    rec.eft_fnb = total_eft['FNB']                # KAS3 EFT into FNB
+    rec.eft_capitec = total_eft['Capitec']        # KAS3 EFT into Capitec
+    rec.eft_received = total_eft['FNB'] + total_eft['Capitec']
     rec.medical_aid_payments = total_era      # KAS6 ERA's
     rec.medical_aid_balance_payments = Decimal('0')
     rec.other_payments = Decimal('0')
@@ -227,6 +250,18 @@ def _sheet_display_data(rec):
         group['total_eft'] += entry.eft_paid or 0
         group['total_credit'] += entry.credit_note or 0
 
+    # Split by bank for the daily summary: each reconciles against its own
+    # bank statement.
+    by_bank = {
+        'card_fnb': Decimal('0'), 'card_capitec': Decimal('0'),
+        'eft_fnb': Decimal('0'), 'eft_capitec': Decimal('0'),
+    }
+    for entry in rec.billing_entries:
+        card_key = 'card_capitec' if (entry.card_bank == 'Capitec') else 'card_fnb'
+        eft_key = 'eft_capitec' if (entry.eft_bank == 'Capitec') else 'eft_fnb'
+        by_bank[card_key] += entry.card_paid or 0
+        by_bank[eft_key] += entry.eft_paid or 0
+
     era_total = sum((p.amount_paid or 0 for p in rec.era_payments), Decimal('0'))
 
     return {
@@ -236,6 +271,7 @@ def _sheet_display_data(rec):
         'total_card': sum((p['total_card'] for p in providers), Decimal('0')),
         'total_eft': sum((p['total_eft'] for p in providers), Decimal('0')),
         'total_credit': sum((p['total_credit'] for p in providers), Decimal('0')),
+        'banks': by_bank,
     }
 
 
@@ -361,6 +397,7 @@ def new(selected_date=None):
                           billing_init=[],
                           era_init=[],
                           credit_note_reasons=CREDIT_NOTE_REASONS,
+                          banks=BANKS,
                           is_edit=False)
 
 
@@ -435,7 +472,9 @@ def edit(rec_id):
             'medical_aid': e.medical_aid or '',
             'amount_billed': float(e.amount_billed or 0),
             'card_paid': float(e.card_paid or 0),
+            'card_bank': e.card_bank or 'FNB',
             'eft_paid': float(e.eft_paid or 0),
+            'eft_bank': e.eft_bank or 'FNB',
             'credit_note': float(e.credit_note or 0),
             'credit_note_reason': e.credit_note_reason or '',
             'receipt_no': e.receipt_no or '',
@@ -457,6 +496,7 @@ def edit(rec_id):
                           billing_init=billing_init,
                           era_init=era_init,
                           credit_note_reasons=CREDIT_NOTE_REASONS,
+                          banks=BANKS,
                           is_edit=True)
 
 
@@ -646,6 +686,8 @@ def analytics():
         'EFT': sum(float(r.eft_received or 0) for r in reconciliations),
         'Card (FNB)': sum(float(r.card_fnb or 0) for r in reconciliations),
         'Card (Capitec)': sum(float(r.card_capitec or 0) for r in reconciliations),
+        'EFT (FNB)': sum(float(r.eft_fnb or 0) for r in reconciliations),
+        'EFT (Capitec)': sum(float(r.eft_capitec or 0) for r in reconciliations),
         'Medical Aid': sum(float(r.medical_aid_payments or 0) for r in reconciliations),
         'Med Aid Balance': sum(float(r.medical_aid_balance_payments or 0) for r in reconciliations),
         'Other': sum(float(r.other_payments or 0) for r in reconciliations),

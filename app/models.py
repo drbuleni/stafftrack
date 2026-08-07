@@ -411,7 +411,9 @@ class DailyReconciliation(db.Model):
     walk_ins_treated = db.Column(db.Integer, default=0)
 
     # Section C: End-of-Day Cash-Up (Money In)
-    eft_received = db.Column(db.Numeric(10, 2), default=0)
+    eft_received = db.Column(db.Numeric(10, 2), default=0)  # total across both accounts
+    eft_fnb = db.Column(db.Numeric(10, 2), default=0)
+    eft_capitec = db.Column(db.Numeric(10, 2), default=0)
     card_fnb = db.Column(db.Numeric(10, 2), default=0)
     card_capitec = db.Column(db.Numeric(10, 2), default=0)
     medical_aid_payments = db.Column(db.Numeric(10, 2), default=0)
@@ -494,7 +496,9 @@ class ReconciliationBillingEntry(db.Model):
     medical_aid = db.Column(db.String(100))  # medical aid name or "Private"
     amount_billed = db.Column(db.Numeric(10, 2), default=0)
     card_paid = db.Column(db.Numeric(10, 2), default=0)   # Card Payment KAS7
+    card_bank = db.Column(db.String(10), default='FNB')   # which speedpoint: FNB or Capitec
     eft_paid = db.Column(db.Numeric(10, 2), default=0)    # EFT Payment KAS3
+    eft_bank = db.Column(db.String(10), default='FNB')    # which account the EFT landed in
     credit_note = db.Column(db.Numeric(10, 2), default=0)  # reduces the billed amount
     credit_note_reason = db.Column(db.String(50))  # e.g. Wrong patient
     receipt_no = db.Column(db.String(50))
