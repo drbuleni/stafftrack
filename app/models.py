@@ -429,6 +429,9 @@ class DailyReconciliation(db.Model):
     net_collections = db.Column(db.Numeric(10, 2), default=0)
 
     # Section D: Reconciliation
+    # goodx_production holds total billed NET of credit notes for the day.
+    # The credit-note total itself is derived from the billing rows rather
+    # than stored, so there is only one source of truth.
     goodx_production = db.Column(db.Numeric(10, 2), default=0)
     goodx_collections = db.Column(db.Numeric(10, 2), default=0)
     variance = db.Column(db.Numeric(10, 2), default=0)

@@ -49,6 +49,7 @@ DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturda
 # Reasons a credit note can be issued (per Sinah / GoodX workflow)
 CREDIT_NOTE_REASONS = [
     'Wrong patient',
+    'Wrong practitioner',
     'Incorrect dependent code',
     'Wrong date of service',
     'Corrections',
@@ -126,6 +127,7 @@ def _apply_sheet_data(rec):
     rec.era_payments = []
 
     total_billed = Decimal('0')
+    total_credit = Decimal('0')
     total_card = {'FNB': Decimal('0'), 'Capitec': Decimal('0')}
     total_eft = {'FNB': Decimal('0'), 'Capitec': Decimal('0')}
     total_era = Decimal('0')
@@ -182,6 +184,7 @@ def _apply_sheet_data(rec):
             order += 1
             patient_count += 1
             total_billed += amount_billed
+            total_credit += credit_note
             total_card[card_bank] += card_paid
             total_eft[eft_bank] += eft_paid
 
@@ -221,7 +224,11 @@ def _apply_sheet_data(rec):
     rec.medical_aid_payments = total_era      # KAS6 ERA's
     rec.medical_aid_balance_payments = Decimal('0')
     rec.other_payments = Decimal('0')
-    rec.goodx_production = total_billed       # total billed for the day
+    # Total billed is NET of credit notes. A credit note reverses an invoice
+    # in GoodX - the original claim and its reversal must cancel out, leaving
+    # only the corrected claim. Reporting the gross figure double-counted
+    # every corrected invoice.
+    rec.goodx_production = total_billed - total_credit
     rec.patients_treated = patient_count
 
     rec.calculate_totals()
@@ -241,6 +248,7 @@ def _sheet_display_data(rec):
                 'total_card': Decimal('0'),
                 'total_eft': Decimal('0'),
                 'total_credit': Decimal('0'),
+                'net_billed': Decimal('0'),
             }
             providers.append(by_provider[entry.provider_name])
         group = by_provider[entry.provider_name]
@@ -249,6 +257,8 @@ def _sheet_display_data(rec):
         group['total_card'] += entry.card_paid or 0
         group['total_eft'] += entry.eft_paid or 0
         group['total_credit'] += entry.credit_note or 0
+        # What the practitioner actually billed once reversals cancel out
+        group['net_billed'] = group['total_billed'] - group['total_credit']
 
     # Split by bank for the daily summary: each reconciles against its own
     # bank statement.
@@ -271,6 +281,7 @@ def _sheet_display_data(rec):
         'total_card': sum((p['total_card'] for p in providers), Decimal('0')),
         'total_eft': sum((p['total_eft'] for p in providers), Decimal('0')),
         'total_credit': sum((p['total_credit'] for p in providers), Decimal('0')),
+        'net_billed': sum((p['net_billed'] for p in providers), Decimal('0')),
         'banks': by_bank,
     }
 
@@ -744,6 +755,7 @@ def analytics():
         func.coalesce(func.sum(ReconciliationBillingEntry.amount_billed), 0),
         func.coalesce(func.sum(ReconciliationBillingEntry.card_paid), 0),
         func.coalesce(func.sum(ReconciliationBillingEntry.eft_paid), 0),
+        func.coalesce(func.sum(ReconciliationBillingEntry.credit_note), 0),
     ).join(
         DailyReconciliation,
         ReconciliationBillingEntry.reconciliation_id == DailyReconciliation.id
@@ -756,17 +768,23 @@ def analytics():
         ReconciliationBillingEntry.provider_name
     ).all()
 
+    # Billed is reported net of credit notes: a credit note reverses an
+    # invoice, so gross would double-count every corrected claim.
     practitioner_stats = [{
         'name': name,
         'patients': patients,
-        'billed': float(billed),
+        'gross_billed': float(billed),
+        'credit_notes': float(credit),
+        'billed': float(billed) - float(credit),
         'card': float(card),
         'eft': float(eft),
         'received': float(card) + float(eft),
-    } for name, patients, billed, card, eft in practitioner_rows]
+    } for name, patients, billed, card, eft, credit in practitioner_rows]
 
     practitioner_totals = {
         'patients': sum(p['patients'] for p in practitioner_stats),
+        'gross_billed': sum(p['gross_billed'] for p in practitioner_stats),
+        'credit_notes': sum(p['credit_notes'] for p in practitioner_stats),
         'billed': sum(p['billed'] for p in practitioner_stats),
         'card': sum(p['card'] for p in practitioner_stats),
         'eft': sum(p['eft'] for p in practitioner_stats),

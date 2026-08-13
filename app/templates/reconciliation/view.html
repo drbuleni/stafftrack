@@ -97,9 +97,16 @@
                     {% endfor %}
                 </tbody>
                 <tfoot>
+                    {% if provider.total_credit %}
+                    <tr>
+                        <td colspan="4" class="text-end text-muted small">Billed before credit notes</td>
+                        <td class="text-end text-muted small">R{{ '{:,.2f}'.format(provider.total_billed) }}</td>
+                        <td colspan="6"></td>
+                    </tr>
+                    {% endif %}
                     <tr class="table-light fw-bold">
-                        <td colspan="4" class="text-end">Total</td>
-                        <td class="text-end">R{{ '{:,.2f}'.format(provider.total_billed) }}</td>
+                        <td colspan="4" class="text-end">Total{{ ' (net of credit notes)' if provider.total_credit else '' }}</td>
+                        <td class="text-end">R{{ '{:,.2f}'.format(provider.net_billed) }}</td>
                         <td class="text-end">R{{ '{:,.2f}'.format(provider.total_card) }}</td>
                         <td></td>
                         <td class="text-end">R{{ '{:,.2f}'.format(provider.total_eft) }}</td>
@@ -174,25 +181,25 @@
                         {% for provider in sheet.providers %}
                         <tr>
                             <td>{{ provider.provider_name }}</td>
-                            <td class="text-end">R{{ '{:,.2f}'.format(provider.total_billed) }}</td>
+                            <td class="text-end">R{{ '{:,.2f}'.format(provider.net_billed) }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                     <tfoot>
-                        <tr class="table-light fw-bold">
-                            <td>Total Billed</td>
-                            <td class="text-end">R{{ '{:,.2f}'.format(sheet.total_billed if sheet.providers else rec.goodx_production) }}</td>
-                        </tr>
                         {% if sheet.total_credit %}
                         <tr>
-                            <td>Credit Notes</td>
-                            <td class="text-end text-danger">(R{{ '{:,.2f}'.format(sheet.total_credit) }})</td>
+                            <td class="text-muted small">Billed before credit notes</td>
+                            <td class="text-end text-muted small">R{{ '{:,.2f}'.format(sheet.total_billed) }}</td>
                         </tr>
-                        <tr class="table-light fw-bold">
-                            <td>Net Billed</td>
-                            <td class="text-end">R{{ '{:,.2f}'.format(sheet.total_billed - sheet.total_credit) }}</td>
+                        <tr>
+                            <td class="text-muted small">Less credit notes</td>
+                            <td class="text-end text-danger small">(R{{ '{:,.2f}'.format(sheet.total_credit) }})</td>
                         </tr>
                         {% endif %}
+                        <tr class="table-light fw-bold">
+                            <td>Total Billed</td>
+                            <td class="text-end">R{{ '{:,.2f}'.format(sheet.net_billed if sheet.providers else rec.goodx_production) }}</td>
+                        </tr>
                     </tfoot>
                 </table>
             </div>

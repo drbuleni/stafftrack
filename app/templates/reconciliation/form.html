@@ -98,17 +98,17 @@
                     <table class="table table-bordered mb-0" id="billedSummary">
                         <tbody></tbody>
                         <tfoot>
+                            <tr id="grossRow" style="display: none;">
+                                <td class="text-muted small">Billed before credit notes</td>
+                                <td class="text-end text-muted small" id="summaryGrossBilled">R0.00</td>
+                            </tr>
+                            <tr id="creditRow" style="display: none;">
+                                <td class="text-muted small">Less credit notes</td>
+                                <td class="text-end text-danger small" id="summaryCreditTotal">(R0.00)</td>
+                            </tr>
                             <tr class="table-light fw-bold">
                                 <td>Total Billed</td>
                                 <td class="text-end" id="summaryBilledTotal">R0.00</td>
-                            </tr>
-                            <tr>
-                                <td>Credit Notes</td>
-                                <td class="text-end text-danger" id="summaryCreditTotal">(R0.00)</td>
-                            </tr>
-                            <tr class="table-light fw-bold">
-                                <td>Net Billed</td>
-                                <td class="text-end" id="summaryNetBilled">R0.00</td>
                             </tr>
                         </tfoot>
                     </table>
@@ -418,7 +418,8 @@ function recalc() {
                 banks.eftFnb += eftAmount;
             }
         });
-        sheet.querySelector('.sheet-total-billed').textContent = money(billed);
+        // A credit note reverses an invoice, so the sheet total is net
+        sheet.querySelector('.sheet-total-billed').textContent = money(billed - credit);
         sheet.querySelector('.sheet-total-card').textContent = money(card);
         sheet.querySelector('.sheet-total-eft').textContent = money(eft);
         sheet.querySelector('.sheet-total-credit').textContent = money(credit);
@@ -427,7 +428,7 @@ function recalc() {
         totalCard += card;
         totalEft += eft;
         totalCredit += credit;
-        perDoctor.push({ name: sheetProviderName(sheet) || 'Doctor (not selected)', billed: billed });
+        perDoctor.push({ name: sheetProviderName(sheet) || 'Doctor (not selected)', billed: billed - credit });
     });
 
     let totalEra = 0;
@@ -450,9 +451,12 @@ function recalc() {
         tr.appendChild(amtTd);
         summaryBody.appendChild(tr);
     });
-    document.getElementById('summaryBilledTotal').textContent = money(totalBilled);
+    document.getElementById('summaryGrossBilled').textContent = money(totalBilled);
     document.getElementById('summaryCreditTotal').textContent = '(' + money(totalCredit) + ')';
-    document.getElementById('summaryNetBilled').textContent = money(totalBilled - totalCredit);
+    document.getElementById('summaryBilledTotal').textContent = money(totalBilled - totalCredit);
+    // The gross / credit lines only matter when a reversal happened
+    document.getElementById('grossRow').style.display = totalCredit ? '' : 'none';
+    document.getElementById('creditRow').style.display = totalCredit ? '' : 'none';
 
     // Money received summary, split per bank statement
     document.getElementById('summaryEra').textContent = money(totalEra);

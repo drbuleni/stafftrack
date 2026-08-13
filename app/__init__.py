@@ -98,6 +98,45 @@ def create_app(config_class=Config):
         flash('That file is too large to upload. Please keep files under 5MB.', 'danger')
         return redirect(flask_request.referrer or url_for('dashboard.index')), 302
     # Register CLI commands
+    @app.cli.command('recompute-billed')
+    def recompute_billed_command():
+        """Recompute stored Total Billed net of credit notes.
+
+        Total Billed used to be stored gross, so a credit note that reverses
+        an invoice was double-counted rather than cancelling it out. The
+        formula is fixed, but sheets captured before the fix keep their old
+        stored figure until this runs. Safe to run repeatedly.
+        """
+        from decimal import Decimal
+        from sqlalchemy import text
+
+        rows = db.session.execute(text("""
+            SELECT r.id, r.date, r.goodx_production,
+                   COALESCE(SUM(e.amount_billed), 0) AS gross,
+                   COALESCE(SUM(e.credit_note), 0)  AS credit
+            FROM daily_reconciliations r
+            LEFT JOIN reconciliation_billing_entries e
+                   ON e.reconciliation_id = r.id
+            GROUP BY r.id, r.date, r.goodx_production
+            ORDER BY r.date
+        """)).fetchall()
+
+        changed = []
+        for rec_id, rec_date, stored, gross, credit in rows:
+            net = (gross or Decimal('0')) - (credit or Decimal('0'))
+            if (stored or Decimal('0')) != net:
+                changed.append((rec_id, rec_date, stored, net))
+
+        for rec_id, rec_date, stored, net in changed:
+            click.echo(f'  {rec_date}: R{stored or 0:,.2f} -> R{net:,.2f}')
+            db.session.execute(
+                text('UPDATE daily_reconciliations SET goodx_production = :net '
+                     'WHERE id = :id'),
+                {'net': net, 'id': rec_id})
+
+        db.session.commit()
+        click.echo(f'Examined {len(rows)} reconciliation(s), corrected {len(changed)}.')
+
     @app.cli.command('send-room-notifications')
     def send_room_notifications_command():
         """Send daily room assignment notifications to dental assistants."""

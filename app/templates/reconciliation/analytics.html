@@ -320,7 +320,8 @@
                             <tr>
                                 <th>Practitioner</th>
                                 <th class="text-end">Patients</th>
-                                <th class="text-end">Total Billed</th>
+                                <th class="text-end">Credit Notes</th>
+                                <th class="text-end">Total Billed<br><small>net of credit notes</small></th>
                                 <th class="text-end">KAS7 Card</th>
                                 <th class="text-end">KAS3 EFT</th>
                                 <th class="text-end">Cash Received (Card + EFT)</th>
@@ -331,6 +332,7 @@
                             <tr>
                                 <td>{{ p.name }}</td>
                                 <td class="text-end">{{ p.patients }}</td>
+                                <td class="text-end text-danger">{{ '(R{:,.2f})'.format(p.credit_notes) if p.credit_notes else '-' }}</td>
                                 <td class="text-end">R{{ '{:,.2f}'.format(p.billed) }}</td>
                                 <td class="text-end">R{{ '{:,.2f}'.format(p.card) }}</td>
                                 <td class="text-end">R{{ '{:,.2f}'.format(p.eft) }}</td>
@@ -342,6 +344,7 @@
                             <tr class="table-light fw-bold">
                                 <td>Total</td>
                                 <td class="text-end">{{ practitioner_totals.patients }}</td>
+                                <td class="text-end text-danger">{{ '(R{:,.2f})'.format(practitioner_totals.credit_notes) if practitioner_totals.credit_notes else '-' }}</td>
                                 <td class="text-end">R{{ '{:,.2f}'.format(practitioner_totals.billed) }}</td>
                                 <td class="text-end">R{{ '{:,.2f}'.format(practitioner_totals.card) }}</td>
                                 <td class="text-end">R{{ '{:,.2f}'.format(practitioner_totals.eft) }}</td>
