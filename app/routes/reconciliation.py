@@ -55,6 +55,18 @@ CREDIT_NOTE_REASONS = [
     'Corrections',
 ]
 
+# Journal types as they appear in GoodX. A journal removes a balance for an
+# accounting reason - it is not income, profit or billing. Same six types the
+# turnover report already uses, so the two stay in step.
+JOURNAL_REASONS = [
+    'Bad Debt',
+    'Braces Adjustment',
+    'Discount',
+    'Doctor Discount / Write-off',
+    'Duplicate Receipt Adjustment',
+    'Settlement Discount',
+]
+
 # The practice runs two speedpoints and two bank accounts. Card and EFT
 # money must be split per bank because each reconciles against its own
 # bank statement.
@@ -128,6 +140,7 @@ def _apply_sheet_data(rec):
 
     total_billed = Decimal('0')
     total_credit = Decimal('0')
+    total_journal = Decimal('0')
     total_card = {'FNB': Decimal('0'), 'Capitec': Decimal('0')}
     total_eft = {'FNB': Decimal('0'), 'Capitec': Decimal('0')}
     total_era = Decimal('0')
@@ -158,10 +171,14 @@ def _apply_sheet_data(rec):
             credit_note_reason = (entry.get('credit_note_reason') or '').strip()
             if not credit_note:
                 credit_note_reason = ''
+            journal = _parse_money(entry.get('journal'))
+            journal_reason = (entry.get('journal_reason') or '').strip()
+            if not journal:
+                journal_reason = ''
 
             # Skip completely empty rows
             if not any([computer_no, file_no, patient_name, medical_aid, receipt_no,
-                        amount_billed, card_paid, eft_paid, credit_note]):
+                        amount_billed, card_paid, eft_paid, credit_note, journal]):
                 continue
 
             rec.billing_entries.append(ReconciliationBillingEntry(
@@ -178,6 +195,8 @@ def _apply_sheet_data(rec):
                 eft_bank=eft_bank,
                 credit_note=credit_note,
                 credit_note_reason=credit_note_reason,
+                journal=journal,
+                journal_reason=journal_reason,
                 receipt_no=receipt_no,
                 sort_order=order
             ))
@@ -185,6 +204,7 @@ def _apply_sheet_data(rec):
             patient_count += 1
             total_billed += amount_billed
             total_credit += credit_note
+            total_journal += journal
             total_card[card_bank] += card_paid
             total_eft[eft_bank] += eft_paid
 
@@ -228,6 +248,12 @@ def _apply_sheet_data(rec):
     # in GoodX - the original claim and its reversal must cancel out, leaving
     # only the corrected claim. Reporting the gross figure double-counted
     # every corrected invoice.
+    # Journals are deliberately NOT deducted here. A credit note reverses an
+    # invoice, so it reduces turnover; a journal writes off an outstanding
+    # balance for an accounting reason and is not a turnover reduction. GoodX
+    # treats them the same way, and so does our monthly turnover report, where
+    # net turnover is gross less credit notes only. Deducting journals here
+    # would put the daily sheet out of step with both.
     rec.goodx_production = total_billed - total_credit
     rec.patients_treated = patient_count
 
@@ -248,6 +274,7 @@ def _sheet_display_data(rec):
                 'total_card': Decimal('0'),
                 'total_eft': Decimal('0'),
                 'total_credit': Decimal('0'),
+                'total_journal': Decimal('0'),
                 'net_billed': Decimal('0'),
             }
             providers.append(by_provider[entry.provider_name])
@@ -257,6 +284,7 @@ def _sheet_display_data(rec):
         group['total_card'] += entry.card_paid or 0
         group['total_eft'] += entry.eft_paid or 0
         group['total_credit'] += entry.credit_note or 0
+        group['total_journal'] += entry.journal or 0
         # What the practitioner actually billed once reversals cancel out
         group['net_billed'] = group['total_billed'] - group['total_credit']
 
@@ -282,6 +310,7 @@ def _sheet_display_data(rec):
         'total_eft': sum((p['total_eft'] for p in providers), Decimal('0')),
         'total_credit': sum((p['total_credit'] for p in providers), Decimal('0')),
         'net_billed': sum((p['net_billed'] for p in providers), Decimal('0')),
+        'total_journal': sum((p['total_journal'] for p in providers), Decimal('0')),
         'banks': by_bank,
     }
 
@@ -408,6 +437,7 @@ def new(selected_date=None):
                           billing_init=[],
                           era_init=[],
                           credit_note_reasons=CREDIT_NOTE_REASONS,
+                          journal_reasons=JOURNAL_REASONS,
                           banks=BANKS,
                           is_edit=False)
 
@@ -488,6 +518,8 @@ def edit(rec_id):
             'eft_bank': e.eft_bank or 'FNB',
             'credit_note': float(e.credit_note or 0),
             'credit_note_reason': e.credit_note_reason or '',
+            'journal': float(e.journal or 0),
+            'journal_reason': e.journal_reason or '',
             'receipt_no': e.receipt_no or '',
         } for e in group['entries']]
     } for group in display['providers']]
@@ -507,6 +539,7 @@ def edit(rec_id):
                           billing_init=billing_init,
                           era_init=era_init,
                           credit_note_reasons=CREDIT_NOTE_REASONS,
+                          journal_reasons=JOURNAL_REASONS,
                           banks=BANKS,
                           is_edit=True)
 
@@ -791,6 +824,40 @@ def analytics():
         'received': sum(p['received'] for p in practitioner_stats),
     }
 
+    # Credit notes and journals broken down by reason, so the monthly report
+    # shows not just how much was reversed or written off but why.
+    def _by_reason(amount_column, reason_column):
+        rows = db.session.query(
+            reason_column,
+            func.count(ReconciliationBillingEntry.id),
+            func.coalesce(func.sum(amount_column), 0),
+        ).join(
+            DailyReconciliation,
+            ReconciliationBillingEntry.reconciliation_id == DailyReconciliation.id
+        ).filter(
+            DailyReconciliation.date >= start_date,
+            DailyReconciliation.date <= end_date,
+            amount_column > 0
+        ).group_by(reason_column).order_by(func.sum(amount_column).desc()).all()
+
+        return [{
+            'reason': reason or 'Not specified',
+            'count': count,
+            'amount': float(amount),
+        } for reason, count, amount in rows]
+
+    credit_by_reason = _by_reason(ReconciliationBillingEntry.credit_note,
+                                  ReconciliationBillingEntry.credit_note_reason)
+    journal_by_reason = _by_reason(ReconciliationBillingEntry.journal,
+                                   ReconciliationBillingEntry.journal_reason)
+
+    adjustments = {
+        'credit_total': sum(r['amount'] for r in credit_by_reason),
+        'credit_count': sum(r['count'] for r in credit_by_reason),
+        'journal_total': sum(r['amount'] for r in journal_by_reason),
+        'journal_count': sum(r['count'] for r in journal_by_reason),
+    }
+
     # Practice-level ERA money received in the period (KAS6)
     era_period_total = sum(float(r.medical_aid_payments or 0) for r in reconciliations)
 
@@ -811,5 +878,8 @@ def analytics():
                           worst_day=worst_day,
                           practitioner_stats=practitioner_stats,
                           practitioner_totals=practitioner_totals,
+                          credit_by_reason=credit_by_reason,
+                          journal_by_reason=journal_by_reason,
+                          adjustments=adjustments,
                           era_period_total=era_period_total,
                           days_of_week=DAYS_OF_WEEK)

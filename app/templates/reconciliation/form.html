@@ -110,6 +110,12 @@
                                 <td>Total Billed</td>
                                 <td class="text-end" id="summaryBilledTotal">R0.00</td>
                             </tr>
+                            <tr id="journalRow" style="display: none;">
+                                <td class="text-muted small">
+                                    Journals <span class="text-muted">(balances written off, not billing)</span>
+                                </td>
+                                <td class="text-end text-muted small" id="summaryJournalTotal">R0.00</td>
+                            </tr>
                         </tfoot>
                     </table>
                 </div>
@@ -197,6 +203,16 @@ const billingInit = {{ billing_init | tojson }};
 const eraInit = {{ era_init | tojson }};
 
 const creditReasons = {{ credit_note_reasons | tojson }};
+const journalReasons = {{ journal_reasons | tojson }};
+
+function journalReasonOptions(selected) {
+    let html = '<option value="">--</option>';
+    journalReasons.forEach(reason => {
+        html += `<option value="${escapeAttr(reason)}" ${reason === selected ? 'selected' : ''}>${escapeAttr(reason)}</option>`;
+    });
+    return html;
+}
+
 const bankChoices = {{ banks | tojson }};
 
 function bankOptions(selected) {
@@ -272,6 +288,8 @@ function addSheet(init = null) {
                             <th style="min-width: 105px;">EFT Account</th>
                             <th style="min-width: 110px;">Credit Note</th>
                             <th style="min-width: 160px;">Credit Note Reason</th>
+                            <th style="min-width: 110px;">Journal</th>
+                            <th style="min-width: 170px;">Journal Reason</th>
                             <th style="min-width: 100px;">Receipt No.</th>
                             <th style="width: 44px;"></th>
                         </tr>
@@ -286,6 +304,9 @@ function addSheet(init = null) {
                             <td class="text-end sheet-total-eft">R0.00</td>
                             <td></td>
                             <td class="text-end sheet-total-credit">R0.00</td>
+                            <td></td>
+                            <td class="text-end sheet-total-journal">R0.00</td>
+                            <td></td>
                             <td></td>
                             <td></td>
                             <td></td>
@@ -346,6 +367,8 @@ function addBillingRow(sheetId, entry = null) {
         <td><select class="form-select form-select-sm in-eft-bank">${bankOptions(e.eft_bank)}</select></td>
         <td><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end in-credit" value="${e.credit_note || ''}"></td>
         <td><select class="form-select form-select-sm in-credit-reason">${creditReasonOptions(e.credit_note_reason || '')}</select></td>
+        <td><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end in-journal" value="${e.journal || ''}"></td>
+        <td><select class="form-select form-select-sm in-journal-reason">${journalReasonOptions(e.journal_reason || '')}</select></td>
         <td><input type="text" class="form-control form-control-sm in-receipt" value="${escapeAttr(e.receipt_no || '')}"></td>
         <td class="cell-action">
             <button type="button" class="btn btn-sm btn-outline-danger border-0" title="Remove row"
@@ -393,12 +416,12 @@ function sheetProviderName(sheet) {
 }
 
 function recalc() {
-    let totalBilled = 0, totalCard = 0, totalEft = 0, totalCredit = 0;
+    let totalBilled = 0, totalCard = 0, totalEft = 0, totalCredit = 0, totalJournal = 0;
     const banks = { cardFnb: 0, cardCapitec: 0, eftFnb: 0, eftCapitec: 0 };
     const perDoctor = [];
 
     document.querySelectorAll('.doctor-sheet').forEach(sheet => {
-        let billed = 0, card = 0, eft = 0, credit = 0;
+        let billed = 0, card = 0, eft = 0, credit = 0, journal = 0;
         sheet.querySelectorAll('.billing-row').forEach(row => {
             const cardAmount = num(row.querySelector('.in-card'));
             const eftAmount = num(row.querySelector('.in-eft'));
@@ -406,6 +429,7 @@ function recalc() {
             card += cardAmount;
             eft += eftAmount;
             credit += num(row.querySelector('.in-credit'));
+            journal += num(row.querySelector('.in-journal'));
 
             if (row.querySelector('.in-card-bank').value === 'Capitec') {
                 banks.cardCapitec += cardAmount;
@@ -423,11 +447,13 @@ function recalc() {
         sheet.querySelector('.sheet-total-card').textContent = money(card);
         sheet.querySelector('.sheet-total-eft').textContent = money(eft);
         sheet.querySelector('.sheet-total-credit').textContent = money(credit);
+        sheet.querySelector('.sheet-total-journal').textContent = money(journal);
 
         totalBilled += billed;
         totalCard += card;
         totalEft += eft;
         totalCredit += credit;
+        totalJournal += journal;
         perDoctor.push({ name: sheetProviderName(sheet) || 'Doctor (not selected)', billed: billed - credit });
     });
 
@@ -457,6 +483,9 @@ function recalc() {
     // The gross / credit lines only matter when a reversal happened
     document.getElementById('grossRow').style.display = totalCredit ? '' : 'none';
     document.getElementById('creditRow').style.display = totalCredit ? '' : 'none';
+    // Journals are shown for the record but never deducted from Total Billed
+    document.getElementById('summaryJournalTotal').textContent = '(' + money(totalJournal) + ')';
+    document.getElementById('journalRow').style.display = totalJournal ? '' : 'none';
 
     // Money received summary, split per bank statement
     document.getElementById('summaryEra').textContent = money(totalEra);
@@ -493,6 +522,8 @@ function serialize() {
                 eft_bank: row.querySelector('.in-eft-bank').value,
                 credit_note: row.querySelector('.in-credit').value,
                 credit_note_reason: row.querySelector('.in-credit-reason').value,
+                journal: row.querySelector('.in-journal').value,
+                journal_reason: row.querySelector('.in-journal-reason').value,
                 receipt_no: row.querySelector('.in-receipt').value,
             });
         });

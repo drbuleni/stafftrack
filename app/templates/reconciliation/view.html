@@ -75,6 +75,8 @@
                         <th>EFT Account</th>
                         <th class="text-end">Credit Note</th>
                         <th>Credit Note Reason</th>
+                        <th class="text-end">Journal</th>
+                        <th>Journal Reason</th>
                         <th>Receipt No.</th>
                     </tr>
                 </thead>
@@ -92,6 +94,8 @@
                         <td class="text-muted small">{{ entry.eft_bank if entry.eft_paid else '' }}</td>
                         <td class="text-end text-danger">{{ '(R{:,.2f})'.format(entry.credit_note) if entry.credit_note else '' }}</td>
                         <td>{{ entry.credit_note_reason or '' }}</td>
+                        <td class="text-end text-danger">{{ '(R{:,.2f})'.format(entry.journal) if entry.journal else '' }}</td>
+                        <td>{{ entry.journal_reason or '' }}</td>
                         <td>{{ entry.receipt_no or '' }}</td>
                     </tr>
                     {% endfor %}
@@ -101,7 +105,7 @@
                     <tr>
                         <td colspan="4" class="text-end text-muted small">Billed before credit notes</td>
                         <td class="text-end text-muted small">R{{ '{:,.2f}'.format(provider.total_billed) }}</td>
-                        <td colspan="6"></td>
+                        <td colspan="8"></td>
                     </tr>
                     {% endif %}
                     <tr class="table-light fw-bold">
@@ -112,6 +116,8 @@
                         <td class="text-end">R{{ '{:,.2f}'.format(provider.total_eft) }}</td>
                         <td></td>
                         <td class="text-end text-danger">{{ '(R{:,.2f})'.format(provider.total_credit) if provider.total_credit else '' }}</td>
+                        <td></td>
+                        <td class="text-end text-danger">{{ '(R{:,.2f})'.format(provider.total_journal) if provider.total_journal else '' }}</td>
                         <td></td>
                         <td></td>
                     </tr>
@@ -200,6 +206,12 @@
                             <td>Total Billed</td>
                             <td class="text-end">R{{ '{:,.2f}'.format(sheet.net_billed if sheet.providers else rec.goodx_production) }}</td>
                         </tr>
+                        {% if sheet.total_journal %}
+                        <tr>
+                            <td class="text-muted small">Journals <span class="text-muted">(balances written off, not billing)</span></td>
+                            <td class="text-end text-muted small">(R{{ '{:,.2f}'.format(sheet.total_journal) }})</td>
+                        </tr>
+                        {% endif %}
                     </tfoot>
                 </table>
             </div>

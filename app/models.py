@@ -504,6 +504,10 @@ class ReconciliationBillingEntry(db.Model):
     eft_bank = db.Column(db.String(10), default='FNB')    # which account the EFT landed in
     credit_note = db.Column(db.Numeric(10, 2), default=0)  # reduces the billed amount
     credit_note_reason = db.Column(db.String(50))  # e.g. Wrong patient
+    # A journal also removes a balance, but for an accounting reason rather
+    # than a billing error: it is not income, profit or an amount billed.
+    journal = db.Column(db.Numeric(10, 2), default=0)
+    journal_reason = db.Column(db.String(60))  # e.g. Doctor Discount / Write-off
     receipt_no = db.Column(db.String(50))
     sort_order = db.Column(db.Integer, default=0)
 
