@@ -269,10 +269,13 @@ def edit(report_id):
 @finance_access_required
 def view(report_id):
     """View a formatted turnover report."""
+    from app.routes.patient_flow import month_totals
+
     report = TurnoverReport.query.get_or_404(report_id)
     return render_template('turnover/view.html',
                           report=report,
                           totals=_report_totals(report),
+                          patient_flow=month_totals(report.year, report.month),
                           month_names=calendar.month_name)
 
 
@@ -282,8 +285,10 @@ def view(report_id):
 def pdf(report_id):
     """Download the report as a PDF."""
     report = TurnoverReport.query.get_or_404(report_id)
+    from app.routes.patient_flow import month_totals
     from app.utils.turnover_pdf import build_turnover_pdf
-    buffer = build_turnover_pdf(report, _report_totals(report))
+    buffer = build_turnover_pdf(report, _report_totals(report),
+                                patient_flow=month_totals(report.year, report.month))
     filename = f"turnover_report_{report.year}_{report.month:02d}.pdf"
     return send_file(buffer, as_attachment=True, download_name=filename,
                      mimetype='application/pdf')

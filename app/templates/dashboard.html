@@ -217,11 +217,6 @@
                     <a href="{{ url_for('kpi.index') }}" class="btn btn-outline-primary">
                         <i class="bi bi-graph-up-arrow me-2"></i>View My KPIs
                     </a>
-                    {% if current_user.role in ['Receptionist', 'Practice Manager', 'Super Admin', 'Dentist'] %}
-                    <a href="{{ url_for('receipts.create') }}" class="btn btn-outline-success">
-                        <i class="bi bi-receipt me-2"></i>Create Receipt
-                    </a>
-                    {% endif %}
                 </div>
 
                 {% if current_user.role in ['Practice Manager', 'Super Admin'] %}

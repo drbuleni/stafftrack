@@ -55,7 +55,7 @@ def money(value):
     return f"R{value:,.2f}"
 
 
-def build_turnover_pdf(report, totals):
+def build_turnover_pdf(report, totals, patient_flow=None):
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4,
                             topMargin=18*mm, bottomMargin=18*mm,
@@ -161,6 +161,19 @@ def build_turnover_pdf(report, totals):
         ['Consolidated Movement Balance', money(totals['movement_balance'])],
     ]
     elements.append(money_table(summary_rows, bold_rows=(2, 8, 9)))
+
+    # Patient flow for the month
+    if patient_flow and patient_flow.get('days_recorded'):
+        elements.append(Paragraph('Patient Flow', section_style))
+        flow_rows = [
+            ['Patients treated', f"{patient_flow['treated']}"],
+            ['Walk-ins (treated without a booking)',
+             f"{patient_flow['walk_ins']}  ({patient_flow['walk_in_share']:.0f}% of treated)"],
+            ['No-shows (booked but did not arrive)',
+             f"{patient_flow['no_shows']}  ({patient_flow['no_show_rate']:.0f}% of booked)"],
+            ['Days recorded', f"{patient_flow['days_recorded']}"],
+        ]
+        elements.append(money_table(flow_rows))
 
     # Optional VAT summary
     if report.vat_inclusive is not None or report.vat_exclusive is not None:

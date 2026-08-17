@@ -545,6 +545,46 @@ class ReconciliationEraPayment(db.Model):
         return f'<ReconciliationEraPayment {self.batch_number} - {self.medical_aid_name}>'
 
 
+class PatientFlow(db.Model):
+    """Daily patient flow counts, captured separately from the money.
+
+    Deliberately narrow: only the three figures the practice can record
+    reliably. Reschedules and consultations were considered and dropped
+    because front-desk data for them is not dependable, and a monthly
+    report built on unreliable counts is worse than no report.
+    """
+    __tablename__ = 'patient_flow'
+
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False, unique=True)
+
+    treated = db.Column(db.Integer, default=0)
+    walk_ins = db.Column(db.Integer, default=0)
+    no_shows = db.Column(db.Integer, default=0)
+
+    notes = db.Column(db.Text)
+
+    recorded_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    recorder = db.relationship('User', foreign_keys=[recorded_by])
+
+    @property
+    def total_expected(self):
+        """Everyone who was meant to be seen: those treated plus no-shows.
+        Walk-ins are excluded - they were never booked."""
+        return (self.treated or 0) + (self.no_shows or 0)
+
+    @property
+    def no_show_rate(self):
+        expected = self.total_expected
+        return (self.no_shows or 0) / expected * 100 if expected else 0
+
+    def __repr__(self):
+        return f'<PatientFlow {self.date}>'
+
+
 class TurnoverReport(db.Model):
     """Monthly Turnover & Cash Flow report. Figures are captured from GoodX;
     StaffTrack standardises the layout and computes all totals."""

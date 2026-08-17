@@ -111,15 +111,15 @@
                     Turnover Reports
                 </a>
             </li>
+            <li class="sidebar-nav-item">
+                <a href="{{ url_for('patient_flow.index') }}" class="sidebar-nav-link {{ 'active' if 'patient_flow' in request.endpoint else '' }}">
+                    <i class="bi bi-people"></i>
+                    Patient Flow
+                </a>
+            </li>
             {% endif %}
 
             {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
-            <li class="sidebar-nav-item">
-                <a href="{{ url_for('receipts.index') }}" class="sidebar-nav-link {{ 'active' if 'receipts' in request.endpoint else '' }}">
-                    <i class="bi bi-receipt"></i>
-                    Receipts
-                </a>
-            </li>
 
             <li class="sidebar-nav-section">Management</li>
             <li class="sidebar-nav-item">
@@ -144,12 +144,6 @@
                 <a href="{{ url_for('performance.index') }}" class="sidebar-nav-link {{ 'active' if 'performance' in request.endpoint else '' }}">
                     <i class="bi bi-person-lines-fill"></i>
                     Performance
-                </a>
-            </li>
-            <li class="sidebar-nav-item">
-                <a href="{{ url_for('analytics.index') }}" class="sidebar-nav-link {{ 'active' if 'analytics' in request.endpoint else '' }}">
-                    <i class="bi bi-bar-chart-line"></i>
-                    Analytics
                 </a>
             </li>
 

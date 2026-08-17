@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Record Patient Flow - StaffTrack{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-people"></i> {{ 'Update' if entry else 'Record' }} Patient Flow</h1>
+    <a href="{{ url_for('patient_flow.index') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-7">
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-calendar3"></i> Date</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label">Date</label>
+                            <input type="date" name="date" id="flowDate" class="form-control"
+                                   value="{{ flow_date.isoformat() }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Day</label>
+                            <input type="text" id="flowDay" class="form-control"
+                                   value="{{ flow_date.strftime('%A') }}" readonly>
+                        </div>
+                    </div>
+                    {% if entry %}
+                    <div class="alert alert-info mt-3 mb-0 py-2">
+                        <i class="bi bi-info-circle me-1"></i>
+                        This day was already recorded. Saving will update it.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-clipboard-check"></i> Counts</h5>
+                </div>
+                <div class="card-body">
+                    {% for name, label, hint in fields %}
+                    <div class="mb-3">
+                        <label for="{{ name }}" class="form-label">{{ label }}</label>
+                        <input type="number" min="0" step="1" name="{{ name }}" id="{{ name }}"
+                               class="form-control" style="max-width: 180px;"
+                               value="{{ entry[name] if entry else 0 }}">
+                        <div class="form-text">{{ hint }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-sticky"></i> Notes (optional)</h5>
+                </div>
+                <div class="card-body">
+                    <textarea name="notes" class="form-control" rows="3"
+                              placeholder="Anything unusual about the day...">{{ entry.notes if entry else '' }}</textarea>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mb-5">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="bi bi-check-circle"></i> {{ 'Update' if entry else 'Save' }}
+                </button>
+                <a href="{{ url_for('patient_flow.index') }}" class="btn btn-outline-secondary btn-lg">Cancel</a>
+            </div>
+        </form>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-info-circle"></i> What these mean</h6>
+            </div>
+            <div class="card-body">
+                <p class="mb-2"><strong>Treated</strong> &mdash; patients actually seen by a
+                    practitioner, whether booked or not.</p>
+                <p class="mb-2"><strong>Walk-ins</strong> &mdash; treated without an appointment.
+                    Tracking these shows how much of the day is unplanned, and how many patients
+                    could be moved onto bookings.</p>
+                <p class="mb-0"><strong>No-shows</strong> &mdash; booked but never arrived.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Keep the day name in step with the chosen date
+(function () {
+    const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const dateInput = document.getElementById('flowDate');
+    const dayInput = document.getElementById('flowDay');
+    if (!dateInput || !dayInput) return;
+
+    function sync() {
+        if (!dateInput.value) return;
+        const chosen = new Date(dateInput.value + 'T00:00:00');
+        if (!isNaN(chosen)) dayInput.value = WEEKDAYS[chosen.getDay()];
+    }
+    dateInput.addEventListener('change', sync);
+    sync();
+})();
+</script>
+{% endblock %}
