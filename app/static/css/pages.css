@@ -216,6 +216,16 @@
 
 .report-doc-heading:first-of-type { margin-top: 0.5rem; }
 
+/* The practice logo is white artwork on its own dark panel, so it sits
+   as a self-contained lockup rather than needing a background from us */
+.report-doc-logo {
+    height: 42px;
+    width: auto;
+    border-radius: var(--r-control);
+    margin-bottom: 0.75rem;
+    display: block;
+}
+
 .report-doc table { font-variant-numeric: tabular-nums; }
 .report-doc p { max-width: 68ch; }
 

@@ -55,6 +55,21 @@ def money(value):
     return f"R{value:,.2f}"
 
 
+def logo_is_visible(path, threshold=210):
+    """Would this logo actually be seen on a white page?
+
+    The first logo supplied was white artwork on a white background: its
+    darkest pixel was luminance 225 of 255, so it printed as an invisible
+    gap. Anything that pale is refused rather than silently leaving a hole.
+    """
+    try:
+        from PIL import Image as PILImage
+        with PILImage.open(path) as im:
+            return im.convert('L').getextrema()[0] <= threshold
+    except Exception:
+        return False
+
+
 def _practice_logo(max_w=42 * mm, max_h=16 * mm):
     """The practice logo for the letterhead, if a usable file is present.
 
@@ -74,17 +89,16 @@ def _practice_logo(max_w=42 * mm, max_h=16 * mm):
     for path in candidates:
         if not os.path.exists(path):
             continue
+        if not logo_is_visible(path):
+            continue
         try:
             from PIL import Image as PILImage
             with PILImage.open(path) as im:
-                grey = im.convert('L')
-                # If nothing in the image is darker than near-white it cannot
-                # be seen on a white page; skip it rather than print a blank.
-                if grey.getextrema()[0] > 210:
-                    continue
                 width, height = im.size
             scale = min(max_w / width, max_h / height)
-            return RLImage(path, width=width * scale, height=height * scale)
+            image = RLImage(path, width=width * scale, height=height * scale)
+            image.hAlign = 'LEFT'   # everything else on the page is left-aligned
+            return image
         except Exception:
             continue
     return None
@@ -340,21 +354,23 @@ def build_turnover_pdf(report, totals, patient_flow=None, document=None):
         ]
         elements.append(money_table(flow_rows))
 
-    # Optional VAT summary
-    if report.vat_inclusive is not None or report.vat_exclusive is not None:
-        elements.append(Paragraph('VAT Summary', sub_style))
-        vat_rows = []
-        if report.vat_inclusive is not None:
-            vat_rows.append(['VAT Inclusive', money(report.vat_inclusive)])
-        if report.vat_exclusive is not None:
-            vat_rows.append(['VAT Exclusive', money(report.vat_exclusive)])
-        elements.append(money_table(vat_rows))
+    # VAT and the standard notes, unless the monthly report document is
+    # present - it already carries both, and printing them twice made the
+    # PDF read as though it had lost its place.
+    if not document:
+        if report.vat_inclusive is not None or report.vat_exclusive is not None:
+            elements.append(Paragraph('VAT Summary', sub_style))
+            vat_rows = []
+            if report.vat_inclusive is not None:
+                vat_rows.append(['VAT Inclusive', money(report.vat_inclusive)])
+            if report.vat_exclusive is not None:
+                vat_rows.append(['VAT Exclusive', money(report.vat_exclusive)])
+            elements.append(money_table(vat_rows))
 
-    # Standard notes
-    elements.append(Paragraph('Notes', sub_style))
-    elements.append(Paragraph(TURNOVER_NOTE, note_style))
-    elements.append(Paragraph(KAS8_NOTE, note_style))
-    elements.append(Paragraph(MOVEMENT_NOTE, note_style))
+        elements.append(Paragraph('Notes', sub_style))
+        elements.append(Paragraph(TURNOVER_NOTE, note_style))
+        elements.append(Paragraph(KAS8_NOTE, note_style))
+        elements.append(Paragraph(MOVEMENT_NOTE, note_style))
 
     if report.notes:
         elements.append(Paragraph('Additional Notes', sub_style))
