@@ -9,9 +9,11 @@
         <a href="{{ url_for('leave.entitlements') }}" class="btn btn-outline-secondary">
             <i class="bi bi-info-circle"></i> Leave Entitlements
         </a>
+        {% if current_user.role in ['Practice Manager', 'Super Admin'] %}
         <a href="{{ url_for('leave.calendar_view') }}" class="btn btn-outline-primary">
             <i class="bi bi-calendar3"></i> Leave Calendar
         </a>
+        {% endif %}
         <a href="{{ url_for('leave.request_leave') }}" class="btn btn-primary">
             <i class="bi bi-plus-circle"></i> Request Leave
         </a>

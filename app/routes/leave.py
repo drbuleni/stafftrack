@@ -446,9 +446,16 @@ def approve(leave_id):
 
 @bp.route('/calendar')
 @login_required
+@manager_required
 def calendar_view():
-    """View leave calendar."""
-    # Get approved leave for all staff
+    """View leave calendar.
+
+    Managers only. This lists every staff member's approved leave together
+    with the leave type, so leaving it open meant a colleague's sick leave
+    was visible to the whole practice - more sensitive still now that
+    doctor's notes are attached to those requests. Sinah raised it: only
+    management should see other people's leave.
+    """
     approved_leave = LeaveRequest.query.filter_by(status='Approved').all()
 
     return render_template('leave/calendar.html', approved_leave=approved_leave)
