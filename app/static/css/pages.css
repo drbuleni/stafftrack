@@ -196,6 +196,30 @@
 }
 
 /* ============================================
+   Monthly report document
+   Reads as a document rather than a dashboard,
+   because the accountant prints this.
+   ============================================ */
+.report-doc {
+    max-width: 62rem;
+}
+
+.report-doc-heading {
+    margin-top: 1.6rem;
+    margin-bottom: 0.35rem;
+    padding-bottom: 0.3rem;
+    border-bottom: 1px solid var(--line);
+    color: var(--ink);
+    font-size: var(--t-base);
+    font-weight: 650;
+}
+
+.report-doc-heading:first-of-type { margin-top: 0.5rem; }
+
+.report-doc table { font-variant-numeric: tabular-nums; }
+.report-doc p { max-width: 68ch; }
+
+/* ============================================
    Money screens — reconciliation & turnover
    ============================================ */
 

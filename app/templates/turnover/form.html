@@ -128,7 +128,39 @@
                     </div>
                 </div>
             </div>
+            <div class="row">
+                <div class="col-md-6 mb-2">
+                    <label class="form-label">VAT Number</label>
+                    <input type="text" name="vat_number" class="form-control" maxlength="30"
+                           placeholder="Practice VAT registration number"
+                           value="{{ report.vat_number if report and report.vat_number else '' }}">
+                </div>
+            </div>
             <small class="text-muted">Leave blank to omit the VAT section from the report.</small>
+        </div>
+    </div>
+
+    <!-- Written sections of the monthly report document -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-file-text"></i> Monthly Report Wording</h5>
+        </div>
+        <div class="card-body">
+            <p class="text-muted small">
+                These two paragraphs appear in the monthly report document the accountant
+                reads. Leave them blank and StaffTrack writes them from the figures; type
+                over them whenever the month needs explaining differently.
+            </p>
+            <div class="mb-3">
+                <label class="form-label">Interpretation of Financial Activity</label>
+                <textarea name="interpretation" class="form-control" rows="4"
+                          placeholder="Left blank, this is written from the figures automatically.">{{ report.interpretation if report else '' }}</textarea>
+            </div>
+            <div class="mb-0">
+                <label class="form-label">Final Summary</label>
+                <textarea name="final_summary" class="form-control" rows="4"
+                          placeholder="Left blank, this is written from the figures automatically.">{{ report.final_summary if report else '' }}</textarea>
+            </div>
         </div>
     </div>
 

@@ -7,7 +7,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table,
-                                TableStyle, HRFlowable)
+                                TableStyle, HRFlowable, PageBreak)
 
 ACCENT = colors.HexColor('#1F5F4E')
 LIGHT = colors.HexColor('#EAF2EE')
@@ -55,7 +55,42 @@ def money(value):
     return f"R{value:,.2f}"
 
 
-def build_turnover_pdf(report, totals, patient_flow=None):
+def _practice_logo(max_w=42 * mm, max_h=16 * mm):
+    """The practice logo for the letterhead, if a usable file is present.
+
+    The accountant prints this, so it should carry the practice's identity
+    rather than ours. Returns None when no logo is configured, and also when
+    the file is too pale to read on white - a white-on-white logo would
+    otherwise render as an invisible gap.
+    """
+    import os
+    from flask import current_app
+    from reportlab.platypus import Image as RLImage
+
+    candidates = [
+        os.path.join(current_app.root_path, 'static', 'images', 'practice-logo.png'),
+        os.path.join(current_app.root_path, '..', 'smilez dental surgery logo.png'),
+    ]
+    for path in candidates:
+        if not os.path.exists(path):
+            continue
+        try:
+            from PIL import Image as PILImage
+            with PILImage.open(path) as im:
+                grey = im.convert('L')
+                # If nothing in the image is darker than near-white it cannot
+                # be seen on a white page; skip it rather than print a blank.
+                if grey.getextrema()[0] > 210:
+                    continue
+                width, height = im.size
+            scale = min(max_w / width, max_h / height)
+            return RLImage(path, width=width * scale, height=height * scale)
+        except Exception:
+            continue
+    return None
+
+
+def build_turnover_pdf(report, totals, patient_flow=None, document=None):
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4,
                             topMargin=18*mm, bottomMargin=18*mm,
@@ -96,6 +131,10 @@ def build_turnover_pdf(report, totals, patient_flow=None):
 
     # Header
     period = f"{calendar.month_name[report.month]} {report.year}"
+    logo = _practice_logo()
+    if logo is not None:
+        elements.append(logo)
+        elements.append(Spacer(1, 6))
     elements.append(Paragraph('Smilez Dental Surgery', title_style))
     elements.append(Paragraph('Monthly Turnover &amp; Cash Flow Report', subtitle_style))
     elements.append(Paragraph(f"Reporting Period: <b>{period}</b>", subtitle_style))
@@ -161,6 +200,132 @@ def build_turnover_pdf(report, totals, patient_flow=None):
         ['Consolidated Movement Balance', money(totals['movement_balance'])],
     ]
     elements.append(money_table(summary_rows, bold_rows=(2, 8, 9)))
+
+    # The monthly report document: the narrative the accountant reads.
+    # Same fixed structure every month, built from the figures above.
+    if document:
+        def figure_table(block, label):
+            rows = [[name, money(amount)] for name, amount in block['rows']]
+            if not rows:
+                rows = [['None recorded', money(0)]]
+            rows.append([f'Total {label}', money(block['total'])])
+            return money_table(rows, bold_rows=(len(rows) - 1,))
+
+        elements.append(PageBreak())
+        elements.append(Paragraph(f"{document['period']} Financial Report", title_style))
+        elements.append(Paragraph(document['practice_name'], subtitle_style))
+        elements.append(Paragraph('Combined Practitioner Analysis', subtitle_style))
+        elements.append(Paragraph(
+            'Practitioners: ' + ', '.join(document['practitioners']), body_style))
+        elements.append(HRFlowable(width='100%', thickness=1, color=ACCENT))
+
+        elements.append(Paragraph('1. Turnover Generated', section_style))
+        elements.append(Paragraph(
+            f"Turnover represents total services billed during {document['period']} "
+            f"before adjustments and collections.", note_style))
+        elements.append(figure_table(document['turnover'], 'Turnover'))
+        if document['additional_turnover']['any']:
+            elements.append(figure_table(document['additional_turnover'], 'Additional Turnover'))
+
+        elements.append(Paragraph('2. Credit Notes Processed', section_style))
+        elements.append(Paragraph(
+            'Credit notes reduce turnover and are issued for reversals, cancellations, '
+            'or corrections.', note_style))
+        elements.append(figure_table(document['credit_notes'], 'Credit Notes'))
+
+        elements.append(Paragraph('3. Net Turnover after Credit Notes', section_style))
+        elements.append(figure_table(document['net_turnover'], 'Net Turnover'))
+
+        elements.append(Paragraph('4. Cash Flow Analysis', section_style))
+        elements.append(Paragraph(
+            'Cash flow represents actual money received through deposits and medical aid '
+            'remittances.', note_style))
+        for i, line in enumerate(document['cash_flow'], start=1):
+            elements.append(Paragraph(f"4.{i} {line['label']}", sub_style))
+            if line['deposits']['any']:
+                elements.append(figure_table(line['deposits'], 'Deposits'))
+            if line['corrections']['any']:
+                elements.append(figure_table(line['corrections'], 'Corrections'))
+        if document['linking']['any']:
+            elements.append(Paragraph('Linking Deposits (KAS8)', sub_style))
+            elements.append(figure_table(document['linking'], 'Linking'))
+            elements.append(Paragraph(KAS8_NOTE, note_style))
+
+        elements.append(Paragraph('5. Journal Entries', section_style))
+        if document['journal_entries']:
+            elements.append(Paragraph(
+                'Journals represent accounting adjustments including bad debts, '
+                'write-offs, and corrections.', note_style))
+            journal_rows = [[f"{j['description']} - {j['practitioner']}", money(j['amount'])]
+                            for j in document['journal_entries']]
+            journal_rows.append(['Total Journals', money(document['journal_total'])])
+            elements.append(money_table(journal_rows, bold_rows=(len(journal_rows) - 1,)))
+        else:
+            elements.append(Paragraph(
+                'No journal entries were recorded for this period.', note_style))
+
+        elements.append(Paragraph('6. VAT Summary', section_style))
+        if document['vat_inclusive'] is not None or document['vat_exclusive'] is not None:
+            vat_rows = []
+            if document['vat_number']:
+                vat_rows.append(['VAT Number', document['vat_number']])
+            if document['vat_inclusive'] is not None:
+                vat_rows.append(['VAT Inclusive', money(document['vat_inclusive'])])
+            if document['vat_exclusive'] is not None:
+                vat_rows.append(['VAT Exclusive', money(document['vat_exclusive'])])
+            elements.append(money_table(vat_rows))
+            if document['vat_equal']:
+                elements.append(Paragraph(
+                    'Equal VAT inclusive and exclusive values indicate VAT exempt services, '
+                    'or non-VAT affecting transactions within the system.', note_style))
+        else:
+            elements.append(Paragraph(
+                'No VAT summary was captured for this period.', note_style))
+
+        elements.append(Paragraph('7. Interpretation of Financial Activity', section_style))
+        elements.append(Paragraph(document['interpretation'].replace('\n', '<br/>'), body_style))
+
+        elements.append(Paragraph('8. Accounting Notes', section_style))
+        for note in document['accounting_notes']:
+            elements.append(Paragraph(f'&bull; {note}', note_style))
+
+        elements.append(Paragraph('9. Movement Summary - System Control Total', section_style))
+        elements.append(money_table(
+            [['Final Control Total', money(document['movement_total'])]], bold_rows=(0,)))
+        elements.append(Paragraph(
+            'The movement summary represents the net result of all transactions processed '
+            'in the system, including ' + ', '.join(document['movement_includes']) + '.',
+            note_style))
+        elements.append(Paragraph(
+            f"This amount is <b>not</b> {document['movement_is_not']}. "
+            f"It is {document['movement_is']}.", note_style))
+
+        elements.append(Paragraph('10. Final Summary', section_style))
+        elements.append(Paragraph(document['final_summary'].replace('\n', '<br/>'), body_style))
+
+        elements.append(Paragraph('11. Grand Summary', section_style))
+        grand = [['Practitioner', 'Adjusted Turnover', 'Cash Flow', 'Journals', 'Movement']]
+        for r in document['grand_rows']:
+            grand.append([r['name'], money(r['adjusted_turnover']), money(r['cash_flow']),
+                          money(r['journals']), money(r['movement'])])
+        gt = document['grand_total']
+        grand.append(['GRAND TOTAL', money(gt['adjusted_turnover']), money(gt['cash_flow']),
+                      money(gt['journals']), money(gt['movement'])])
+
+        grand_table = Table(grand, colWidths=[44 * mm, 33 * mm, 33 * mm, 31 * mm, 33 * mm])
+        grand_table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+            ('FONTNAME', (0, 1), (-1, -2), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
+            ('BACKGROUND', (0, 0), (-1, 0), LIGHT),
+            ('BACKGROUND', (0, -1), (-1, -1), LIGHT),
+            ('GRID', (0, 0), (-1, -1), 0.4, GRID),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ]))
+        elements.append(grand_table)
 
     # Patient flow for the month
     if patient_flow and patient_flow.get('days_recorded'):

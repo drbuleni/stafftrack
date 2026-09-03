@@ -597,6 +597,12 @@ class TurnoverReport(db.Model):
     # Optional VAT summary
     vat_inclusive = db.Column(db.Numeric(12, 2))
     vat_exclusive = db.Column(db.Numeric(12, 2))
+    vat_number = db.Column(db.String(30))  # practice VAT registration number
+
+    # The two written sections of the monthly report document. Both are
+    # pre-drafted from the figures, so Sinah edits rather than starts blank.
+    interpretation = db.Column(db.Text)
+    final_summary = db.Column(db.Text)
 
     notes = db.Column(db.Text)
 

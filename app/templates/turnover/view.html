@@ -3,6 +3,29 @@
 {% block title %}Turnover Report {{ month_names[report.month] }} {{ report.year }} - StaffTrack{% endblock %}
 
 {% block content %}
+
+{# A per-practitioner figure table with a total, used throughout the document #}
+{% macro figures(block, label) %}
+<table class="table table-sm table-bordered" style="max-width: 520px;">
+    <thead class="table-light">
+        <tr><th>Practitioner</th><th class="text-end">{{ label }} (R)</th></tr>
+    </thead>
+    <tbody>
+        {% for name, amount in block.rows %}
+        <tr><td>{{ name }}</td><td class="text-end">R{{ '{:,.2f}'.format(amount) }}</td></tr>
+        {% else %}
+        <tr><td colspan="2" class="text-muted">None recorded</td></tr>
+        {% endfor %}
+    </tbody>
+    <tfoot>
+        <tr class="table-light fw-bold">
+            <td>Total {{ label }}</td>
+            <td class="text-end">R{{ '{:,.2f}'.format(block.total) }}</td>
+        </tr>
+    </tfoot>
+</table>
+{% endmacro %}
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>
         <i class="bi bi-file-earmark-bar-graph"></i>
@@ -129,6 +152,155 @@
                     <tr class="table-light fw-bold"><td>Total Cash Flow</td><td class="text-end">R{{ '{:,.2f}'.format(totals.cash_flow) }}</td></tr>
                 </table>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Monthly report document: the narrative the accountant reads -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-file-text"></i> {{ document.period }} Financial Report</h5>
+    </div>
+    <div class="card-body report-doc">
+        <p class="text-muted mb-1">{{ document.practice_name }}</p>
+        <h6 class="mb-1">Combined Practitioner Analysis</h6>
+        <p class="mb-3">
+            <span class="text-muted small">Practitioners:</span>
+            {{ document.practitioners | join(', ') }}
+        </p>
+
+        <h6 class="report-doc-heading">1. Turnover Generated</h6>
+        <p class="small text-muted">Turnover represents total services billed during
+            {{ document.period }} before adjustments and collections.</p>
+        {{ figures(document.turnover, 'Turnover') }}
+        {% if document.additional_turnover.any %}
+        {{ figures(document.additional_turnover, 'Additional Turnover') }}
+        {% endif %}
+
+        <h6 class="report-doc-heading">2. Credit Notes Processed</h6>
+        <p class="small text-muted">Credit notes reduce turnover and are issued for
+            reversals, cancellations, or corrections.</p>
+        {{ figures(document.credit_notes, 'Credit Notes') }}
+
+        <h6 class="report-doc-heading">3. Net Turnover after Credit Notes</h6>
+        {{ figures(document.net_turnover, 'Net Turnover') }}
+
+        <h6 class="report-doc-heading">4. Cash Flow Analysis</h6>
+        <p class="small text-muted">Cash flow represents actual money received through
+            deposits and medical aid remittances.</p>
+        {% for line in document.cash_flow %}
+        <p class="fw-semibold small mb-1 mt-3">4.{{ loop.index }} {{ line.label }}</p>
+        {% if line.deposits.any %}{{ figures(line.deposits, 'Deposits') }}{% endif %}
+        {% if line.corrections.any %}{{ figures(line.corrections, 'Corrections') }}{% endif %}
+        {% endfor %}
+        {% if document.linking.any %}
+        <p class="fw-semibold small mb-1 mt-3">Linking Deposits (KAS8)</p>
+        {{ figures(document.linking, 'Linking') }}
+        <p class="small text-muted">Linking deposits re-allocate money already received and
+            are not added to cash flow totals.</p>
+        {% endif %}
+
+        <h6 class="report-doc-heading">5. Journal Entries</h6>
+        {% if document.journal_entries %}
+        <p class="small text-muted">Journals represent accounting adjustments including bad
+            debts, write-offs, and corrections.</p>
+        <table class="table table-sm table-bordered">
+            <thead class="table-light">
+                <tr><th>Description</th><th>Practitioner</th><th class="text-end">Amount</th></tr>
+            </thead>
+            <tbody>
+                {% for j in document.journal_entries %}
+                <tr>
+                    <td>{{ j.description }}</td>
+                    <td>{{ j.practitioner }}</td>
+                    <td class="text-end">R{{ '{:,.2f}'.format(j.amount) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="table-light fw-bold">
+                    <td colspan="2">Total Journals</td>
+                    <td class="text-end">R{{ '{:,.2f}'.format(document.journal_total) }}</td>
+                </tr>
+            </tfoot>
+        </table>
+        {% else %}
+        <p class="small text-muted">No journal entries were recorded for this period.</p>
+        {% endif %}
+
+        <h6 class="report-doc-heading">6. VAT Summary</h6>
+        {% if document.vat_inclusive is not none or document.vat_exclusive is not none %}
+        <table class="table table-sm table-bordered" style="max-width: 520px;">
+            {% if document.vat_number %}
+            <tr><td>VAT Number</td><td class="text-end">{{ document.vat_number }}</td></tr>
+            {% endif %}
+            {% if document.vat_inclusive is not none %}
+            <tr><td>VAT Inclusive</td><td class="text-end">R{{ '{:,.2f}'.format(document.vat_inclusive) }}</td></tr>
+            {% endif %}
+            {% if document.vat_exclusive is not none %}
+            <tr><td>VAT Exclusive</td><td class="text-end">R{{ '{:,.2f}'.format(document.vat_exclusive) }}</td></tr>
+            {% endif %}
+        </table>
+        {% if document.vat_equal %}
+        <p class="small text-muted">Equal VAT inclusive and exclusive values indicate VAT
+            exempt services, or non-VAT affecting transactions within the system.</p>
+        {% endif %}
+        {% else %}
+        <p class="small text-muted">No VAT summary was captured for this period.</p>
+        {% endif %}
+
+        <h6 class="report-doc-heading">7. Interpretation of Financial Activity</h6>
+        <p style="white-space: pre-wrap;">{{ document.interpretation }}</p>
+
+        <h6 class="report-doc-heading">8. Accounting Notes</h6>
+        <ul class="small">
+            {% for note in document.accounting_notes %}<li>{{ note }}</li>{% endfor %}
+        </ul>
+
+        <h6 class="report-doc-heading">9. Movement Summary &mdash; System Control Total</h6>
+        <p class="mb-1"><strong>Final Control Total: R{{ '{:,.2f}'.format(document.movement_total) }}</strong></p>
+        <p class="small text-muted mb-1">The movement summary represents the net result of all
+            transactions processed in the system, including
+            {{ document.movement_includes | join(', ') }}.</p>
+        <p class="small text-muted mb-1">This amount is <strong>not</strong>
+            {{ document.movement_is_not }}. It is {{ document.movement_is }}.</p>
+
+        <h6 class="report-doc-heading">10. Final Summary</h6>
+        <p style="white-space: pre-wrap;">{{ document.final_summary }}</p>
+
+        <h6 class="report-doc-heading">11. Grand Summary</h6>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Practitioner</th>
+                        <th class="text-end">Adjusted Turnover</th>
+                        <th class="text-end">Cash Flow</th>
+                        <th class="text-end">Journal Adjustments</th>
+                        <th class="text-end">Movement Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in document.grand_rows %}
+                    <tr>
+                        <td>{{ r.name }}</td>
+                        <td class="text-end">R{{ '{:,.2f}'.format(r.adjusted_turnover) }}</td>
+                        <td class="text-end">R{{ '{:,.2f}'.format(r.cash_flow) }}</td>
+                        <td class="text-end">R{{ '{:,.2f}'.format(r.journals) }}</td>
+                        <td class="text-end">R{{ '{:,.2f}'.format(r.movement) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="table-light fw-bold">
+                        <td>Grand Total</td>
+                        <td class="text-end">R{{ '{:,.2f}'.format(document.grand_total.adjusted_turnover) }}</td>
+                        <td class="text-end">R{{ '{:,.2f}'.format(document.grand_total.cash_flow) }}</td>
+                        <td class="text-end">R{{ '{:,.2f}'.format(document.grand_total.journals) }}</td>
+                        <td class="text-end">R{{ '{:,.2f}'.format(document.grand_total.movement) }}</td>
+                    </tr>
+                </tfoot>
+            </table>
         </div>
     </div>
 </div>

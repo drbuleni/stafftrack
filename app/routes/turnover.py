@@ -85,6 +85,9 @@ def _apply_report_data(report):
     vat_exclusive = request.form.get('vat_exclusive', '').strip()
     report.vat_inclusive = _parse_money(vat_inclusive) if vat_inclusive else None
     report.vat_exclusive = _parse_money(vat_exclusive) if vat_exclusive else None
+    report.vat_number = request.form.get('vat_number', '').strip()
+    report.interpretation = request.form.get('interpretation', '').strip()
+    report.final_summary = request.form.get('final_summary', '').strip()
     report.notes = request.form.get('notes', '')
 
 
@@ -270,11 +273,14 @@ def edit(report_id):
 def view(report_id):
     """View a formatted turnover report."""
     from app.routes.patient_flow import month_totals
+    from app.utils.monthly_report import build_document
 
     report = TurnoverReport.query.get_or_404(report_id)
+    totals = _report_totals(report)
     return render_template('turnover/view.html',
                           report=report,
-                          totals=_report_totals(report),
+                          totals=totals,
+                          document=build_document(report, totals),
                           patient_flow=month_totals(report.year, report.month),
                           month_names=calendar.month_name)
 
@@ -286,9 +292,13 @@ def pdf(report_id):
     """Download the report as a PDF."""
     report = TurnoverReport.query.get_or_404(report_id)
     from app.routes.patient_flow import month_totals
+    from app.utils.monthly_report import build_document
     from app.utils.turnover_pdf import build_turnover_pdf
-    buffer = build_turnover_pdf(report, _report_totals(report),
-                                patient_flow=month_totals(report.year, report.month))
+
+    totals = _report_totals(report)
+    buffer = build_turnover_pdf(report, totals,
+                                patient_flow=month_totals(report.year, report.month),
+                                document=build_document(report, totals))
     filename = f"turnover_report_{report.year}_{report.month:02d}.pdf"
     return send_file(buffer, as_attachment=True, download_name=filename,
                      mimetype='application/pdf')
