@@ -206,12 +206,12 @@
                             <td>Total Billed</td>
                             <td class="text-end">R{{ '{:,.2f}'.format(sheet.net_billed if sheet.providers else rec.goodx_production) }}</td>
                         </tr>
-                        {% if sheet.total_journal %}
                         <tr>
-                            <td class="text-muted small">Journals <span class="text-muted">(balances written off, not billing)</span></td>
-                            <td class="text-end text-muted small">(R{{ '{:,.2f}'.format(sheet.total_journal) }})</td>
+                            <td>Journals
+                                <small class="text-muted d-block">Balances written off &mdash; not billing, not money in</small>
+                            </td>
+                            <td class="text-end">R{{ '{:,.2f}'.format(sheet.total_journal or 0) }}</td>
                         </tr>
-                        {% endif %}
                     </tfoot>
                 </table>
             </div>
@@ -262,8 +262,18 @@
                     </tbody>
                     <tfoot>
                         <tr class="table-light fw-bold">
-                            <td>Total</td>
+                            <td>Total Money In</td>
                             <td class="text-end">R{{ '{:,.2f}'.format(rec.total_money_in) }}</td>
+                        </tr>
+                        <tr>
+                            <td>Less: Expenses</td>
+                            <td class="text-end text-danger">
+                                {{ '(R{:,.2f})'.format(rec.refunds_expenses) if rec.refunds_expenses else 'R0.00' }}
+                            </td>
+                        </tr>
+                        <tr class="table-light fw-bold">
+                            <td>Net for the Day</td>
+                            <td class="text-end">R{{ '{:,.2f}'.format(rec.net_collections or 0) }}</td>
                         </tr>
                     </tfoot>
                 </table>

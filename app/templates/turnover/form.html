@@ -64,6 +64,7 @@
                             <th class="text-end">KAS7 Card</th>
                             <th class="text-end">KAS3 EFT</th>
                             <th class="text-end">Credit Notes</th>
+                            <th class="text-end">Journals</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -74,12 +75,13 @@
                             <td class="text-end">R{{ '{:,.2f}'.format(p.card) }}</td>
                             <td class="text-end">R{{ '{:,.2f}'.format(p.eft) }}</td>
                             <td class="text-end">R{{ '{:,.2f}'.format(p.credit_notes) }}</td>
+                            <td class="text-end">R{{ '{:,.2f}'.format(p.journal_total) }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                     <tfoot>
                         <tr class="table-light">
-                            <td colspan="5"><small class="text-muted">KAS6 ERA received (practice level): <strong>R{{ '{:,.2f}'.format(reference.era_total) }}</strong></small></td>
+                            <td colspan="6"><small class="text-muted">KAS6 ERA received (practice level): <strong>R{{ '{:,.2f}'.format(reference.era_total) }}</strong></small></td>
                         </tr>
                     </tfoot>
                 </table>
@@ -91,7 +93,8 @@
         <div class="card-footer">
             <small class="text-muted"><i class="bi bi-info-circle"></i>
                 These daily-sheet figures have been pre-filled into the practitioner sections below (billed,
-                KAS7 card, KAS3 EFT, credit notes) - adjust any of them to match GoodX before saving.</small>
+                KAS7 card, KAS3 EFT, credit notes and journals, grouped by reason) - adjust any of them
+                to match GoodX before saving.</small>
         </div>
     </div>
 

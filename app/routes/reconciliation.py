@@ -257,6 +257,11 @@ def _apply_sheet_data(rec):
     rec.goodx_production = total_billed - total_credit
     rec.patients_treated = patient_count
 
+    # Money out for the day. Dr Buleni needs money in less expenses to see
+    # what should actually be in the bank; without this the net position
+    # was always identical to the money in.
+    rec.refunds_expenses = _parse_money(request.form.get('expenses'))
+
     rec.calculate_totals()
 
 
@@ -673,14 +678,12 @@ def analytics():
         'total_money_in': sum(float(r.total_money_in or 0) for r in reconciliations),
         'net_collections': sum(float(r.net_collections or 0) for r in reconciliations),
         'goodx_production': sum(float(r.goodx_production or 0) for r in reconciliations),
-        'goodx_collections': sum(float(r.goodx_collections or 0) for r in reconciliations),
         'patients_treated': sum(r.patients_treated or 0 for r in reconciliations),
         'no_shows': sum(r.no_shows or 0 for r in reconciliations),
         'cancelled': sum(r.cancelled or 0 for r in reconciliations),
         'rescheduled': sum(r.rescheduled or 0 for r in reconciliations),
         'walk_ins': sum(r.walk_ins_treated or 0 for r in reconciliations),
         'new_patients': sum(r.new_patients_booked or 0 for r in reconciliations),
-        'total_variance': sum(float(r.variance or 0) for r in reconciliations),
         'total_refunds': sum(float(r.refunds_expenses or 0) for r in reconciliations),
     }
 
@@ -706,12 +709,6 @@ def analytics():
     else:
         rates = {'show_rate': 0, 'no_show_rate': 0, 'cancellation_rate': 0}
 
-    # Collection rate (collections vs production)
-    if summary['goodx_production'] > 0:
-        rates['collection_rate'] = (summary['goodx_collections'] / summary['goodx_production']) * 100
-    else:
-        rates['collection_rate'] = 0
-
     # Daily trends for charts
     daily_data = []
     for r in reconciliations:
@@ -726,15 +723,17 @@ def analytics():
         })
 
     # Payment method breakdown
+    # Money in, by where it actually landed. The medical aid balance and
+    # "other" lines are gone: balances patients pay already arrive through
+    # card or EFT, so counting them separately double-counted the money,
+    # and nothing ever wrote to other_payments.
     payment_breakdown = {
         'EFT': sum(float(r.eft_received or 0) for r in reconciliations),
         'Card (FNB)': sum(float(r.card_fnb or 0) for r in reconciliations),
         'Card (Capitec)': sum(float(r.card_capitec or 0) for r in reconciliations),
         'EFT (FNB)': sum(float(r.eft_fnb or 0) for r in reconciliations),
         'EFT (Capitec)': sum(float(r.eft_capitec or 0) for r in reconciliations),
-        'Medical Aid': sum(float(r.medical_aid_payments or 0) for r in reconciliations),
-        'Med Aid Balance': sum(float(r.medical_aid_balance_payments or 0) for r in reconciliations),
-        'Other': sum(float(r.other_payments or 0) for r in reconciliations),
+        'ERA': sum(float(r.medical_aid_payments or 0) for r in reconciliations),
     }
 
     # Day of week analysis

@@ -69,7 +69,7 @@
     <div class="col-md-3 mb-3">
         <div class="card h-100 border-primary">
             <div class="card-body text-center">
-                <h6 class="text-muted">Total Production</h6>
+                <h6 class="text-muted">Total Billed</h6>
                 <h2 class="text-primary mb-0">R {{ "%.2f"|format(summary.goodx_production) }}</h2>
                 <small class="text-muted">Avg: R {{ "%.2f"|format(averages.daily_production) }}/day</small>
             </div>
@@ -85,13 +85,11 @@
         </div>
     </div>
     <div class="col-md-3 mb-3">
-        <div class="card h-100 {{ 'border-success' if rates.collection_rate >= 90 else 'border-warning' if rates.collection_rate >= 70 else 'border-danger' }}">
+        <div class="card h-100 border-warning">
             <div class="card-body text-center">
-                <h6 class="text-muted">Collection Rate</h6>
-                <h2 class="mb-0 {{ 'text-success' if rates.collection_rate >= 90 else 'text-warning' if rates.collection_rate >= 70 else 'text-danger' }}">
-                    {{ "%.1f"|format(rates.collection_rate) }}%
-                </h2>
-                <small class="text-muted">Collections vs Production</small>
+                <h6 class="text-muted">Expenses</h6>
+                <h2 class="text-warning mb-0">R {{ "%.2f"|format(summary.total_refunds) }}</h2>
+                <small class="text-muted">Money paid out</small>
             </div>
         </div>
     </div>
@@ -477,16 +475,10 @@
                                 <td class="text-end">R {{ "%.2f"|format(payment_breakdown['Card (Capitec)']) }}</td>
                             </tr>
                             <tr>
-                                <td>Medical Aid</td>
-                                <td class="text-end">R {{ "%.2f"|format(payment_breakdown['Medical Aid']) }}</td>
-                            </tr>
-                            <tr>
-                                <td>Med Aid Balance (Patient)</td>
-                                <td class="text-end">R {{ "%.2f"|format(payment_breakdown['Med Aid Balance']) }}</td>
-                            </tr>
-                            <tr>
-                                <td>Other</td>
-                                <td class="text-end">R {{ "%.2f"|format(payment_breakdown['Other']) }}</td>
+                                <td>ERA
+                                    <small class="text-muted d-block">Medical aid remittances (KAS6)</small>
+                                </td>
+                                <td class="text-end">R {{ "%.2f"|format(payment_breakdown['ERA']) }}</td>
                             </tr>
                             <tr class="table-success fw-bold">
                                 <td>TOTAL MONEY IN</td>
@@ -506,21 +498,14 @@
                                 <td class="text-end text-danger">- R {{ "%.2f"|format(summary.total_refunds) }}</td>
                             </tr>
                             <tr class="table-dark fw-bold">
-                                <td>NET COLLECTIONS</td>
+                                <td>TOTAL VARIANCE</td>
                                 <td class="text-end">R {{ "%.2f"|format(summary.net_collections) }}</td>
                             </tr>
-                            <tr><td colspan="2">&nbsp;</td></tr>
                             <tr>
-                                <td>GoodX Production</td>
-                                <td class="text-end">R {{ "%.2f"|format(summary.goodx_production) }}</td>
-                            </tr>
-                            <tr>
-                                <td>GoodX Collections</td>
-                                <td class="text-end">R {{ "%.2f"|format(summary.goodx_collections) }}</td>
-                            </tr>
-                            <tr class="{{ 'table-success' if summary.total_variance == 0 else 'table-warning' if summary.total_variance|abs < 500 else 'table-danger' }}">
-                                <td>Total Variance</td>
-                                <td class="text-end">R {{ "%.2f"|format(summary.total_variance) }}</td>
+                                <td colspan="2" class="text-muted small border-0 pt-3">
+                                    Money in less expenses &mdash; what should be sitting across
+                                    the FNB and Capitec accounts for this period.
+                                </td>
                             </tr>
                         </table>
                     </div>

@@ -110,11 +110,11 @@
                                 <td>Total Billed</td>
                                 <td class="text-end" id="summaryBilledTotal">R0.00</td>
                             </tr>
-                            <tr id="journalRow" style="display: none;">
-                                <td class="text-muted small">
-                                    Journals <span class="text-muted">(balances written off, not billing)</span>
+                            <tr id="journalRow">
+                                <td>Journals
+                                    <small class="text-muted d-block">Balances written off &mdash; not billing, not money in</small>
                                 </td>
-                                <td class="text-end text-muted small" id="summaryJournalTotal">R0.00</td>
+                                <td class="text-end" id="summaryJournalTotal">R0.00</td>
                             </tr>
                         </tfoot>
                     </table>
@@ -160,8 +160,27 @@
                         </tbody>
                         <tfoot>
                             <tr class="table-light fw-bold">
-                                <td>Total</td>
+                                <td>Total Money In</td>
                                 <td class="text-end" id="summaryReceivedTotal">R0.00</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <label for="expenses" class="mb-0">Less: Expenses</label>
+                                    <small class="text-muted d-block">Money paid out today</small>
+                                </td>
+                                <td class="text-end">
+                                    <div class="input-group input-group-sm" style="max-width: 150px; margin-left: auto;">
+                                        <span class="input-group-text">R</span>
+                                        <input type="number" step="0.01" min="0" name="expenses" id="expenses"
+                                               class="form-control text-end"
+                                               value="{{ '%.2f'|format(rec.refunds_expenses) if rec and rec.refunds_expenses else '' }}"
+                                               placeholder="0.00">
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr class="table-light fw-bold">
+                                <td>Net for the Day</td>
+                                <td class="text-end" id="summaryNet">R0.00</td>
                             </tr>
                         </tfoot>
                     </table>
@@ -484,8 +503,7 @@ function recalc() {
     document.getElementById('grossRow').style.display = totalCredit ? '' : 'none';
     document.getElementById('creditRow').style.display = totalCredit ? '' : 'none';
     // Journals are shown for the record but never deducted from Total Billed
-    document.getElementById('summaryJournalTotal').textContent = '(' + money(totalJournal) + ')';
-    document.getElementById('journalRow').style.display = totalJournal ? '' : 'none';
+    document.getElementById('summaryJournalTotal').textContent = money(totalJournal);
 
     // Money received summary, split per bank statement
     document.getElementById('summaryEra').textContent = money(totalEra);
@@ -495,7 +513,10 @@ function recalc() {
     document.getElementById('summaryEft').textContent = money(totalEft);
     document.getElementById('summaryEftFnb').textContent = money(banks.eftFnb);
     document.getElementById('summaryEftCapitec').textContent = money(banks.eftCapitec);
-    document.getElementById('summaryReceivedTotal').textContent = money(totalEra + totalCard + totalEft);
+    const totalIn = totalEra + totalCard + totalEft;
+    document.getElementById('summaryReceivedTotal').textContent = money(totalIn);
+    const expenses = parseFloat((document.getElementById('expenses') || {}).value) || 0;
+    document.getElementById('summaryNet').textContent = money(totalIn - expenses);
 }
 
 /* ---------- Serialization ---------- */

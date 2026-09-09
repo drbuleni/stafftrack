@@ -132,6 +132,35 @@ def _stafftrack_reference(month, year):
         ReconciliationBillingEntry.provider_name
     ).all()
 
+    # Journals captured on the daily sheets, grouped by practitioner and
+    # reason. Each distinct reason becomes one journal line on the report,
+    # so what Sinah records daily reaches section 5 instead of having to be
+    # retyped from GoodX.
+    journal_rows = db.session.query(
+        ReconciliationBillingEntry.provider_name,
+        ReconciliationBillingEntry.journal_reason,
+        func.coalesce(func.sum(ReconciliationBillingEntry.journal), 0),
+    ).join(
+        DailyReconciliation,
+        ReconciliationBillingEntry.reconciliation_id == DailyReconciliation.id
+    ).filter(
+        DailyReconciliation.date >= first_day,
+        DailyReconciliation.date <= last_day,
+        ReconciliationBillingEntry.journal > 0
+    ).group_by(
+        ReconciliationBillingEntry.provider_name,
+        ReconciliationBillingEntry.journal_reason
+    ).order_by(
+        ReconciliationBillingEntry.provider_name
+    ).all()
+
+    journals_by_provider = {}
+    for name, reason, amount in journal_rows:
+        journals_by_provider.setdefault(name, []).append({
+            'description': reason or 'Journal',
+            'amount': float(amount),
+        })
+
     era_total = db.session.query(
         func.coalesce(func.sum(DailyReconciliation.medical_aid_payments), 0)
     ).filter(
@@ -146,6 +175,8 @@ def _stafftrack_reference(month, year):
             'card': float(card),
             'eft': float(eft),
             'credit_notes': float(credit),
+            'journals': journals_by_provider.get(name, []),
+            'journal_total': sum(j['amount'] for j in journals_by_provider.get(name, [])),
         } for name, billed, card, eft, credit in rows],
         'era_total': float(era_total or 0),
     }
@@ -206,7 +237,7 @@ def new():
         'kas7_card': p['card'] or '',
         'kas3_eft': p['eft'] or '',
         'credit_notes': p['credit_notes'] or '',
-        'journals': [],
+        'journals': p['journals'],
     } for p in reference['practitioners']]
 
     return render_template('turnover/form.html',
