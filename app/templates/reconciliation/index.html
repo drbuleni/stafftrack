@@ -70,14 +70,13 @@
                         <th>Patients</th>
                         <th>Total Billed</th>
                         <th>Money Received</th>
-                        <th>Status</th>
-                        <th>Prepared By</th>
+                        <th>Captured By</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for rec in reconciliations %}
-                    <tr class="{{ 'table-success' if rec.status == 'Checked' else 'table-warning' if rec.status == 'Submitted' else '' }}">
+                    <tr>
                         <td>
                             <a href="{{ url_for('reconciliation.view', rec_id=rec.id) }}">
                                 {{ rec.date.strftime('%d/%m/%Y') }}
@@ -90,25 +89,14 @@
                         <td>{{ rec.patients_treated }}</td>
                         <td>R {{ "%.2f"|format(rec.goodx_production) }}</td>
                         <td>R {{ "%.2f"|format(rec.total_money_in) }}</td>
-                        <td>
-                            {% if rec.status == 'Checked' %}
-                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Checked</span>
-                            {% elif rec.status == 'Submitted' %}
-                            <span class="badge bg-warning text-dark"><i class="bi bi-clock"></i> Submitted</span>
-                            {% else %}
-                            <span class="badge bg-secondary">Draft</span>
-                            {% endif %}
-                        </td>
                         <td>{{ rec.preparer.full_name if rec.preparer else '-' }}</td>
                         <td>
                             <a href="{{ url_for('reconciliation.view', rec_id=rec.id) }}" class="btn btn-sm btn-outline-primary" title="View">
                                 <i class="bi bi-eye"></i>
                             </a>
-                            {% if rec.status != 'Checked' or current_user.role in ['Practice Manager', 'Super Admin'] %}
                             <a href="{{ url_for('reconciliation.edit', rec_id=rec.id) }}" class="btn btn-sm btn-outline-secondary" title="Edit">
                                 <i class="bi bi-pencil"></i>
                             </a>
-                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}

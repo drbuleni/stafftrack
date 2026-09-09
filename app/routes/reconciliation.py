@@ -418,7 +418,11 @@ def new(selected_date=None):
             prepared_by=current_user.id,
             prepared_at=datetime.utcnow(),
             notes=request.form.get('notes', ''),
-            status='Submitted'
+            # Sheets are simply recorded now: the daily sign-off workflow was
+            # removed because nobody used it, and the monthly turnover report
+            # is what actually gets reviewed. The column and any historic
+            # Checked values are left intact so it can be restored.
+            status='Recorded'
         )
 
         _apply_sheet_data(rec)
@@ -458,11 +462,6 @@ def edit(rec_id):
     if current_user.role not in ['Receptionist', 'Billing', 'Practice Manager', 'Super Admin']:
         flash('You do not have permission to edit reconciliation sheets.', 'danger')
         return redirect(url_for('reconciliation.index'))
-
-    # Don't allow editing checked sheets unless manager
-    if rec.status == 'Checked' and current_user.role not in ['Practice Manager', 'Super Admin']:
-        flash('This sheet has been checked and cannot be edited.', 'warning')
-        return redirect(url_for('reconciliation.view', rec_id=rec.id))
 
     dentists = get_dentists()
 
@@ -561,27 +560,6 @@ def view(rec_id):
     return render_template('reconciliation/view.html',
                           rec=rec,
                           sheet=sheet)
-
-
-@bp.route('/check/<int:rec_id>', methods=['POST'])
-@login_required
-@manager_required
-def check(rec_id):
-    """Mark a reconciliation sheet as checked."""
-    rec = DailyReconciliation.query.get_or_404(rec_id)
-
-    rec.checked_by = current_user.id
-    rec.checked_at = datetime.utcnow()
-    rec.status = 'Checked'
-
-    db.session.commit()
-
-    log_audit('Checked Daily Reconciliation', 'DailyReconciliation', rec.id, {
-        'date': rec.date.isoformat()
-    })
-
-    flash('Reconciliation sheet marked as checked.', 'success')
-    return redirect(url_for('reconciliation.view', rec_id=rec.id))
 
 
 @bp.route('/delete/<int:rec_id>', methods=['POST'])
