@@ -138,6 +138,78 @@ def create_app(config_class=Config):
         db.session.commit()
         click.echo(f'Examined {len(rows)} reconciliation(s), corrected {len(changed)}.')
 
+    @app.cli.command('backfill-report-journals')
+    def backfill_report_journals_command():
+        """Fill journals into turnover reports saved before autofill existed.
+
+        Journals captured on the daily sheets only started prefilling new
+        reports once that was built. Reports saved before then hold an empty
+        journals list, so section 5 of the document prints blank even though
+        the daily sheets have the entries.
+
+        Only sections with no journals are touched, so anything typed by hand
+        is left alone. Safe to run repeatedly.
+        """
+        import calendar
+        from datetime import date
+        from app.models import (TurnoverReport, ReconciliationBillingEntry,
+                                DailyReconciliation)
+        from sqlalchemy import func
+        from sqlalchemy.orm.attributes import flag_modified
+
+        changed = 0
+        for report in TurnoverReport.query.order_by(TurnoverReport.year,
+                                                    TurnoverReport.month).all():
+            first = date(report.year, report.month, 1)
+            last = date(report.year, report.month,
+                        calendar.monthrange(report.year, report.month)[1])
+
+            rows = db.session.query(
+                ReconciliationBillingEntry.provider_name,
+                ReconciliationBillingEntry.journal_reason,
+                func.coalesce(func.sum(ReconciliationBillingEntry.journal), 0),
+            ).join(
+                DailyReconciliation,
+                ReconciliationBillingEntry.reconciliation_id == DailyReconciliation.id
+            ).filter(
+                DailyReconciliation.date >= first,
+                DailyReconciliation.date <= last,
+                ReconciliationBillingEntry.journal > 0
+            ).group_by(
+                ReconciliationBillingEntry.provider_name,
+                ReconciliationBillingEntry.journal_reason
+            ).all()
+
+            by_provider = {}
+            for name, reason, amount in rows:
+                by_provider.setdefault(name, []).append(
+                    {'description': reason or 'Journal', 'amount': float(amount)})
+
+            period = f'{calendar.month_name[report.month]} {report.year}'
+            matched = set()
+            for section in report.sections:
+                found = by_provider.get(section.practitioner_name)
+                if not found:
+                    continue
+                matched.add(section.practitioner_name)
+                if section.journals:
+                    click.echo(f'  {period}: {section.practitioner_name} already has '
+                               f'journals, left alone')
+                    continue
+                section.journals = found
+                flag_modified(section, 'journals')
+                total = sum(j['amount'] for j in found)
+                click.echo(f'  {period}: {section.practitioner_name} '
+                           f'+{len(found)} journal(s), R{total:,.2f}')
+                changed += 1
+
+            for name in set(by_provider) - matched:
+                click.echo(f'  {period}: WARNING no report section named '
+                           f'"{name}" - its journals were not carried over')
+
+        db.session.commit()
+        click.echo(f'Updated {changed} section(s).')
+
     @app.cli.command('send-room-notifications')
     def send_room_notifications_command():
         """Send daily room assignment notifications to dental assistants."""
