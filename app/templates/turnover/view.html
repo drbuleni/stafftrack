@@ -334,6 +334,20 @@
                     <small class="text-muted">({{ '{:.0f}'.format(patient_flow.no_show_rate) }}% of booked)</small>
                 </td>
             </tr>
+            <tr>
+                <td>Cancellations <small class="text-muted">(called off, not rebooked)</small></td>
+                <td class="text-end">
+                    {{ patient_flow.cancellations }}
+                    <small class="text-muted">({{ '{:.0f}'.format(patient_flow.cancellation_rate) }}% of booked)</small>
+                </td>
+            </tr>
+            <tr>
+                <td>Reschedules <small class="text-muted">(moved to another day)</small></td>
+                <td class="text-end">
+                    {{ patient_flow.reschedules }}
+                    <small class="text-muted">({{ '{:.0f}'.format(patient_flow.reschedule_rate) }}% of booked)</small>
+                </td>
+            </tr>
         </table>
         {% else %}
         <p class="text-muted text-center py-4 mb-0">

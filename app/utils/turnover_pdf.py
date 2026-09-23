@@ -350,6 +350,12 @@ def build_turnover_pdf(report, totals, patient_flow=None, document=None):
              f"{patient_flow['walk_ins']}  ({patient_flow['walk_in_share']:.0f}% of treated)"],
             ['No-shows (booked but did not arrive)',
              f"{patient_flow['no_shows']}  ({patient_flow['no_show_rate']:.0f}% of booked)"],
+            ['Cancellations (called off, not rebooked)',
+             f"{patient_flow['cancellations']}  "
+             f"({patient_flow['cancellation_rate']:.0f}% of booked)"],
+            ['Reschedules (moved to another day)',
+             f"{patient_flow['reschedules']}  "
+             f"({patient_flow['reschedule_rate']:.0f}% of booked)"],
             ['Days recorded', f"{patient_flow['days_recorded']}"],
         ]
         elements.append(money_table(flow_rows))

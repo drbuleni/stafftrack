@@ -23,7 +23,7 @@
 
 <!-- Month summary -->
 <div class="row mb-4">
-    <div class="col-md-3 mb-3">
+    <div class="col-6 col-md-4 col-lg-2 mb-3">
         <div class="card stat-card h-100">
             <div class="card-body">
                 <p class="stat-label mb-1">Treated</p>
@@ -31,7 +31,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3 mb-3">
+    <div class="col-6 col-md-4 col-lg-2 mb-3">
         <div class="card stat-card h-100">
             <div class="card-body">
                 <p class="stat-label mb-1">Walk-ins</p>
@@ -40,7 +40,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3 mb-3">
+    <div class="col-6 col-md-4 col-lg-2 mb-3">
         <div class="card stat-card h-100">
             <div class="card-body">
                 <p class="stat-label mb-1">No-shows</p>
@@ -49,7 +49,25 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3 mb-3">
+    <div class="col-6 col-md-4 col-lg-2 mb-3">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <p class="stat-label mb-1">Cancellations</p>
+                <div class="stat-value">{{ totals.cancellations }}</div>
+                <small class="text-muted">{{ '{:.0f}'.format(totals.cancellation_rate) }}% of booked</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-lg-2 mb-3">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <p class="stat-label mb-1">Reschedules</p>
+                <div class="stat-value">{{ totals.reschedules }}</div>
+                <small class="text-muted">{{ '{:.0f}'.format(totals.reschedule_rate) }}% of booked</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-lg-2 mb-3">
         <div class="card stat-card h-100">
             <div class="card-body">
                 <p class="stat-label mb-1">Days recorded</p>
@@ -75,6 +93,8 @@
                         <th class="text-end">Treated</th>
                         <th class="text-end">Walk-ins</th>
                         <th class="text-end">No-shows</th>
+                        <th class="text-end">Cancellations</th>
+                        <th class="text-end">Reschedules</th>
                         <th>Recorded By</th>
                         <th>Actions</th>
                     </tr>
@@ -92,6 +112,8 @@
                         <td class="text-end">{{ entry.treated }}</td>
                         <td class="text-end">{{ entry.walk_ins }}</td>
                         <td class="text-end">{{ entry.no_shows }}</td>
+                        <td class="text-end">{{ entry.cancellations }}</td>
+                        <td class="text-end">{{ entry.reschedules }}</td>
                         <td>{{ entry.recorder.full_name if entry.recorder else '-' }}</td>
                         <td>
                             <a href="{{ url_for('patient_flow.record', selected_date=entry.date.isoformat()) }}"
@@ -116,7 +138,8 @@
             <p class="empty-state-title">Nothing recorded for {{ month_name }} {{ year }}</p>
             <p class="empty-state-text">
                 Capture how many patients were treated, walked in without a booking,
-                or did not arrive. These counts appear on the monthly turnover report.
+                did not arrive, cancelled or moved their appointment. These counts
+                appear on the monthly turnover report.
             </p>
             <a href="{{ url_for('patient_flow.record') }}" class="btn btn-primary mt-2">
                 <i class="bi bi-plus-circle"></i> Record Today

@@ -1,4 +1,4 @@
-"""Daily patient flow: how many patients were treated, walked in, or did not show.
+"""Daily patient flow: treated, walk-ins, no-shows, cancellations, reschedules.
 
 Kept separate from Daily Reconciliation on purpose - Sinah asked for patient
 flow to stand on its own rather than sit inside the money sheet. The counts
@@ -23,6 +23,8 @@ FIELDS = [
     ('treated', 'Patients treated', 'Seen by a practitioner today'),
     ('walk_ins', 'Walk-ins', 'Treated without a booking'),
     ('no_shows', 'No-shows', 'Booked but did not arrive'),
+    ('cancellations', 'Cancellations', 'Called off and not rebooked'),
+    ('reschedules', 'Reschedules', 'Moved to another day'),
 ]
 
 
@@ -44,18 +46,31 @@ def month_totals(year, month):
         func.coalesce(func.sum(PatientFlow.treated), 0),
         func.coalesce(func.sum(PatientFlow.walk_ins), 0),
         func.coalesce(func.sum(PatientFlow.no_shows), 0),
+        func.coalesce(func.sum(PatientFlow.cancellations), 0),
+        func.coalesce(func.sum(PatientFlow.reschedules), 0),
         func.count(PatientFlow.id),
     ).filter(PatientFlow.date >= first, PatientFlow.date <= last).one()
 
-    treated, walk_ins, no_shows, days = row
-    expected = treated + no_shows
+    treated, walk_ins, no_shows, cancellations, reschedules, days = row
+
+    # Everything that was on the book. Walk-ins are left out: they were
+    # never booked, so including them would flatter every rate below.
+    expected = treated + no_shows + cancellations + reschedules
+
+    def share(count):
+        return (count / expected * 100) if expected else 0
+
     return {
         'treated': treated,
         'walk_ins': walk_ins,
         'no_shows': no_shows,
+        'cancellations': cancellations,
+        'reschedules': reschedules,
         'days_recorded': days,
         'expected': expected,
-        'no_show_rate': (no_shows / expected * 100) if expected else 0,
+        'no_show_rate': share(no_shows),
+        'cancellation_rate': share(cancellations),
+        'reschedule_rate': share(reschedules),
         'walk_in_share': (walk_ins / treated * 100) if treated else 0,
     }
 
@@ -115,18 +130,14 @@ def record(selected_date=None):
             entry = PatientFlow(date=flow_date, recorded_by=current_user.id)
             db.session.add(entry)
 
-        entry.treated = _count('treated')
-        entry.walk_ins = _count('walk_ins')
-        entry.no_shows = _count('no_shows')
+        for name, _label, _hint in FIELDS:
+            setattr(entry, name, _count(name))
         entry.notes = request.form.get('notes', '')
         db.session.commit()
 
-        log_audit('Recorded Patient Flow', 'PatientFlow', entry.id, {
-            'date': entry.date.isoformat(),
-            'treated': entry.treated,
-            'walk_ins': entry.walk_ins,
-            'no_shows': entry.no_shows,
-        })
+        details = {'date': entry.date.isoformat()}
+        details.update({name: getattr(entry, name) for name, _l, _h in FIELDS})
+        log_audit('Recorded Patient Flow', 'PatientFlow', entry.id, details)
 
         flash(f"Patient flow for {flow_date.strftime('%d/%m/%Y')} "
               f"{'recorded' if is_new else 'updated'}.", 'success')

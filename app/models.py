@@ -404,6 +404,12 @@ class DailyReconciliation(db.Model):
     lab_cases = db.Column(db.Integer, default=0)
 
     # Section B: End-of-Day Patient Flow
+    #
+    # patients_treated is a misnomer kept only so existing rows are not
+    # rewritten: the rebuilt billing sheet stores the number of lines
+    # captured, which is transactions, not people. Everything on screen
+    # calls it Transactions. Real head counts live on PatientFlow.
+    # The four columns under it are legacy - nothing writes them any more.
     patients_treated = db.Column(db.Integer, default=0)
     no_shows = db.Column(db.Integer, default=0)
     cancelled = db.Column(db.Integer, default=0)
@@ -548,10 +554,12 @@ class ReconciliationEraPayment(db.Model):
 class PatientFlow(db.Model):
     """Daily patient flow counts, captured separately from the money.
 
-    Deliberately narrow: only the three figures the practice can record
-    reliably. Reschedules and consultations were considered and dropped
-    because front-desk data for them is not dependable, and a monthly
-    report built on unreliable counts is worse than no report.
+    Counts only, no patient names: Sinah asked to run a month of reports
+    first and decide afterwards whether naming the walk-ins and no-shows
+    is worth the extra capture. Cancellations and reschedules were added
+    at her request on 23/09/2026 - the front desk does record them, and
+    without them a no-show rate reads high for days that were simply
+    cancelled in advance.
     """
     __tablename__ = 'patient_flow'
 
@@ -561,6 +569,8 @@ class PatientFlow(db.Model):
     treated = db.Column(db.Integer, default=0)
     walk_ins = db.Column(db.Integer, default=0)
     no_shows = db.Column(db.Integer, default=0)
+    cancellations = db.Column(db.Integer, default=0)
+    reschedules = db.Column(db.Integer, default=0)
 
     notes = db.Column(db.Text)
 
@@ -572,14 +582,27 @@ class PatientFlow(db.Model):
 
     @property
     def total_expected(self):
-        """Everyone who was meant to be seen: those treated plus no-shows.
-        Walk-ins are excluded - they were never booked."""
-        return (self.treated or 0) + (self.no_shows or 0)
+        """Every appointment that was on the book: treated, no-shows,
+        cancellations and reschedules. Walk-ins are excluded - they were
+        never booked, so counting them would understate every rate."""
+        return ((self.treated or 0) + (self.no_shows or 0)
+                + (self.cancellations or 0) + (self.reschedules or 0))
+
+    def _rate(self, count):
+        expected = self.total_expected
+        return (count or 0) / expected * 100 if expected else 0
 
     @property
     def no_show_rate(self):
-        expected = self.total_expected
-        return (self.no_shows or 0) / expected * 100 if expected else 0
+        return self._rate(self.no_shows)
+
+    @property
+    def cancellation_rate(self):
+        return self._rate(self.cancellations)
+
+    @property
+    def reschedule_rate(self):
+        return self._rate(self.reschedules)
 
     def __repr__(self):
         return f'<PatientFlow {self.date}>'

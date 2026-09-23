@@ -255,6 +255,8 @@ def _apply_sheet_data(rec):
     # net turnover is gross less credit notes only. Deducting journals here
     # would put the daily sheet out of step with both.
     rec.goodx_production = total_billed - total_credit
+    # Lines captured on the sheet, not patients seen - the column name is
+    # historical. See the note on the model.
     rec.patients_treated = patient_count
 
     # Money out for the day. Dr Buleni needs money in less expenses to see
@@ -347,7 +349,7 @@ def index():
         'total_billed': sum(r.goodx_production or 0 for r in reconciliations),
         'total_money_in': sum(r.total_money_in or 0 for r in reconciliations),
         'net_collections': sum(r.net_collections or 0 for r in reconciliations),
-        'patients_treated': sum(r.patients_treated or 0 for r in reconciliations),
+        'transactions': sum(r.patients_treated or 0 for r in reconciliations),
     }
 
     # Navigation
@@ -652,16 +654,21 @@ def analytics():
     # Calculate summary statistics
     total_days = len(reconciliations)
 
+    # Every count on this page counts billing sheet lines, not people.
+    # One patient can take several lines in a day - a second procedure,
+    # or an invoice reversed by a credit note and re-billed - so calling
+    # them patients overstated the day. Sinah asked on 23/09/2026 for the
+    # wording to say transactions captured instead. Head counts live on
+    # the Patient Flow page, which counts people.
+    #
+    # The old no-show, cancelled, rescheduled, walk-in and new-patient
+    # columns are gone: the rebuilt billing sheet never writes them, so
+    # all five read zero on every page that showed them.
     summary = {
         'total_money_in': sum(float(r.total_money_in or 0) for r in reconciliations),
         'net_collections': sum(float(r.net_collections or 0) for r in reconciliations),
         'goodx_production': sum(float(r.goodx_production or 0) for r in reconciliations),
-        'patients_treated': sum(r.patients_treated or 0 for r in reconciliations),
-        'no_shows': sum(r.no_shows or 0 for r in reconciliations),
-        'cancelled': sum(r.cancelled or 0 for r in reconciliations),
-        'rescheduled': sum(r.rescheduled or 0 for r in reconciliations),
-        'walk_ins': sum(r.walk_ins_treated or 0 for r in reconciliations),
-        'new_patients': sum(r.new_patients_booked or 0 for r in reconciliations),
+        'transactions': sum(r.patients_treated or 0 for r in reconciliations),
         'total_refunds': sum(float(r.refunds_expenses or 0) for r in reconciliations),
     }
 
@@ -669,23 +676,12 @@ def analytics():
     if total_days > 0:
         averages = {
             'daily_collections': summary['net_collections'] / total_days,
-            'daily_patients': summary['patients_treated'] / total_days,
-            'daily_no_shows': summary['no_shows'] / total_days,
+            'daily_transactions': summary['transactions'] / total_days,
             'daily_production': summary['goodx_production'] / total_days,
         }
     else:
-        averages = {'daily_collections': 0, 'daily_patients': 0, 'daily_no_shows': 0, 'daily_production': 0}
-
-    # Calculate rates
-    total_appointments = summary['patients_treated'] + summary['no_shows'] + summary['cancelled']
-    if total_appointments > 0:
-        rates = {
-            'show_rate': (summary['patients_treated'] / total_appointments) * 100,
-            'no_show_rate': (summary['no_shows'] / total_appointments) * 100,
-            'cancellation_rate': (summary['cancelled'] / total_appointments) * 100,
-        }
-    else:
-        rates = {'show_rate': 0, 'no_show_rate': 0, 'cancellation_rate': 0}
+        averages = {'daily_collections': 0, 'daily_transactions': 0,
+                    'daily_production': 0}
 
     # Daily trends for charts
     daily_data = []
@@ -695,8 +691,7 @@ def analytics():
             'date_full': r.date.isoformat(),
             'net_collections': float(r.net_collections or 0),
             'production': float(r.goodx_production or 0),
-            'patients': r.patients_treated or 0,
-            'no_shows': r.no_shows or 0,
+            'transactions': r.patients_treated or 0,
             'variance': float(r.variance or 0),
         })
 
@@ -715,23 +710,22 @@ def analytics():
     }
 
     # Day of week analysis
-    day_analysis = {day: {'count': 0, 'collections': 0, 'patients': 0, 'no_shows': 0}
+    day_analysis = {day: {'count': 0, 'collections': 0, 'transactions': 0}
                     for day in DAYS_OF_WEEK}
     for r in reconciliations:
         if r.day_of_week:
             day_analysis[r.day_of_week]['count'] += 1
             day_analysis[r.day_of_week]['collections'] += float(r.net_collections or 0)
-            day_analysis[r.day_of_week]['patients'] += r.patients_treated or 0
-            day_analysis[r.day_of_week]['no_shows'] += r.no_shows or 0
+            day_analysis[r.day_of_week]['transactions'] += r.patients_treated or 0
 
     # Calculate averages per day
     for day in DAYS_OF_WEEK:
         if day_analysis[day]['count'] > 0:
             day_analysis[day]['avg_collections'] = day_analysis[day]['collections'] / day_analysis[day]['count']
-            day_analysis[day]['avg_patients'] = day_analysis[day]['patients'] / day_analysis[day]['count']
+            day_analysis[day]['avg_transactions'] = day_analysis[day]['transactions'] / day_analysis[day]['count']
         else:
             day_analysis[day]['avg_collections'] = 0
-            day_analysis[day]['avg_patients'] = 0
+            day_analysis[day]['avg_transactions'] = 0
 
     # Doctor performance
     doctor_stats = {}
@@ -749,12 +743,22 @@ def analytics():
                 doctor_stats[d_id]['days_worked'] += 1
                 doctor_stats[d_id]['total_appointments'] += r.appointments_booked.get(d_id_str, 0)
 
-    # Best and worst days
-    if reconciliations:
-        best_day = max(reconciliations, key=lambda r: float(r.net_collections or 0))
-        worst_day = min(reconciliations, key=lambda r: float(r.net_collections or 0))
-    else:
-        best_day = worst_day = None
+    # Best and worst days, ranked twice.
+    #
+    # Ranking on money received alone was misleading: a day can bill
+    # thousands to medical aids and take nothing over the counter, and it
+    # then showed up as the worst day of the month. Turnover says how much
+    # work was produced, cash flow says how much money actually came in,
+    # and those are different questions - so both are reported.
+    def _extremes(key):
+        if not reconciliations:
+            return None, None
+        return max(reconciliations, key=key), min(reconciliations, key=key)
+
+    best_turnover, worst_turnover = _extremes(
+        lambda r: float(r.goodx_production or 0))
+    best_income, worst_income = _extremes(
+        lambda r: float(r.net_collections or 0))
 
     # Per-practitioner billing and cash flow from the billing sheets.
     # ERA (KAS6) payments are made to the practice number and cannot be
@@ -782,17 +786,17 @@ def analytics():
     # invoice, so gross would double-count every corrected claim.
     practitioner_stats = [{
         'name': name,
-        'patients': patients,
+        'transactions': transactions,
         'gross_billed': float(billed),
         'credit_notes': float(credit),
         'billed': float(billed) - float(credit),
         'card': float(card),
         'eft': float(eft),
         'received': float(card) + float(eft),
-    } for name, patients, billed, card, eft, credit in practitioner_rows]
+    } for name, transactions, billed, card, eft, credit in practitioner_rows]
 
     practitioner_totals = {
-        'patients': sum(p['patients'] for p in practitioner_stats),
+        'transactions': sum(p['transactions'] for p in practitioner_stats),
         'gross_billed': sum(p['gross_billed'] for p in practitioner_stats),
         'credit_notes': sum(p['credit_notes'] for p in practitioner_stats),
         'billed': sum(p['billed'] for p in practitioner_stats),
@@ -846,13 +850,14 @@ def analytics():
                           total_days=total_days,
                           summary=summary,
                           averages=averages,
-                          rates=rates,
                           daily_data=daily_data,
                           payment_breakdown=payment_breakdown,
                           day_analysis=day_analysis,
                           doctor_stats=doctor_stats,
-                          best_day=best_day,
-                          worst_day=worst_day,
+                          best_turnover=best_turnover,
+                          worst_turnover=worst_turnover,
+                          best_income=best_income,
+                          worst_income=worst_income,
                           practitioner_stats=practitioner_stats,
                           practitioner_totals=practitioner_totals,
                           credit_by_reason=credit_by_reason,

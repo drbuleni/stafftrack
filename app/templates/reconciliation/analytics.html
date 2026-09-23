@@ -78,9 +78,9 @@
     <div class="col-md-3 mb-3">
         <div class="card h-100 border-info">
             <div class="card-body text-center">
-                <h6 class="text-muted">Patients Treated</h6>
-                <h2 class="text-info mb-0">{{ summary.patients_treated }}</h2>
-                <small class="text-muted">Avg: {{ "%.1f"|format(averages.daily_patients) }}/day</small>
+                <h6 class="text-muted">Transactions Captured</h6>
+                <h2 class="text-info mb-0">{{ summary.transactions }}</h2>
+                <small class="text-muted">Avg: {{ "%.1f"|format(averages.daily_transactions) }}/day</small>
             </div>
         </div>
     </div>
@@ -122,67 +122,84 @@
     </div>
 </div>
 
-<!-- Patient Flow Stats -->
+<!-- Transaction Summary -->
 <div class="row mb-4">
-    <div class="col-lg-6 mb-4">
-        <div class="card h-100">
+    <div class="col-12">
+        <div class="card">
             <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-people"></i> Patient Flow Summary</h5>
+                <h5 class="mb-0"><i class="bi bi-list-check"></i> Transaction Summary</h5>
             </div>
-            <div class="card-body">
-                <div class="row text-center">
-                    <div class="col-4">
-                        <div class="display-6 text-primary">{{ summary.patients_treated }}</div>
-                        <small class="text-muted">Treated</small>
-                        <div class="progress mt-2" style="height: 8px;">
-                            <div class="progress-bar bg-primary" style="width: {{ rates.show_rate }}%"></div>
-                        </div>
-                        <small>{{ "%.1f"|format(rates.show_rate) }}%</small>
-                    </div>
-                    <div class="col-4">
-                        <div class="display-6 text-danger">{{ summary.no_shows }}</div>
-                        <small class="text-muted">No-shows</small>
-                        <div class="progress mt-2" style="height: 8px;">
-                            <div class="progress-bar bg-danger" style="width: {{ rates.no_show_rate }}%"></div>
-                        </div>
-                        <small>{{ "%.1f"|format(rates.no_show_rate) }}%</small>
-                    </div>
-                    <div class="col-4">
-                        <div class="display-6 text-secondary">{{ summary.cancelled }}</div>
-                        <small class="text-muted">Cancelled</small>
-                        <div class="progress mt-2" style="height: 8px;">
-                            <div class="progress-bar bg-secondary" style="width: {{ rates.cancellation_rate }}%"></div>
-                        </div>
-                        <small>{{ "%.1f"|format(rates.cancellation_rate) }}%</small>
-                    </div>
+            <div class="card-body p-0">
+                {% if practitioner_stats %}
+                <div class="table-responsive">
+                    <table class="table table-bordered mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Practitioner</th>
+                                <th class="text-end">Transactions<br><small>lines captured</small></th>
+                                <th class="text-end">Credit Notes</th>
+                                <th class="text-end">Turnover<br><small>billed, net of credit notes</small></th>
+                                <th class="text-end">KAS7 Card</th>
+                                <th class="text-end">KAS3 EFT</th>
+                                <th class="text-end">Cash Flow<br><small>card + EFT received</small></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in practitioner_stats %}
+                            <tr>
+                                <td>{{ p.name }}</td>
+                                <td class="text-end">{{ p.transactions }}</td>
+                                <td class="text-end text-danger">{{ '(R{:,.2f})'.format(p.credit_notes) if p.credit_notes else '-' }}</td>
+                                <td class="text-end">R{{ '{:,.2f}'.format(p.billed) }}</td>
+                                <td class="text-end">R{{ '{:,.2f}'.format(p.card) }}</td>
+                                <td class="text-end">R{{ '{:,.2f}'.format(p.eft) }}</td>
+                                <td class="text-end fw-bold">R{{ '{:,.2f}'.format(p.received) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-light fw-bold">
+                                <td>Total</td>
+                                <td class="text-end">{{ practitioner_totals.transactions }}</td>
+                                <td class="text-end text-danger">{{ '(R{:,.2f})'.format(practitioner_totals.credit_notes) if practitioner_totals.credit_notes else '-' }}</td>
+                                <td class="text-end">R{{ '{:,.2f}'.format(practitioner_totals.billed) }}</td>
+                                <td class="text-end">R{{ '{:,.2f}'.format(practitioner_totals.card) }}</td>
+                                <td class="text-end">R{{ '{:,.2f}'.format(practitioner_totals.eft) }}</td>
+                                <td class="text-end">R{{ '{:,.2f}'.format(practitioner_totals.received) }}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
                 </div>
-                <hr>
-                <div class="row text-center">
-                    <div class="col-4">
-                        <h5 class="text-info">{{ summary.walk_ins }}</h5>
-                        <small class="text-muted">Walk-ins</small>
-                    </div>
-                    <div class="col-4">
-                        <h5 class="text-success">{{ summary.new_patients }}</h5>
-                        <small class="text-muted">New Patients</small>
-                    </div>
-                    <div class="col-4">
-                        <h5 class="text-warning">{{ summary.rescheduled }}</h5>
-                        <small class="text-muted">Rescheduled</small>
-                    </div>
-                </div>
+                {% else %}
+                <p class="text-muted text-center py-4 mb-0">No billing sheet entries captured in this period.</p>
+                {% endif %}
+            </div>
+            <div class="card-footer">
+                <small class="text-muted d-block mb-1">
+                    <i class="bi bi-info-circle"></i>
+                    A transaction is one line on a billing sheet, not one patient &mdash; the
+                    same patient can be captured more than once in a day. For head counts see
+                    <a href="{{ url_for('patient_flow.index') }}">Patient Flow</a>.
+                </small>
+                <small class="text-muted">
+                    <i class="bi bi-info-circle"></i>
+                    KAS6 ERA payments for this period: <strong>R{{ '{:,.2f}'.format(era_period_total) }}</strong>
+                    &mdash; medical aids pay the practice number directly, so ERA money cannot be split per practitioner.
+                </small>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Patients Trend -->
-    <div class="col-lg-6 mb-4">
-        <div class="card h-100">
+<!-- Transactions per day -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
             <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Daily Patient Flow</h5>
+                <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Transactions Captured per Day</h5>
             </div>
             <div class="card-body">
-                <canvas id="patientsChart" height="200"></canvas>
+                <canvas id="transactionsChart" height="120"></canvas>
             </div>
         </div>
     </div>
@@ -214,7 +231,7 @@
                                 <th>Day</th>
                                 <th>Days</th>
                                 <th>Avg Collections</th>
-                                <th>Avg Patients</th>
+                                <th>Avg Transactions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -224,7 +241,7 @@
                                 <td>{{ day }}</td>
                                 <td>{{ day_analysis[day].count }}</td>
                                 <td>R {{ "%.2f"|format(day_analysis[day].avg_collections) }}</td>
-                                <td>{{ "%.1f"|format(day_analysis[day].avg_patients) }}</td>
+                                <td>{{ "%.1f"|format(day_analysis[day].avg_transactions) }}</td>
                             </tr>
                             {% endif %}
                             {% endfor %}
@@ -238,31 +255,62 @@
 
 <!-- Best/Worst Days & Doctor Stats -->
 <div class="row mb-4">
-    {% if best_day and worst_day %}
+    {% if best_income and best_turnover %}
     <div class="col-md-6 mb-4">
         <div class="card h-100">
             <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-trophy"></i> Best & Worst Days</h5>
+                <h5 class="mb-0"><i class="bi bi-trophy"></i> Best &amp; Lowest Days</h5>
             </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-6 text-center border-end">
-                        <i class="bi bi-trophy-fill text-warning display-5"></i>
-                        <h6 class="text-success mt-2">Best Day</h6>
-                        <p class="mb-1"><strong>{{ best_day.date.strftime('%d/%m/%Y') }}</strong></p>
-                        <p class="mb-1">({{ best_day.day_of_week }})</p>
-                        <h4 class="text-success">R {{ "%.2f"|format(best_day.net_collections) }}</h4>
-                        <small class="text-muted">{{ best_day.patients_treated }} patients</small>
-                    </div>
-                    <div class="col-6 text-center">
-                        <i class="bi bi-emoji-frown text-muted display-5"></i>
-                        <h6 class="text-danger mt-2">Lowest Day</h6>
-                        <p class="mb-1"><strong>{{ worst_day.date.strftime('%d/%m/%Y') }}</strong></p>
-                        <p class="mb-1">({{ worst_day.day_of_week }})</p>
-                        <h4 class="text-danger">R {{ "%.2f"|format(worst_day.net_collections) }}</h4>
-                        <small class="text-muted">{{ worst_day.patients_treated }} patients</small>
-                    </div>
-                </div>
+            <div class="card-body p-0">
+                <table class="table table-bordered mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th></th>
+                            <th class="text-end">Turnover <small class="d-block fw-normal">work billed</small></th>
+                            <th class="text-end">Cash Flow <small class="d-block fw-normal">money received</small></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="text-success fw-bold">
+                                <i class="bi bi-trophy-fill text-warning"></i> Best day
+                            </td>
+                            <td class="text-end">
+                                <strong>{{ best_turnover.date.strftime('%d/%m/%Y') }}</strong>
+                                <small class="text-muted d-block">{{ best_turnover.day_of_week }}</small>
+                                <span class="text-success fw-bold">R {{ "%.2f"|format(best_turnover.goodx_production) }}</span>
+                            </td>
+                            <td class="text-end">
+                                <strong>{{ best_income.date.strftime('%d/%m/%Y') }}</strong>
+                                <small class="text-muted d-block">{{ best_income.day_of_week }}</small>
+                                <span class="text-success fw-bold">R {{ "%.2f"|format(best_income.net_collections) }}</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-danger fw-bold">
+                                <i class="bi bi-emoji-frown text-muted"></i> Lowest day
+                            </td>
+                            <td class="text-end">
+                                <strong>{{ worst_turnover.date.strftime('%d/%m/%Y') }}</strong>
+                                <small class="text-muted d-block">{{ worst_turnover.day_of_week }}</small>
+                                <span class="text-danger fw-bold">R {{ "%.2f"|format(worst_turnover.goodx_production) }}</span>
+                            </td>
+                            <td class="text-end">
+                                <strong>{{ worst_income.date.strftime('%d/%m/%Y') }}</strong>
+                                <small class="text-muted d-block">{{ worst_income.day_of_week }}</small>
+                                <span class="text-danger fw-bold">R {{ "%.2f"|format(worst_income.net_collections) }}</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-footer">
+                <small class="text-muted">
+                    <i class="bi bi-info-circle"></i>
+                    Ranked separately on purpose. A day can bill a lot to medical aids and take
+                    nothing over the counter, so the busiest day of production is often not the
+                    day the most money came in.
+                </small>
             </div>
         </div>
     </div>
@@ -301,69 +349,6 @@
         </div>
     </div>
     {% endif %}
-</div>
-
-<!-- Per Practitioner Billing & Cash Flow -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-person-badge"></i> Billing &amp; Cash Flow per Practitioner</h5>
-            </div>
-            <div class="card-body p-0">
-                {% if practitioner_stats %}
-                <div class="table-responsive">
-                    <table class="table table-bordered mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Practitioner</th>
-                                <th class="text-end">Patients</th>
-                                <th class="text-end">Credit Notes</th>
-                                <th class="text-end">Total Billed<br><small>net of credit notes</small></th>
-                                <th class="text-end">KAS7 Card</th>
-                                <th class="text-end">KAS3 EFT</th>
-                                <th class="text-end">Cash Received (Card + EFT)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for p in practitioner_stats %}
-                            <tr>
-                                <td>{{ p.name }}</td>
-                                <td class="text-end">{{ p.patients }}</td>
-                                <td class="text-end text-danger">{{ '(R{:,.2f})'.format(p.credit_notes) if p.credit_notes else '-' }}</td>
-                                <td class="text-end">R{{ '{:,.2f}'.format(p.billed) }}</td>
-                                <td class="text-end">R{{ '{:,.2f}'.format(p.card) }}</td>
-                                <td class="text-end">R{{ '{:,.2f}'.format(p.eft) }}</td>
-                                <td class="text-end fw-bold">R{{ '{:,.2f}'.format(p.received) }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                        <tfoot>
-                            <tr class="table-light fw-bold">
-                                <td>Total</td>
-                                <td class="text-end">{{ practitioner_totals.patients }}</td>
-                                <td class="text-end text-danger">{{ '(R{:,.2f})'.format(practitioner_totals.credit_notes) if practitioner_totals.credit_notes else '-' }}</td>
-                                <td class="text-end">R{{ '{:,.2f}'.format(practitioner_totals.billed) }}</td>
-                                <td class="text-end">R{{ '{:,.2f}'.format(practitioner_totals.card) }}</td>
-                                <td class="text-end">R{{ '{:,.2f}'.format(practitioner_totals.eft) }}</td>
-                                <td class="text-end">R{{ '{:,.2f}'.format(practitioner_totals.received) }}</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-                {% else %}
-                <p class="text-muted text-center py-4 mb-0">No billing sheet entries captured in this period.</p>
-                {% endif %}
-            </div>
-            <div class="card-footer">
-                <small class="text-muted">
-                    <i class="bi bi-info-circle"></i>
-                    KAS6 ERA payments for this period: <strong>R{{ '{:,.2f}'.format(era_period_total) }}</strong>
-                    &mdash; medical aids pay the practice number directly, so ERA money cannot be split per practitioner.
-                </small>
-            </div>
-        </div>
-    </div>
 </div>
 
 <!-- Credit Notes & Journals by reason -->
@@ -595,22 +580,17 @@ new Chart(paymentCtx, {
     }
 });
 
-// Patients Trend Chart
-const patientsCtx = document.getElementById('patientsChart').getContext('2d');
-new Chart(patientsCtx, {
+// Transactions Captured Chart
+const transactionsCtx = document.getElementById('transactionsChart').getContext('2d');
+new Chart(transactionsCtx, {
     type: 'bar',
     data: {
         labels: dailyData.map(d => d.date),
         datasets: [
             {
-                label: 'Patients Treated',
-                data: dailyData.map(d => d.patients),
+                label: 'Transactions Captured',
+                data: dailyData.map(d => d.transactions),
                 backgroundColor: '#0dcaf0',
-            },
-            {
-                label: 'No-shows',
-                data: dailyData.map(d => d.no_shows),
-                backgroundColor: '#9E3232',
             }
         ]
     },
@@ -641,9 +621,9 @@ new Chart(dayCtx, {
             backgroundColor: '#1F5F4E',
             yAxisID: 'y'
         }, {
-            label: 'Avg Patients',
+            label: 'Avg Transactions',
             data: daysOfWeek.filter(d => dayAnalysis[d] && dayAnalysis[d].count > 0)
-                           .map(d => dayAnalysis[d].avg_patients),
+                           .map(d => dayAnalysis[d].avg_transactions),
             backgroundColor: '#0dcaf0',
             yAxisID: 'y1'
         }]
