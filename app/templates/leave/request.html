@@ -10,7 +10,7 @@
                 <h4 class="mb-0"><i class="bi bi-calendar-plus"></i> Request Leave</h4>
             </div>
             <div class="card-body">
-                <form method="POST" enctype="multipart/form-data">
+                <form method="POST" enctype="multipart/form-data" id="leaveRequestForm">
                     {{ form.hidden_tag() }}
 
                     <div class="mb-3">
@@ -61,6 +61,31 @@
                 </form>
 
 <script>
+// One click, one request. The button stays disabled until the page
+// changes, so a double-click cannot send the same request twice.
+(function () {
+    const form = document.getElementById('leaveRequestForm');
+    if (!form) return;
+    form.addEventListener('submit', function () {
+        const button = form.querySelector('[type=submit]');
+        if (!button) return;
+        // Deferred so the browser still sends this submission first
+        setTimeout(function () {
+            button.disabled = true;
+            button.value = 'Submitting...';
+        }, 0);
+    });
+    // Coming back with the browser's Back button restores the page as it
+    // was left, disabled button included - switch it back on.
+    window.addEventListener('pageshow', function () {
+        const button = form.querySelector('[type=submit]');
+        if (button && button.disabled) {
+            button.disabled = false;
+            button.value = button.defaultValue;
+        }
+    });
+})();
+
 // The doctor's note field belongs to sick leave only.
 (function () {
     const type = document.getElementById('leave_type');

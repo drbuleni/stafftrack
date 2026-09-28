@@ -258,6 +258,23 @@ def request_leave():
             flash('End date cannot be before start date.', 'danger')
             return render_template('leave/request.html', form=form)
 
+        # Refuse an exact repeat of a request that is still live. A
+        # double-click on Submit, or resubmitting because the first one
+        # seemed not to go through, left identical approved requests that
+        # were each deducted from the balance.
+        existing = LeaveRequest.query.filter(
+            LeaveRequest.staff_id == current_user.id,
+            LeaveRequest.leave_type == form.leave_type.data,
+            LeaveRequest.start_date == form.start_date.data,
+            LeaveRequest.end_date == form.end_date.data,
+            LeaveRequest.status.in_(['Pending', 'Approved'])
+        ).first()
+        if existing:
+            flash(f'You already have {existing.leave_type.lower()} leave '
+                  f'{existing.status.lower()} for these dates, so it was not '
+                  f'submitted again.', 'info')
+            return redirect(url_for('leave.index'))
+
         # A doctor's note may be attached to sick leave of any length.
         # It is never required, but a bad file stops the submission so the
         # staff member can fix it rather than silently losing the note.
