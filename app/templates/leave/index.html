@@ -13,6 +13,22 @@
         <a href="{{ url_for('leave.calendar_view') }}" class="btn btn-outline-primary">
             <i class="bi bi-calendar3"></i> Leave Calendar
         </a>
+        <div class="btn-group">
+            <a href="{{ url_for('leave.report', year=current_year) }}" class="btn btn-outline-primary">
+                <i class="bi bi-file-earmark-pdf"></i> Leave Report {{ current_year }}
+            </a>
+            {% if report_years|length > 1 %}
+            <button type="button" class="btn btn-outline-primary dropdown-toggle dropdown-toggle-split"
+                    data-bs-toggle="dropdown" aria-expanded="false">
+                <span class="visually-hidden">Choose a year</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                {% for y in report_years %}
+                <li><a class="dropdown-item" href="{{ url_for('leave.report', year=y) }}">{{ y }}</a></li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
         {% endif %}
         <a href="{{ url_for('leave.request_leave') }}" class="btn btn-primary">
             <i class="bi bi-plus-circle"></i> Request Leave

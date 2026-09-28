@@ -166,22 +166,35 @@ class ApprovalForm(FlaskForm):
     submit_reject = SubmitField('Reject')
 
 
+# Days allowed per year for the leave types that have a balance. Shared by
+# the in-app balance and the leave report so the two can never disagree.
+ANNUAL_ALLOWANCES = {
+    'Annual': 21,
+    'Sick': 10,  # 30 days over 3 years = ~10 per year
+    'Family Responsibility': 3,
+}
+
+
+def working_days(start, end):
+    """Weekdays from start to end inclusive. Weekends are not leave days."""
+    days = 0
+    current = start
+    while current <= end:
+        if current.weekday() < 5:  # Monday = 0, Friday = 4
+            days += 1
+        current += timedelta(days=1)
+    return days
+
+
 def calculate_leave_balance(user_id):
     """Calculate leave balance for a user based on approved leave this year."""
     current_year = date.today().year
     year_start = date(current_year, 1, 1)
     year_end = date(current_year, 12, 31)
 
-    # Leave entitlements per year
-    entitlements = {
-        'Annual': 21,
-        'Sick': 10,  # 30 days over 3 years = ~10 per year
-        'Family Responsibility': 3,
-    }
-
     balance = {}
 
-    for leave_type, total_days in entitlements.items():
+    for leave_type, total_days in ANNUAL_ALLOWANCES.items():
         # Get approved leave for this type this year
         approved_leave = LeaveRequest.query.filter(
             LeaveRequest.staff_id == user_id,
@@ -191,15 +204,8 @@ def calculate_leave_balance(user_id):
             LeaveRequest.start_date <= year_end
         ).all()
 
-        # Calculate days used (excluding weekends)
-        days_used = 0
-        for leave in approved_leave:
-            current_date = leave.start_date
-            while current_date <= leave.end_date:
-                # Count only weekdays
-                if current_date.weekday() < 5:  # Monday = 0, Friday = 4
-                    days_used += 1
-                current_date = current_date + timedelta(days=1)
+        days_used = sum(working_days(leave.start_date, leave.end_date)
+                        for leave in approved_leave)
 
         balance[leave_type] = {
             'total': total_days,
@@ -229,7 +235,15 @@ def index():
         ).order_by(LeaveRequest.approved_at.desc()).all()
         leave_balance = calculate_leave_balance(current_user.id)
 
-    return render_template('leave/index.html', pending=pending, processed=processed, leave_balance=leave_balance, current_year=date.today().year)
+    report_years = []
+    if current_user.role in ['Practice Manager', 'Super Admin']:
+        first = db.session.query(db.func.min(LeaveRequest.start_date)).scalar()
+        this_year = date.today().year
+        report_years = list(range(this_year, (first.year if first else this_year) - 1, -1))
+
+    return render_template('leave/index.html', pending=pending, processed=processed,
+                           leave_balance=leave_balance, current_year=date.today().year,
+                           report_years=report_years)
 
 
 @bp.route('/request', methods=['GET', 'POST'])
@@ -459,6 +473,28 @@ def calendar_view():
     approved_leave = LeaveRequest.query.filter_by(status='Approved').all()
 
     return render_template('leave/calendar.html', approved_leave=approved_leave)
+
+
+@bp.route('/report')
+@login_required
+@manager_required
+def report():
+    """Download the staff leave report for a year as a PDF."""
+    from app.utils.leave_report import build_leave_report_data, build_leave_report_pdf
+
+    today = date.today()
+    year = request.args.get('year', today.year, type=int)
+    if year < 2000 or year > today.year + 1:
+        year = today.year
+
+    data = build_leave_report_data(year, today)
+    buffer = build_leave_report_pdf(data, generated_by=current_user.full_name)
+
+    log_audit('Downloaded Leave Report', 'LeaveRequest', None, {'year': year})
+
+    return send_file(buffer, as_attachment=True,
+                     download_name=f'leave_report_{year}.pdf',
+                     mimetype='application/pdf')
 
 
 @bp.route('/entitlements')
