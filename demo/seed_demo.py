@@ -48,16 +48,16 @@ EMAIL_DOMAIN = 'brightwater-demo.example'
 
 STAFF = [
     # key, username, full name, role, start date
-    ('owner', 'demo', 'Dr. Ayanda Mthembu', 'Super Admin', date(2017, 3, 1)),
-    ('pm', 'naledi', 'Dr. Naledi Dube', 'Practice Manager', date(2019, 8, 5)),
-    ('dentist', 'kabelo', 'Dr. Kabelo Molefe', 'Dentist', date(2021, 2, 1)),
-    ('billing1', 'lindiwe', 'Lindiwe Zulu', 'Billing', date(2020, 6, 15)),
-    ('billing2', 'thandeka', 'Thandeka Radebe', 'Billing', date(START.year, 3, 2)),
-    ('reception', 'palesa', 'Palesa Mahlangu', 'Receptionist', date(2022, 1, 10)),
-    ('da1', 'nomsa', 'Nomsa Shabalala', 'Dental Assistant', date(2018, 4, 3)),
-    ('da2', 'refilwe', 'Refilwe Sithole', 'Dental Assistant', date(2023, 5, 2)),
-    ('da3', 'andile', 'Andile Cele', 'Dental Assistant', date(2024, 9, 16)),
-    ('cleaner', 'grace', 'Grace Mabuza', 'Cleaner', date(2019, 11, 4)),
+    ('owner', 'demo', 'Dr. Sarah Mitchell', 'Super Admin', date(2017, 3, 1)),
+    ('pm', 'james', 'Dr. James Carter', 'Practice Manager', date(2019, 8, 5)),
+    ('dentist', 'emily', 'Dr. Emily Brooks', 'Dentist', date(2021, 2, 1)),
+    ('billing1', 'hannah', 'Hannah Wright', 'Billing', date(2020, 6, 15)),
+    ('billing2', 'olivia', 'Olivia Bennett', 'Billing', date(START.year, 3, 2)),
+    ('reception', 'chloe', 'Chloe Turner', 'Receptionist', date(2022, 1, 10)),
+    ('da1', 'rachel', 'Rachel Hughes', 'Dental Assistant', date(2018, 4, 3)),
+    ('da2', 'sophie', 'Sophie Parker', 'Dental Assistant', date(2023, 5, 2)),
+    ('da3', 'daniel', 'Daniel Cooper', 'Dental Assistant', date(2024, 9, 16)),
+    ('cleaner', 'grace', 'Grace Collins', 'Cleaner', date(2019, 11, 4)),
 ]
 
 # Practitioners who bill: typical patients per day and the days they work
@@ -682,7 +682,7 @@ def create_dashboard_content(people):
          'Short meeting before the first patient: year-end leave roster and new sterilisation '
          'checklist. Coffee is on the practice.', 'Important', 2),
         ('New intraoral camera in Surgery 1',
-         'Dr. Molefe will show everyone how to use it during lunch on Wednesday.', 'Normal', 6),
+         'Dr. Brooks will show everyone how to use it during lunch on Wednesday.', 'Normal', 6),
         ('Reminder: submit leave on StaffTrack',
          'Please apply for all leave on StaffTrack so balances stay correct - no more paper forms.',
          'Normal', 15),
