@@ -61,9 +61,10 @@
     padding: 0.85rem 1.15rem;
 }
 
-/* Coloured card bodies (stat tiles) keep readable text */
-.card[class*="bg-"]:not(.bg-white) .card-body,
-.card[class*="bg-"]:not(.bg-white) .card-body :is(h1,h2,h3,h4,h5,h6) {
+/* Coloured card bodies (stat tiles) keep readable text. Light and tinted
+   (bg-opacity-*) cards are excluded: white text on them was unreadable. */
+.card[class*="bg-"]:not(.bg-white):not(.bg-light):not([class*="bg-opacity-"]) .card-body,
+.card[class*="bg-"]:not(.bg-white):not(.bg-light):not([class*="bg-opacity-"]) .card-body :is(h1,h2,h3,h4,h5,h6) {
     color: var(--on-accent);
 }
 
@@ -348,6 +349,16 @@ textarea.form-control { min-height: 90px; line-height: 1.55; }
 .bg-dark      { background-color: var(--ink) !important; }
 .bg-light     { background-color: var(--panel-alt) !important; }
 .bg-white     { background-color: var(--panel) !important; }
+
+/* Bootstrap tints with bg-opacity-* by fading an rgba variable, which the
+   solid remaps above override - so every "light tint" rendered as the full
+   dark colour under dark text (the Employee of the Month banner, today's
+   cell on the calendar and schedule). Tinted backgrounds use the washes. */
+.bg-primary[class*="bg-opacity-"] { background-color: var(--accent-wash) !important; }
+.bg-success[class*="bg-opacity-"] { background-color: var(--success-wash) !important; }
+.bg-warning[class*="bg-opacity-"] { background-color: var(--warning-wash) !important; }
+.bg-danger[class*="bg-opacity-"]  { background-color: var(--danger-wash) !important; }
+.bg-info[class*="bg-opacity-"]    { background-color: var(--info-wash) !important; }
 
 .text-primary   { color: var(--accent) !important; }
 .text-success   { color: var(--success) !important; }

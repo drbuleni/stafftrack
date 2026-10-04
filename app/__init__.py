@@ -90,6 +90,10 @@ def create_app(config_class=Config):
     app.register_blueprint(patient_flow_bp)
 
 
+    @app.context_processor
+    def inject_practice_name():
+        return {'practice_name': app.config['PRACTICE_NAME']}
+
     # A file bigger than MAX_CONTENT_LENGTH is refused by Werkzeug before any
     # view runs. Show a readable message instead of the default 413 page.
     @app.errorhandler(413)

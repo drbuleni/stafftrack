@@ -14,6 +14,7 @@ from datetime import date, timedelta
 from io import BytesIO
 from xml.sax.saxutils import escape
 
+from flask import current_app
 from reportlab.graphics.charts.barcharts import VerticalBarChart
 from reportlab.graphics.charts.legends import Legend
 from reportlab.graphics.shapes import Drawing
@@ -407,12 +408,13 @@ class _NumberedCanvas(pdf_canvas.Canvas):
 
 
 def build_leave_report_pdf(data, generated_by=''):
+    practice = current_app.config['PRACTICE_NAME']
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4,
                             topMargin=16 * mm, bottomMargin=20 * mm,
                             leftMargin=18 * mm, rightMargin=18 * mm,
                             title=f"Staff Leave Report {data['year']}",
-                            author='Smilez Dental Surgery')
+                            author=practice)
     content_w = A4[0] - 36 * mm
     styles = getSampleStyleSheet()
 
@@ -473,7 +475,7 @@ def build_leave_report_pdf(data, generated_by=''):
     logo = _practice_logo()
     if logo is not None:
         el += [logo, Spacer(1, 6)]
-    el.append(Paragraph('Smilez Dental Surgery', title))
+    el.append(Paragraph(escape(practice), title))
     el.append(Paragraph(f'Staff Leave Report {year}', subtitle))
     period = (f"1 January {year} to {_d(data['as_at'])} (year to date)" if data['is_current']
               else f"1 January to 31 December {year}")
@@ -723,7 +725,7 @@ def build_leave_report_pdf(data, generated_by=''):
     ):
         el.append(Paragraph(f'&bull;&nbsp; {text}', body))
 
-    footer = f"Smilez Dental Surgery  ·  Staff Leave Report {year}  ·  Confidential"
+    footer = f"{practice}  ·  Staff Leave Report {year}  ·  Confidential"
 
     class _Canvas(_NumberedCanvas):
         footer_left = footer

@@ -54,3 +54,9 @@ class Config:
 
     # Enable/disable email notifications
     MAIL_ENABLED = os.environ.get('MAIL_ENABLED', 'false').lower() == 'true'
+
+    # The practice this deployment serves, printed on the login page and on
+    # every PDF. PRACTICE_LOGO optionally points the PDF letterhead at a
+    # different logo file; 'none' leaves the letterhead without one.
+    PRACTICE_NAME = os.environ.get('PRACTICE_NAME', 'Smilez Dental Surgery')
+    PRACTICE_LOGO = os.environ.get('PRACTICE_LOGO')

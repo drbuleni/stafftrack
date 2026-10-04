@@ -5,7 +5,9 @@
 {% block content %}
 <!-- Page Header -->
 <div class="page-header">
-    <h1 class="page-title">Welcome back, {{ user.full_name.split()[0] }}</h1>
+    {# "Dr. Ayanda Mthembu" greets as "Dr. Mthembu", not a bare "Dr." #}
+    {% set name_parts = user.full_name.split() %}
+    <h1 class="page-title">Welcome back, {{ (name_parts[0] ~ ' ' ~ name_parts[-1]) if name_parts[0].rstrip('.').lower() in ['dr', 'prof'] and name_parts|length > 1 else name_parts[0] }}</h1>
     <p class="page-subtitle">{{ today.strftime('%A, %d %B %Y') }}</p>
 </div>
 

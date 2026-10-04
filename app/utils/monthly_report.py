@@ -12,6 +12,7 @@ written by hand, and even those are pre-drafted from the numbers.
 Section numbering follows the January 2026 report, which Dr Buleni chose as
 the house format, with the grand summary table from July added at the end.
 """
+from flask import current_app
 import calendar
 
 # Standard accounting notes. These were identical in every month's report,
@@ -144,7 +145,7 @@ def build_document(report, totals):
 
     return {
         'period': period,
-        'practice_name': 'Smilez Dental Surgery',
+        'practice_name': current_app.config['PRACTICE_NAME'],
         'practitioners': [s.practitioner_name for s in sections],
         'turnover': _rows(sections, 'gross_turnover'),
         'additional_turnover': _rows(sections, 'additional_turnover'),
