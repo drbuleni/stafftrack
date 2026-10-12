@@ -1,6 +1,7 @@
 """Fixed-format PDF for the monthly Turnover & Cash Flow report."""
 import calendar
 from io import BytesIO
+from xml.sax.saxutils import escape
 
 from flask import current_app
 from reportlab.lib import colors
@@ -8,7 +9,8 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table,
-                                TableStyle, HRFlowable, PageBreak)
+                                TableStyle, HRFlowable, PageBreak, KeepTogether,
+                                CondPageBreak)
 
 ACCENT = colors.HexColor('#1F5F4E')
 LIGHT = colors.HexColor('#EAF2EE')
@@ -35,6 +37,9 @@ MOVEMENT_NOTE = ("The movement balance is a GoodX system reconciliation control 
                  "the net transactional movement for the period. It should not be interpreted as "
                  "the practice's profit or cash held in the bank.")
 
+# (method, bank) columns for the payments-by-bank tables
+PAYMENT_COLUMNS = [('EFT', 'FNB'), ('EFT', 'Capitec'), ('Card', 'FNB'), ('Card', 'Capitec')]
+
 KAS_LABELS = [
     ('kas1_cash', 'KAS1 Cash Payment Control Deposits'),
     ('kas3_eft', 'KAS3 EFT Deposits'),
@@ -47,6 +52,41 @@ KAS_LABELS = [
     ('kas7_corrections', 'KAS7 Card Deposit Corrections'),
     ('kas8_corrections', 'KAS8 Linking Deposit Corrections'),
 ]
+
+
+def _text(value):
+    """Typed text made safe for the PDF: markup escaped, and characters
+    the built-in font can't draw (emoji) dropped instead of printing as
+    black boxes."""
+    value = (value or '').strip().encode('cp1252', 'ignore').decode('cp1252').strip()
+    return escape(value) or '-'
+
+
+def _grid(rows, widths, right=(), bold_last=False, size=8):
+    """A header-row table in the report's style."""
+    table = Table(rows, colWidths=widths, repeatRows=1)
+    style = [
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), size),
+        ('TEXTCOLOR', (0, 0), (-1, -1), DARK),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 3.5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3.5),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('LINEBELOW', (0, 0), (-1, -1), 0.4, GRID),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BACKGROUND', (0, 0), (-1, 0), LIGHT),
+        ('TEXTCOLOR', (0, 0), (-1, 0), ACCENT),
+        ('LINEBELOW', (0, 0), (-1, 0), 0.8, ACCENT),
+    ]
+    for col in right:
+        style.append(('ALIGN', (col, 0), (col, -1), 'RIGHT'))
+    if bold_last:
+        style += [('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+                  ('BACKGROUND', (0, -1), (-1, -1), LIGHT)]
+    table.setStyle(TableStyle(style))
+    return table
 
 
 def money(value):
@@ -108,7 +148,7 @@ def _practice_logo(max_w=42 * mm, max_h=16 * mm):
     return None
 
 
-def build_turnover_pdf(report, totals, patient_flow=None, document=None):
+def build_turnover_pdf(report, totals, patient_flow=None, document=None, activity=None):
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4,
                             topMargin=18*mm, bottomMargin=18*mm,
@@ -365,6 +405,74 @@ def build_turnover_pdf(report, totals, patient_flow=None, document=None):
         ]
         elements.append(money_table(flow_rows))
 
+    # What was captured on the daily sheets: transactions per practitioner
+    # and payments by bank. Sinah asked for these to be part of the monthly
+    # report rather than separate documents.
+    if activity and activity['sheet_count']:
+        cell = ParagraphStyle('Cell2', parent=styles['Normal'], fontSize=8, leading=10,
+                              textColor=DARK)
+        t = activity['practitioner_totals']
+        rows = [['Practitioner', 'Transactions', 'Credit notes', 'Turnover (net)',
+                 'KAS7 Card', 'KAS3 EFT', 'Cash flow']]
+        for p in activity['practitioners']:
+            rows.append([Paragraph(_text(p['name']), cell), str(p['transactions']),
+                         money(-p['credit_notes']) if p['credit_notes'] else '-',
+                         money(p['billed']), money(p['card']), money(p['eft']),
+                         money(p['received'])])
+        rows.append(['Total', str(t['transactions']),
+                     money(-t['credit_notes']) if t['credit_notes'] else '-',
+                     money(t['billed']), money(t['card']), money(t['eft']),
+                     money(t['received'])])
+        elements.append(KeepTogether([
+            Paragraph('Transaction Summary', section_style),
+            Paragraph(f"From the {activity['sheet_count']} daily sheets captured on "
+                      f"StaffTrack this month. A transaction is one line on a daily sheet, "
+                      f"not one patient.", body_style),
+            _grid(rows, [40*mm, 20*mm, 22*mm, 26*mm, 22*mm, 22*mm, 22*mm],
+                  right=range(1, 7), bold_last=True),
+        ]))
+        elements.append(Paragraph(
+            f"KAS6 ERA payments this month: {money(activity['era_total'])}. Medical aids pay "
+            f"the practice number, so ERA can't be split per practitioner. These figures are "
+            f"as captured on the daily sheets and may differ slightly from GoodX.", note_style))
+
+        pay = activity['payments']
+        bank_rows = [['', 'FNB', 'Capitec', 'Total']]
+        for method, label in (('EFT', 'KAS3 EFT'), ('Card', 'KAS7 Card')):
+            bank_rows.append([label, money(pay['totals'][(method, 'FNB')]),
+                              money(pay['totals'][(method, 'Capitec')]),
+                              money(pay['by_method'][method])])
+        bank_rows.append(['Total', money(pay['by_bank']['FNB']),
+                          money(pay['by_bank']['Capitec']), money(pay['total'])])
+        elements.append(KeepTogether([
+            Paragraph('Payments by Bank', section_style),
+            Paragraph(f"{pay['payment_count']} card and EFT payments, by the bank chosen on "
+                      f"the daily sheet: the account an EFT landed in, or the speedpoint a card "
+                      f"was swiped on.", body_style),
+            _grid(bank_rows, [58*mm, 38*mm, 38*mm, 40*mm], right=(1, 2, 3), bold_last=True,
+                  size=8.5),
+        ]))
+
+        day_rows = [['Date', 'EFT FNB', 'EFT Capitec', 'Card FNB', 'Card Capitec', 'Day total']]
+        for day in pay['days']:
+            day_rows.append([day['date'].strftime('%a %d/%m/%Y'),
+                             *[money(day['totals'][col]) if day['totals'][col] else '-'
+                               for col in PAYMENT_COLUMNS],
+                             money(day['total']) if day['total'] else '-'])
+        day_rows.append(['Total', *[money(pay['totals'][col]) for col in PAYMENT_COLUMNS],
+                         money(pay['total'])])
+        elements.append(Paragraph('Day by day', sub_style))
+        elements.append(_grid(day_rows, [32*mm, 28*mm, 28*mm, 28*mm, 28*mm, 30*mm],
+                              right=range(1, 6), bold_last=True))
+        for r in pay['repeated_receipts']:
+            dates = ' and '.join(d.strftime('%d/%m/%Y') for d in r['dates'])
+            elements.append(Paragraph(
+                f"Receipt {_text(r['receipt'])} ({_text(r['patient'])}) is captured on {dates}. "
+                f"If it was only paid once, it was captured twice.", note_style))
+        if pay['payment_count']:
+            elements.append(Paragraph('Every payment is listed in the appendix at the end of '
+                                      'this report.', note_style))
+
     # VAT and the standard notes, unless the monthly report document is
     # present - it already carries both, and printing them twice made the
     # PDF read as though it had lost its place.
@@ -395,6 +503,34 @@ def build_turnover_pdf(report, totals, patient_flow=None, document=None):
     elements.append(Paragraph(f"Compiled by: <b>{preparer}</b>", body_style))
     elements.append(Paragraph(f"{practice} &bull; Source: GoodX Practice Management System", note_style))
     elements.append(Paragraph(f"Generated by StaffTrack on {report.updated_at.strftime('%d/%m/%Y') if report.updated_at else ''}", note_style))
+
+    if activity and activity['payments']['payment_count']:
+        cell = ParagraphStyle('Cell3', parent=styles['Normal'], fontSize=7.5, leading=9.5,
+                              textColor=DARK)
+        day_head = ParagraphStyle('DayHead', parent=sub_style, fontName='Helvetica-Bold')
+        elements.append(PageBreak())
+        elements.append(Paragraph('Appendix: Every Card and EFT Payment', section_style))
+        elements.append(Paragraph('Each payment as captured on the daily sheet, for checking '
+                                  'line by line against the bank statements. A patient who '
+                                  'paid by both card and EFT appears on two lines.', body_style))
+        widths = [44*mm, 17*mm, 17*mm, 36*mm, 12*mm, 17*mm, 31*mm]
+        for day in activity['payments']['days']:
+            if not day['payments']:
+                continue
+            rows = [['Patient', 'File no.', 'Receipt', 'Practitioner', 'Type', 'Bank', 'Amount']]
+            for pmt in day['payments']:
+                rows.append([Paragraph(_text(pmt['patient']), cell), _text(pmt['file_no']),
+                             _text(pmt['receipt']), Paragraph(_text(pmt['provider']), cell),
+                             pmt['method'], pmt['bank'], money(pmt['amount'])])
+            rows.append(['Day total', '', '', '', '', '', money(day['total'])])
+            heading = Paragraph(f"{day['date'].strftime('%A %d/%m/%Y')} "
+                                f"<font size=8 color='#5D6E69'>&nbsp;captured by "
+                                f"{_text(day['captured_by'])}</font>", day_head)
+            table = _grid(rows, widths, right=(6,), bold_last=True, size=7.5)
+            if len(rows) <= 14:
+                elements.append(KeepTogether([heading, table]))
+            else:
+                elements += [CondPageBreak(40*mm), heading, table]
 
     doc.build(elements)
     buffer.seek(0)

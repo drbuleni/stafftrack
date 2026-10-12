@@ -306,6 +306,8 @@ def view(report_id):
     from app.routes.patient_flow import month_totals
     from app.utils.monthly_report import build_document
 
+    from app.utils.month_activity import month_activity
+
     report = TurnoverReport.query.get_or_404(report_id)
     totals = _report_totals(report)
     return render_template('turnover/view.html',
@@ -313,6 +315,7 @@ def view(report_id):
                           totals=totals,
                           document=build_document(report, totals),
                           patient_flow=month_totals(report.year, report.month),
+                          activity=month_activity(report.year, report.month),
                           month_names=calendar.month_name)
 
 
@@ -324,12 +327,14 @@ def pdf(report_id):
     report = TurnoverReport.query.get_or_404(report_id)
     from app.routes.patient_flow import month_totals
     from app.utils.monthly_report import build_document
+    from app.utils.month_activity import month_activity
     from app.utils.turnover_pdf import build_turnover_pdf
 
     totals = _report_totals(report)
     buffer = build_turnover_pdf(report, totals,
                                 patient_flow=month_totals(report.year, report.month),
-                                document=build_document(report, totals))
+                                document=build_document(report, totals),
+                                activity=month_activity(report.year, report.month))
     filename = f"turnover_report_{report.year}_{report.month:02d}.pdf"
     return send_file(buffer, as_attachment=True, download_name=filename,
                      mimetype='application/pdf')

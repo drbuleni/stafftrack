@@ -358,6 +358,177 @@
     </div>
 </div>
 
+<!-- Transaction summary from the daily sheets -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-list-check"></i> Transaction Summary</h5>
+        <small class="text-muted">From {{ activity.sheet_count }} daily sheet(s) captured on StaffTrack</small>
+    </div>
+    <div class="card-body p-0">
+        {% if activity.practitioners %}
+        <div class="table-responsive">
+            <table class="table table-bordered mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Practitioner</th>
+                        <th class="text-end">Transactions</th>
+                        <th class="text-end">Credit Notes</th>
+                        <th class="text-end">Turnover<br><small>net of credit notes</small></th>
+                        <th class="text-end">KAS7 Card</th>
+                        <th class="text-end">KAS3 EFT</th>
+                        <th class="text-end">Cash Flow<br><small>card + EFT</small></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in activity.practitioners %}
+                    <tr>
+                        <td>{{ p.name }}</td>
+                        <td class="text-end">{{ p.transactions }}</td>
+                        <td class="text-end text-danger">{{ '(R{:,.2f})'.format(p.credit_notes) if p.credit_notes else '-' }}</td>
+                        <td class="text-end">R{{ '{:,.2f}'.format(p.billed) }}</td>
+                        <td class="text-end">R{{ '{:,.2f}'.format(p.card) }}</td>
+                        <td class="text-end">R{{ '{:,.2f}'.format(p.eft) }}</td>
+                        <td class="text-end fw-bold">R{{ '{:,.2f}'.format(p.received) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    {% set t = activity.practitioner_totals %}
+                    <tr class="table-light fw-bold">
+                        <td>Total</td>
+                        <td class="text-end">{{ t.transactions }}</td>
+                        <td class="text-end text-danger">{{ '(R{:,.2f})'.format(t.credit_notes) if t.credit_notes else '-' }}</td>
+                        <td class="text-end">R{{ '{:,.2f}'.format(t.billed) }}</td>
+                        <td class="text-end">R{{ '{:,.2f}'.format(t.card) }}</td>
+                        <td class="text-end">R{{ '{:,.2f}'.format(t.eft) }}</td>
+                        <td class="text-end">R{{ '{:,.2f}'.format(t.received) }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted text-center py-4 mb-0">No daily sheets were captured for this month.</p>
+        {% endif %}
+    </div>
+    <div class="card-footer">
+        <small class="text-muted d-block mb-1">
+            A transaction is one line on a daily sheet, not one patient. These are the figures
+            captured on StaffTrack, so they may differ slightly from the GoodX figures above.
+        </small>
+        <small class="text-muted">
+            KAS6 ERA payments this month: <strong>R{{ '{:,.2f}'.format(activity.era_total) }}</strong>.
+            Medical aids pay the practice number, so ERA can't be split per practitioner.
+        </small>
+    </div>
+</div>
+
+<!-- Card and EFT payments by bank -->
+{% set pay = activity.payments %}
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-bank"></i> Payments by Bank</h5>
+        <small class="text-muted">{{ pay.payment_count }} card and EFT payment(s)</small>
+    </div>
+    <div class="card-body p-0">
+        {% if pay.days %}
+        <div class="table-responsive">
+            <table class="table table-bordered mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th></th>
+                        <th class="text-end">FNB</th>
+                        <th class="text-end">Capitec</th>
+                        <th class="text-end">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for method in ['EFT', 'Card'] %}
+                    <tr>
+                        <td>{{ 'KAS3 EFT' if method == 'EFT' else 'KAS7 Card' }}</td>
+                        <td class="text-end">R{{ '{:,.2f}'.format(pay.totals[(method, 'FNB')]) }}</td>
+                        <td class="text-end">R{{ '{:,.2f}'.format(pay.totals[(method, 'Capitec')]) }}</td>
+                        <td class="text-end fw-bold">R{{ '{:,.2f}'.format(pay.by_method[method]) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="table-light fw-bold">
+                        <td>Total</td>
+                        <td class="text-end">R{{ '{:,.2f}'.format(pay.by_bank['FNB']) }}</td>
+                        <td class="text-end">R{{ '{:,.2f}'.format(pay.by_bank['Capitec']) }}</td>
+                        <td class="text-end">R{{ '{:,.2f}'.format(pay.total) }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <div class="px-3 pt-3 pb-1"><h6 class="mb-0">Day by day</h6></div>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date</th>
+                        <th class="text-end">EFT FNB</th>
+                        <th class="text-end">EFT Capitec</th>
+                        <th class="text-end">Card FNB</th>
+                        <th class="text-end">Card Capitec</th>
+                        <th class="text-end">Day total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for day in pay.days %}
+                    <tr>
+                        <td>{{ day.date.strftime('%a %d/%m/%Y') }}</td>
+                        {% for col in [('EFT', 'FNB'), ('EFT', 'Capitec'), ('Card', 'FNB'), ('Card', 'Capitec')] %}
+                        <td class="text-end">{{ 'R{:,.2f}'.format(day.totals[col]) if day.totals[col] else '-' }}</td>
+                        {% endfor %}
+                        <td class="text-end fw-bold">{{ 'R{:,.2f}'.format(day.total) if day.total else '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <details class="px-3 py-3">
+            <summary class="fw-semibold">Every payment ({{ pay.payment_count }})</summary>
+            {% for day in pay.days if day.payments %}
+            <h6 class="mt-3 mb-1">{{ day.date.strftime('%A %d/%m/%Y') }}
+                <small class="text-muted fw-normal">captured by {{ day.captured_by }}</small></h6>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered mb-0">
+                    <thead class="table-light">
+                        <tr><th>Patient</th><th>File no.</th><th>Receipt</th><th>Practitioner</th>
+                            <th>Type</th><th>Bank</th><th class="text-end">Amount</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for p in day.payments %}
+                        <tr><td>{{ p.patient }}</td><td>{{ p.file_no }}</td><td>{{ p.receipt }}</td>
+                            <td>{{ p.provider }}</td><td>{{ p.method }}</td><td>{{ p.bank }}</td>
+                            <td class="text-end">R{{ '{:,.2f}'.format(p.amount) }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endfor %}
+        </details>
+        {% else %}
+        <p class="text-muted text-center py-4 mb-0">No daily sheets were captured for this month.</p>
+        {% endif %}
+    </div>
+    {% if pay.repeated_receipts %}
+    <div class="card-footer">
+        <small class="text-warning fw-semibold d-block">Same receipt captured on more than one day:</small>
+        {% for r in pay.repeated_receipts %}
+        <small class="text-muted d-block">
+            Receipt {{ r.receipt }} ({{ r.patient }}) on
+            {% for d in r.dates %}{{ d.strftime('%d/%m/%Y') }}{{ ' and ' if not loop.last }}{% endfor %}.
+            If it was only paid once, it was captured twice.
+        </small>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
 {# VAT appears in section 6 of the monthly report document above,
    so it is not repeated here. #}
 

@@ -760,50 +760,12 @@ def analytics():
     best_income, worst_income = _extremes(
         lambda r: float(r.net_collections or 0))
 
-    # Per-practitioner billing and cash flow from the billing sheets.
+    # Per-practitioner billing and cash flow from the billing sheets. The
+    # monthly turnover report uses the same function, so the two agree.
     # ERA (KAS6) payments are made to the practice number and cannot be
     # split per practitioner, so they are reported at practice level.
-    practitioner_rows = db.session.query(
-        ReconciliationBillingEntry.provider_name,
-        func.count(ReconciliationBillingEntry.id),
-        func.coalesce(func.sum(ReconciliationBillingEntry.amount_billed), 0),
-        func.coalesce(func.sum(ReconciliationBillingEntry.card_paid), 0),
-        func.coalesce(func.sum(ReconciliationBillingEntry.eft_paid), 0),
-        func.coalesce(func.sum(ReconciliationBillingEntry.credit_note), 0),
-    ).join(
-        DailyReconciliation,
-        ReconciliationBillingEntry.reconciliation_id == DailyReconciliation.id
-    ).filter(
-        DailyReconciliation.date >= start_date,
-        DailyReconciliation.date <= end_date
-    ).group_by(
-        ReconciliationBillingEntry.provider_name
-    ).order_by(
-        ReconciliationBillingEntry.provider_name
-    ).all()
-
-    # Billed is reported net of credit notes: a credit note reverses an
-    # invoice, so gross would double-count every corrected claim.
-    practitioner_stats = [{
-        'name': name,
-        'transactions': transactions,
-        'gross_billed': float(billed),
-        'credit_notes': float(credit),
-        'billed': float(billed) - float(credit),
-        'card': float(card),
-        'eft': float(eft),
-        'received': float(card) + float(eft),
-    } for name, transactions, billed, card, eft, credit in practitioner_rows]
-
-    practitioner_totals = {
-        'transactions': sum(p['transactions'] for p in practitioner_stats),
-        'gross_billed': sum(p['gross_billed'] for p in practitioner_stats),
-        'credit_notes': sum(p['credit_notes'] for p in practitioner_stats),
-        'billed': sum(p['billed'] for p in practitioner_stats),
-        'card': sum(p['card'] for p in practitioner_stats),
-        'eft': sum(p['eft'] for p in practitioner_stats),
-        'received': sum(p['received'] for p in practitioner_stats),
-    }
+    from app.utils.month_activity import practitioner_summary
+    practitioner_stats, practitioner_totals = practitioner_summary(start_date, end_date)
 
     # Credit notes and journals broken down by reason, so the monthly report
     # shows not just how much was reversed or written off but why.
