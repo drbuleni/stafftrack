@@ -340,18 +340,31 @@ def pdf(report_id):
                      mimetype='application/pdf')
 
 
-def _requested_week():
-    """The Monday of the week asked for. Any date in the week will do. By
-    default it's the week of yesterday, so on a Monday the report opens on
-    the week that has just finished, not on an empty new one."""
-    from app.utils.month_activity import week_bounds
+def _requested_day():
+    """A day inside the week asked for. Weeks stay within one month, so
+    the month's weekly reports add up to its monthly report.
+
+    `?month=2026-09` opens that month's first week (or, for the current
+    month, the latest week). `?week=<any date>` opens the week holding that
+    date. By default it's the week of yesterday, so on a Monday the report
+    opens on the week that has just finished, not on an empty new one."""
     today = date.today()
+    yesterday = today - timedelta(days=1)
+    month = request.args.get('month', '')
+    if month:
+        try:
+            year, mon = (int(x) for x in month.split('-'))
+            day = date(year, mon, 1)
+            if (year, mon) == (today.year, today.month):
+                day = max(day, yesterday)
+            return min(day, today)
+        except ValueError:
+            pass
     try:
         day = date.fromisoformat(request.args.get('week', ''))
     except ValueError:
-        day = today - timedelta(days=1)
-    monday, _saturday = week_bounds(min(day, today))
-    return monday
+        day = yesterday
+    return min(day, today)
 
 
 @bp.route('/weekly')
@@ -361,13 +374,13 @@ def weekly():
     """The weekly report, built from the daily sheets. Nothing to type in."""
     from app.utils.month_activity import week_activity
 
-    monday = _requested_week()
-    this_monday = date.today() - timedelta(days=date.today().weekday())
+    week = week_activity(_requested_day())
+    following = week['end'] + timedelta(days=1)
     return render_template('turnover/weekly.html',
-                           week=week_activity(monday),
-                           prev_week=(monday - timedelta(days=7)).isoformat(),
-                           next_week=((monday + timedelta(days=7)).isoformat()
-                                      if monday < this_monday else None))
+                           week=week,
+                           today=date.today(),
+                           prev_week=week['previous_week']['start'].isoformat(),
+                           next_week=following.isoformat() if following <= date.today() else None)
 
 
 @bp.route('/weekly/pdf')
@@ -378,9 +391,10 @@ def weekly_pdf():
     from app.utils.month_activity import week_activity
     from app.utils.weekly_pdf import build_weekly_pdf
 
-    week = week_activity(_requested_week())
+    week = week_activity(_requested_day())
     buffer = build_weekly_pdf(week, generated_by=current_user.full_name)
-    filename = f"weekly_report_{week['start'].isoformat()}.pdf"
+    w = week['week']
+    filename = f"weekly_report_{w['year']}-{w['month']:02d}_week{w['number']}.pdf"
     return send_file(buffer, as_attachment=True, download_name=filename,
                      mimetype='application/pdf')
 

@@ -192,22 +192,60 @@ def _period_totals(start, end):
     return days, totals
 
 
-def week_bounds(day):
-    """Monday to Saturday of the week that `day` falls in."""
+def month_weeks(year, month):
+    """The weeks of a month, each kept inside the month.
+
+    A week runs Monday to Saturday, but one that crosses into the next
+    month is cut at the month end, so the weekly reports of a month always
+    add up to that month's report. For example, 28 September to 3 October
+    becomes September week 5 (28 to 30 September) and October week 1
+    (1 to 3 October).
+
+    Each week's date range also takes in its Sunday, so a sheet captured on
+    a Sunday is never left out of every report. A month that starts on a
+    Sunday folds that day into its first week.
+    """
     from datetime import timedelta
-    monday = day - timedelta(days=day.weekday())
-    return monday, monday + timedelta(days=5)
+    first = date(year, month, 1)
+    last = date(year, month, calendar.monthrange(year, month)[1])
+    weeks = []
+    start = first
+    while start <= last:
+        sunday = start + timedelta(days=6 - start.weekday())
+        if start.weekday() == 6 and start == first:
+            sunday += timedelta(days=7)          # a lone Sunday joins week 1
+        end = min(sunday, last)
+        shown_start = start + timedelta(days=1) if start.weekday() == 6 else start
+        shown_end = end - timedelta(days=1) if end.weekday() == 6 and end > shown_start else end
+        working = sum(1 for i in range((shown_end - shown_start).days + 1)
+                      if (shown_start + timedelta(days=i)).weekday() < 6)
+        weeks.append({'number': len(weeks) + 1, 'start': start, 'end': end,
+                      'shown_start': shown_start, 'shown_end': shown_end,
+                      'working_days': working, 'year': year, 'month': month})
+        start = end + timedelta(days=1)
+    return weeks
 
 
-def week_activity(monday):
-    """Everything on the weekly report, for the Monday-to-Saturday week
-    starting `monday`, plus last week's headline figures to compare with."""
+def week_containing(day):
+    """The month-week that `day` falls in."""
+    for week in month_weeks(day.year, day.month):
+        if week['start'] <= day <= week['end']:
+            return week
+    raise ValueError(day)
+
+
+def week_activity(day):
+    """Everything on the weekly report for the month-week containing `day`,
+    plus the previous week's figures to compare with (which may be in the
+    month before, and may be a short week)."""
     from datetime import timedelta
     from app.routes.patient_flow import period_totals
 
-    start, end = week_bounds(monday)
+    week = week_containing(day)
+    previous_week = week_containing(week['start'] - timedelta(days=1))
+    start, end = week['start'], week['end']
     days, totals = _period_totals(start, end)
-    _prev_days, previous = _period_totals(start - timedelta(days=7), end - timedelta(days=7))
+    _prev_days, previous = _period_totals(previous_week['start'], previous_week['end'])
     practitioners, practitioner_totals = practitioner_summary(start, end)
     credit_by_reason, journal_by_reason = adjustments_by_reason(start, end)
 
@@ -218,8 +256,9 @@ def week_activity(monday):
         return (now - before) / before * 100
 
     captured = {d['date'] for d in days}
-    missing = [start + timedelta(days=i) for i in range(6)
-               if start + timedelta(days=i) not in captured
+    missing = [start + timedelta(days=i) for i in range((end - start).days + 1)
+               if (start + timedelta(days=i)).weekday() < 6
+               and start + timedelta(days=i) not in captured
                and start + timedelta(days=i) < date.today()]
 
     def extremes(key):
@@ -233,6 +272,10 @@ def week_activity(monday):
     return {
         'start': start,
         'end': end,
+        'week': week,
+        'month_weeks': month_weeks(week['year'], week['month']),
+        'previous_week': previous_week,
+        'title': f"{calendar.month_name[week['month']]} {week['year']}, Week {week['number']}",
         'days': days,
         'totals': totals,
         'previous': previous,

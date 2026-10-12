@@ -25,7 +25,8 @@ def _change(pct):
 def build_weekly_pdf(week, generated_by=''):
     practice = current_app.config['PRACTICE_NAME']
     buffer = BytesIO()
-    label = f"{week['start'].strftime('%d/%m/%Y')} to {week['end'].strftime('%d/%m/%Y')}"
+    w = week['week']
+    label = f"{w['shown_start'].strftime('%d/%m/%Y')} to {w['shown_end'].strftime('%d/%m/%Y')}"
     doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=16*mm, bottomMargin=20*mm,
                             leftMargin=18*mm, rightMargin=18*mm,
                             title=f'Weekly Report {label}', author=practice)
@@ -55,9 +56,11 @@ def build_weekly_pdf(week, generated_by=''):
     if logo is not None:
         el += [logo, Spacer(1, 6)]
     el.append(Paragraph(_text(practice), title))
-    el.append(Paragraph('Weekly Report', subtitle))
-    el.append(Paragraph(f"Week: <b>{week['start'].strftime('%A %d/%m/%Y')} to "
-                        f"{week['end'].strftime('%A %d/%m/%Y')}</b>", subtitle))
+    el.append(Paragraph(f"Weekly Report: <b>{week['title']}</b>", subtitle))
+    short = (f" ({w['working_days']} working day{'s' if w['working_days'] != 1 else ''})"
+             if w['working_days'] < 6 else '')
+    el.append(Paragraph(f"{w['shown_start'].strftime('%A %d/%m/%Y')} to "
+                        f"{w['shown_end'].strftime('%A %d/%m/%Y')}{short}", subtitle))
     generated = f"Generated on {date.today().strftime('%d/%m/%Y')}"
     if generated_by:
         generated += f' by {_text(generated_by)}'
@@ -82,8 +85,12 @@ def build_weekly_pdf(week, generated_by=''):
               ['Expenses', money(t['expenses']), ''],
               ['Money in less expenses', money(t['net']), '']]
     el.append(_grid(glance, [70*mm, 40*mm, 64*mm], right=(1,), size=8.5))
+    pw = week['previous_week']
     intro = (f"Built from the {len(week['days'])} daily sheets captured on StaffTrack this "
-             f"week. The figures may differ slightly from GoodX until the month-end report.")
+             f"week. Weeks stay within their month, so the weeks of a month add up to its "
+             f"monthly report. Compared with {pw['shown_start'].strftime('%d/%m')} to "
+             f"{pw['shown_end'].strftime('%d/%m')}. The figures may differ slightly from GoodX "
+             f"until the month-end report.")
     if week['missing_days']:
         missing = ', '.join(d.strftime('%A %d/%m') for d in week['missing_days'])
         intro += (f' No sheet was captured for {missing}. If that was not a public holiday, '
@@ -221,7 +228,7 @@ def build_weekly_pdf(week, generated_by=''):
             else:
                 el += [CondPageBreak(40*mm), heading, table]
 
-    footer = f'{practice}  ·  Weekly Report {label}'
+    footer = f"{practice}  ·  Weekly Report, {week['title']} ({label})"
 
     class _Canvas(_NumberedCanvas):
         footer_left = footer

@@ -28,27 +28,48 @@
     </div>
 </div>
 
-<!-- Week picker -->
-<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-    <a href="{{ url_for('turnover.weekly', week=prev_week) }}" class="btn btn-sm btn-outline-secondary">
-        <i class="bi bi-chevron-left"></i> Previous week
-    </a>
-    <div class="text-center">
-        <h5 class="mb-1">{{ week.start.strftime('%A %d/%m/%Y') }} to {{ week.end.strftime('%A %d/%m/%Y') }}</h5>
-        <form action="{{ url_for('turnover.weekly') }}" method="GET" class="d-inline-flex gap-2 align-items-center">
-            <label for="weekPick" class="small text-muted mb-0">Go to the week of</label>
-            <input type="date" id="weekPick" name="week" class="form-control form-control-sm" style="width:auto"
-                   value="{{ week.start.isoformat() }}">
-            <button type="submit" class="btn btn-sm btn-outline-primary">Go</button>
-        </form>
+<!-- Month and week picker -->
+{% set w = week.week %}
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+            <a href="{{ url_for('turnover.weekly', week=prev_week) }}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-chevron-left"></i> Previous week
+            </a>
+            <div class="text-center">
+                <h5 class="mb-0">{{ week.title }}</h5>
+                <div class="text-muted">
+                    {{ w.shown_start.strftime('%A %d/%m/%Y') }} to {{ w.shown_end.strftime('%A %d/%m/%Y') }}
+                    {% if w.working_days < 6 %}
+                    <span class="badge bg-secondary ms-1">Short week: {{ w.working_days }} working day{{ 's' if w.working_days != 1 }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% if next_week %}
+            <a href="{{ url_for('turnover.weekly', week=next_week) }}" class="btn btn-sm btn-outline-secondary">
+                Next week <i class="bi bi-chevron-right"></i>
+            </a>
+            {% else %}
+            <span style="width:110px"></span>
+            {% endif %}
+        </div>
+        <div class="d-flex justify-content-center align-items-center flex-wrap gap-2">
+            <form action="{{ url_for('turnover.weekly') }}" method="GET" class="d-inline-flex gap-2 align-items-center">
+                <label for="monthPick" class="small text-muted mb-0">Month</label>
+                <input type="month" id="monthPick" name="month" class="form-control form-control-sm" style="width:auto"
+                       value="{{ '%04d-%02d'|format(w.year, w.month) }}" max="{{ today.strftime('%Y-%m') }}"
+                       onchange="this.form.submit()">
+            </form>
+            {% for mw in week.month_weeks %}
+            {% if mw.start <= today %}
+            <a href="{{ url_for('turnover.weekly', week=mw.start.isoformat()) }}"
+               class="btn btn-sm {{ 'btn-primary' if mw.number == w.number else 'btn-outline-primary' }}">
+                Week {{ mw.number }} <small class="d-none d-md-inline">({{ mw.shown_start.strftime('%d/%m') }} to {{ mw.shown_end.strftime('%d/%m') }})</small>
+            </a>
+            {% endif %}
+            {% endfor %}
+        </div>
     </div>
-    {% if next_week %}
-    <a href="{{ url_for('turnover.weekly', week=next_week) }}" class="btn btn-sm btn-outline-secondary">
-        Next week <i class="bi bi-chevron-right"></i>
-    </a>
-    {% else %}
-    <span style="width:110px"></span>
-    {% endif %}
 </div>
 
 {% if not week.days %}
@@ -92,7 +113,9 @@
 <p class="text-muted small mb-4">
     <i class="bi bi-info-circle"></i>
     Built from the {{ week.days|length }} daily sheet(s) captured on StaffTrack this week, so nothing
-    needs to be typed in. The figures may differ slightly from GoodX until the month-end report.
+    needs to be typed in. Weeks stay within their month, so the weeks of a month add up to its
+    monthly report. Compared with {{ week.previous_week.shown_start.strftime('%d/%m') }} to
+    {{ week.previous_week.shown_end.strftime('%d/%m') }}. The figures may differ slightly from GoodX until the month-end report.
     Turnover is net of credit notes. Money received is card, EFT and ERA together.
     {% if week.missing_days %}
     <br><strong>No sheet captured for:</strong>
