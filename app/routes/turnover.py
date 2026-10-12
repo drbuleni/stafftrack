@@ -340,6 +340,51 @@ def pdf(report_id):
                      mimetype='application/pdf')
 
 
+def _requested_week():
+    """The Monday of the week asked for. Any date in the week will do. By
+    default it's the week of yesterday, so on a Monday the report opens on
+    the week that has just finished, not on an empty new one."""
+    from app.utils.month_activity import week_bounds
+    today = date.today()
+    try:
+        day = date.fromisoformat(request.args.get('week', ''))
+    except ValueError:
+        day = today - timedelta(days=1)
+    monday, _saturday = week_bounds(min(day, today))
+    return monday
+
+
+@bp.route('/weekly')
+@login_required
+@finance_access_required
+def weekly():
+    """The weekly report, built from the daily sheets. Nothing to type in."""
+    from app.utils.month_activity import week_activity
+
+    monday = _requested_week()
+    this_monday = date.today() - timedelta(days=date.today().weekday())
+    return render_template('turnover/weekly.html',
+                           week=week_activity(monday),
+                           prev_week=(monday - timedelta(days=7)).isoformat(),
+                           next_week=((monday + timedelta(days=7)).isoformat()
+                                      if monday < this_monday else None))
+
+
+@bp.route('/weekly/pdf')
+@login_required
+@finance_access_required
+def weekly_pdf():
+    """Download the weekly report as a PDF."""
+    from app.utils.month_activity import week_activity
+    from app.utils.weekly_pdf import build_weekly_pdf
+
+    week = week_activity(_requested_week())
+    buffer = build_weekly_pdf(week, generated_by=current_user.full_name)
+    filename = f"weekly_report_{week['start'].isoformat()}.pdf"
+    return send_file(buffer, as_attachment=True, download_name=filename,
+                     mimetype='application/pdf')
+
+
 @bp.route('/delete/<int:report_id>', methods=['POST'])
 @login_required
 @manager_required

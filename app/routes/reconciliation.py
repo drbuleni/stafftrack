@@ -767,32 +767,11 @@ def analytics():
     from app.utils.month_activity import practitioner_summary
     practitioner_stats, practitioner_totals = practitioner_summary(start_date, end_date)
 
-    # Credit notes and journals broken down by reason, so the monthly report
-    # shows not just how much was reversed or written off but why.
-    def _by_reason(amount_column, reason_column):
-        rows = db.session.query(
-            reason_column,
-            func.count(ReconciliationBillingEntry.id),
-            func.coalesce(func.sum(amount_column), 0),
-        ).join(
-            DailyReconciliation,
-            ReconciliationBillingEntry.reconciliation_id == DailyReconciliation.id
-        ).filter(
-            DailyReconciliation.date >= start_date,
-            DailyReconciliation.date <= end_date,
-            amount_column > 0
-        ).group_by(reason_column).order_by(func.sum(amount_column).desc()).all()
-
-        return [{
-            'reason': reason or 'Not specified',
-            'count': count,
-            'amount': float(amount),
-        } for reason, count, amount in rows]
-
-    credit_by_reason = _by_reason(ReconciliationBillingEntry.credit_note,
-                                  ReconciliationBillingEntry.credit_note_reason)
-    journal_by_reason = _by_reason(ReconciliationBillingEntry.journal,
-                                   ReconciliationBillingEntry.journal_reason)
+    # Credit notes and journals broken down by reason, so the reports show
+    # not just how much was reversed or written off but why. Shared with
+    # the weekly report.
+    from app.utils.month_activity import adjustments_by_reason
+    credit_by_reason, journal_by_reason = adjustments_by_reason(start_date, end_date)
 
     adjustments = {
         'credit_total': sum(r['amount'] for r in credit_by_reason),

@@ -144,3 +144,110 @@ def month_activity(year, month):
         'payments': payments,
         'sheet_count': len(payments['days']),
     }
+
+
+def adjustments_by_reason(start, end):
+    """Credit notes and journals on the daily sheets, grouped by reason."""
+    def grouped(amount_column, reason_column):
+        rows = db.session.query(
+            reason_column,
+            func.count(ReconciliationBillingEntry.id),
+            func.coalesce(func.sum(amount_column), 0),
+        ).join(
+            DailyReconciliation,
+            ReconciliationBillingEntry.reconciliation_id == DailyReconciliation.id
+        ).filter(
+            DailyReconciliation.date >= start,
+            DailyReconciliation.date <= end,
+            amount_column > 0
+        ).group_by(reason_column).order_by(func.sum(amount_column).desc()).all()
+        return [{'reason': reason or 'Not specified', 'count': count, 'amount': float(amount)}
+                for reason, count, amount in rows]
+
+    return (grouped(ReconciliationBillingEntry.credit_note,
+                    ReconciliationBillingEntry.credit_note_reason),
+            grouped(ReconciliationBillingEntry.journal,
+                    ReconciliationBillingEntry.journal_reason))
+
+
+def _period_totals(start, end):
+    """The headline figures for a date range, from the daily sheets."""
+    sheets = DailyReconciliation.query.filter(
+        DailyReconciliation.date >= start, DailyReconciliation.date <= end
+    ).order_by(DailyReconciliation.date).all()
+    days = [{
+        'date': s.date,
+        'transactions': s.patients_treated or 0,   # lines captured, see the model
+        'turnover': float(s.goodx_production or 0),
+        'card': float((s.card_fnb or 0) + (s.card_capitec or 0)),
+        'eft': float(s.eft_received or 0),
+        'era': float(s.medical_aid_payments or 0),
+        'received': float(s.total_money_in or 0),
+        'expenses': float(s.refunds_expenses or 0),
+        'net': float(s.net_collections or 0),
+        'notes': (s.notes or '').strip(),
+    } for s in sheets]
+    keys = ['transactions', 'turnover', 'card', 'eft', 'era', 'received', 'expenses', 'net']
+    totals = {k: sum(d[k] for d in days) for k in keys}
+    return days, totals
+
+
+def week_bounds(day):
+    """Monday to Saturday of the week that `day` falls in."""
+    from datetime import timedelta
+    monday = day - timedelta(days=day.weekday())
+    return monday, monday + timedelta(days=5)
+
+
+def week_activity(monday):
+    """Everything on the weekly report, for the Monday-to-Saturday week
+    starting `monday`, plus last week's headline figures to compare with."""
+    from datetime import timedelta
+    from app.routes.patient_flow import period_totals
+
+    start, end = week_bounds(monday)
+    days, totals = _period_totals(start, end)
+    _prev_days, previous = _period_totals(start - timedelta(days=7), end - timedelta(days=7))
+    practitioners, practitioner_totals = practitioner_summary(start, end)
+    credit_by_reason, journal_by_reason = adjustments_by_reason(start, end)
+
+    def change(key):
+        now, before = totals[key], previous[key]
+        if not before:
+            return None
+        return (now - before) / before * 100
+
+    captured = {d['date'] for d in days}
+    missing = [start + timedelta(days=i) for i in range(6)
+               if start + timedelta(days=i) not in captured
+               and start + timedelta(days=i) < date.today()]
+
+    def extremes(key):
+        if not days:
+            return None, None
+        return max(days, key=lambda d: d[key]), min(days, key=lambda d: d[key])
+
+    best_turnover, lowest_turnover = extremes('turnover')
+    best_received, lowest_received = extremes('received')
+
+    return {
+        'start': start,
+        'end': end,
+        'days': days,
+        'totals': totals,
+        'previous': previous,
+        'changes': {k: change(k) for k in ('turnover', 'received', 'transactions')},
+        'missing_days': missing,
+        'practitioners': practitioners,
+        'practitioner_totals': practitioner_totals,
+        'payments': payments_by_bank(start, end),
+        'credit_by_reason': credit_by_reason,
+        'journal_by_reason': journal_by_reason,
+        'credit_total': sum(r['amount'] for r in credit_by_reason),
+        'journal_total': sum(r['amount'] for r in journal_by_reason),
+        'patient_flow': period_totals(start, end),
+        'best_turnover': best_turnover,
+        'lowest_turnover': lowest_turnover,
+        'best_received': best_received,
+        'lowest_received': lowest_received,
+    }

@@ -1,0 +1,383 @@
+{% extends "base.html" %}
+
+{% block title %}Weekly Report - StaffTrack{% endblock %}
+
+{% macro rand(value) %}R{{ '{:,.2f}'.format(value) }}{% endmacro %}
+
+{% macro change(pct) %}
+{% if pct is none %}
+<small class="text-muted">no figures last week</small>
+{% elif pct >= 0 %}
+<small class="text-success">&#9650; {{ '{:.0f}'.format(pct) }}% on last week</small>
+{% else %}
+<small class="text-danger">&#9660; {{ '{:.0f}'.format(-pct) }}% on last week</small>
+{% endif %}
+{% endmacro %}
+
+{% block content %}
+{% set t = week.totals %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h1><i class="bi bi-calendar-week"></i> Weekly Report</h1>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('turnover.index') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Monthly Reports
+        </a>
+        <a href="{{ url_for('turnover.weekly_pdf', week=week.start.isoformat()) }}" class="btn btn-primary">
+            <i class="bi bi-file-earmark-pdf"></i> Download PDF
+        </a>
+    </div>
+</div>
+
+<!-- Week picker -->
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <a href="{{ url_for('turnover.weekly', week=prev_week) }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-chevron-left"></i> Previous week
+    </a>
+    <div class="text-center">
+        <h5 class="mb-1">{{ week.start.strftime('%A %d/%m/%Y') }} to {{ week.end.strftime('%A %d/%m/%Y') }}</h5>
+        <form action="{{ url_for('turnover.weekly') }}" method="GET" class="d-inline-flex gap-2 align-items-center">
+            <label for="weekPick" class="small text-muted mb-0">Go to the week of</label>
+            <input type="date" id="weekPick" name="week" class="form-control form-control-sm" style="width:auto"
+                   value="{{ week.start.isoformat() }}">
+            <button type="submit" class="btn btn-sm btn-outline-primary">Go</button>
+        </form>
+    </div>
+    {% if next_week %}
+    <a href="{{ url_for('turnover.weekly', week=next_week) }}" class="btn btn-sm btn-outline-secondary">
+        Next week <i class="bi bi-chevron-right"></i>
+    </a>
+    {% else %}
+    <span style="width:110px"></span>
+    {% endif %}
+</div>
+
+{% if not week.days %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> No daily sheets have been captured for this week yet.
+</div>
+{% else %}
+
+<!-- Headline figures -->
+<div class="row mb-3">
+    <div class="col-6 col-lg-3 mb-3">
+        <div class="card stat-card h-100"><div class="card-body">
+            <p class="stat-label mb-1">Turnover</p>
+            <div class="stat-value">{{ rand(t.turnover) }}</div>
+            {{ change(week.changes.turnover) }}
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3 mb-3">
+        <div class="card stat-card h-100"><div class="card-body">
+            <p class="stat-label mb-1">Money received</p>
+            <div class="stat-value">{{ rand(t.received) }}</div>
+            {{ change(week.changes.received) }}
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3 mb-3">
+        <div class="card stat-card h-100"><div class="card-body">
+            <p class="stat-label mb-1">Transactions captured</p>
+            <div class="stat-value">{{ t.transactions }}</div>
+            {{ change(week.changes.transactions) }}
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3 mb-3">
+        <div class="card stat-card h-100"><div class="card-body">
+            <p class="stat-label mb-1">Expenses</p>
+            <div class="stat-value">{{ rand(t.expenses) }}</div>
+            <small class="text-muted">Money in less expenses: {{ rand(t.net) }}</small>
+        </div></div>
+    </div>
+</div>
+
+<p class="text-muted small mb-4">
+    <i class="bi bi-info-circle"></i>
+    Built from the {{ week.days|length }} daily sheet(s) captured on StaffTrack this week, so nothing
+    needs to be typed in. The figures may differ slightly from GoodX until the month-end report.
+    Turnover is net of credit notes. Money received is card, EFT and ERA together.
+    {% if week.missing_days %}
+    <br><strong>No sheet captured for:</strong>
+    {% for d in week.missing_days %}{{ d.strftime('%A %d/%m') }}{{ ', ' if not loop.last }}{% endfor %}.
+    If that wasn't a public holiday, the week is incomplete.
+    {% endif %}
+</p>
+
+<!-- Per practitioner -->
+<div class="card mb-4">
+    <div class="card-header"><h5 class="mb-0"><i class="bi bi-list-check"></i> Transaction Summary</h5></div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-bordered mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Practitioner</th>
+                        <th class="text-end">Transactions</th>
+                        <th class="text-end">Credit Notes</th>
+                        <th class="text-end">Turnover<br><small>net of credit notes</small></th>
+                        <th class="text-end">KAS7 Card</th>
+                        <th class="text-end">KAS3 EFT</th>
+                        <th class="text-end">Cash Flow<br><small>card + EFT</small></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in week.practitioners %}
+                    <tr>
+                        <td>{{ p.name }}</td>
+                        <td class="text-end">{{ p.transactions }}</td>
+                        <td class="text-end text-danger">{{ '(R{:,.2f})'.format(p.credit_notes) if p.credit_notes else '-' }}</td>
+                        <td class="text-end">{{ rand(p.billed) }}</td>
+                        <td class="text-end">{{ rand(p.card) }}</td>
+                        <td class="text-end">{{ rand(p.eft) }}</td>
+                        <td class="text-end fw-bold">{{ rand(p.received) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    {% set pt = week.practitioner_totals %}
+                    <tr class="table-light fw-bold">
+                        <td>Total</td>
+                        <td class="text-end">{{ pt.transactions }}</td>
+                        <td class="text-end text-danger">{{ '(R{:,.2f})'.format(pt.credit_notes) if pt.credit_notes else '-' }}</td>
+                        <td class="text-end">{{ rand(pt.billed) }}</td>
+                        <td class="text-end">{{ rand(pt.card) }}</td>
+                        <td class="text-end">{{ rand(pt.eft) }}</td>
+                        <td class="text-end">{{ rand(pt.received) }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer">
+        <small class="text-muted">
+            KAS6 ERA payments this week: <strong>{{ rand(t.era) }}</strong>. Medical aids pay the
+            practice number, so ERA can't be split per practitioner.
+        </small>
+    </div>
+</div>
+
+<!-- Day by day -->
+<div class="card mb-4">
+    <div class="card-header"><h5 class="mb-0"><i class="bi bi-calendar3"></i> Day by Day</h5></div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-bordered mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Day</th>
+                        <th class="text-end">Transactions</th>
+                        <th class="text-end">Turnover</th>
+                        <th class="text-end">Card</th>
+                        <th class="text-end">EFT</th>
+                        <th class="text-end">ERA</th>
+                        <th class="text-end">Money received</th>
+                        <th class="text-end">Expenses</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in week.days %}
+                    <tr>
+                        <td>{{ d.date.strftime('%a %d/%m/%Y') }}</td>
+                        <td class="text-end">{{ d.transactions }}</td>
+                        <td class="text-end">{{ rand(d.turnover) }}</td>
+                        <td class="text-end">{{ rand(d.card) }}</td>
+                        <td class="text-end">{{ rand(d.eft) }}</td>
+                        <td class="text-end">{{ rand(d.era) }}</td>
+                        <td class="text-end fw-bold">{{ rand(d.received) }}</td>
+                        <td class="text-end">{{ rand(d.expenses) if d.expenses else '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="table-light fw-bold">
+                        <td>Total</td>
+                        <td class="text-end">{{ t.transactions }}</td>
+                        <td class="text-end">{{ rand(t.turnover) }}</td>
+                        <td class="text-end">{{ rand(t.card) }}</td>
+                        <td class="text-end">{{ rand(t.eft) }}</td>
+                        <td class="text-end">{{ rand(t.era) }}</td>
+                        <td class="text-end">{{ rand(t.received) }}</td>
+                        <td class="text-end">{{ rand(t.expenses) }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    {% set noted = week.days | selectattr('notes') | list %}
+    {% if noted %}
+    <div class="card-footer">
+        <small class="text-muted d-block mb-1"><strong>Notes on the daily sheets:</strong></small>
+        {% for d in noted %}
+        <small class="text-muted d-block">{{ d.date.strftime('%a %d/%m') }}: {{ d.notes }}</small>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="row mb-4">
+    <!-- Best and lowest -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header"><h5 class="mb-0"><i class="bi bi-trophy"></i> Best &amp; Lowest Days</h5></div>
+            <div class="card-body p-0">
+                <table class="table table-bordered mb-0">
+                    <thead class="table-light">
+                        <tr><th></th><th class="text-end">Turnover</th><th class="text-end">Money received</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="fw-bold">Best day</td>
+                            <td class="text-end">{{ week.best_turnover.date.strftime('%a %d/%m') }}<br><strong>{{ rand(week.best_turnover.turnover) }}</strong></td>
+                            <td class="text-end">{{ week.best_received.date.strftime('%a %d/%m') }}<br><strong>{{ rand(week.best_received.received) }}</strong></td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Lowest day</td>
+                            <td class="text-end">{{ week.lowest_turnover.date.strftime('%a %d/%m') }}<br><strong>{{ rand(week.lowest_turnover.turnover) }}</strong></td>
+                            <td class="text-end">{{ week.lowest_received.date.strftime('%a %d/%m') }}<br><strong>{{ rand(week.lowest_received.received) }}</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-footer">
+                <small class="text-muted">Ranked separately: the busiest day for work billed is often not
+                    the day the most money came in.</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Patient flow -->
+    <div class="col-lg-6 mb-4">
+        {% set pf = week.patient_flow %}
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-people"></i> Patient Flow</h5>
+                <small class="text-muted">{{ pf.days_recorded }} day(s) recorded</small>
+            </div>
+            <div class="card-body p-0">
+                {% if pf.days_recorded %}
+                <table class="table table-bordered mb-0">
+                    <tr><td>Patients treated</td><td class="text-end">{{ pf.treated }}</td></tr>
+                    <tr><td>Walk-ins</td><td class="text-end">{{ pf.walk_ins }}</td></tr>
+                    <tr><td>No-shows</td><td class="text-end">{{ pf.no_shows }} <small class="text-muted">({{ '{:.0f}'.format(pf.no_show_rate) }}% of booked)</small></td></tr>
+                    <tr><td>Cancellations</td><td class="text-end">{{ pf.cancellations }}</td></tr>
+                    <tr><td>Reschedules</td><td class="text-end">{{ pf.reschedules }}</td></tr>
+                </table>
+                {% else %}
+                <p class="text-muted text-center py-4 mb-0">No patient flow recorded this week.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payments by bank -->
+{% set pay = week.payments %}
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-bank"></i> Payments by Bank</h5>
+        <small class="text-muted">{{ pay.payment_count }} card and EFT payment(s)</small>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-bordered mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Day</th>
+                        <th class="text-end">EFT FNB</th>
+                        <th class="text-end">EFT Capitec</th>
+                        <th class="text-end">Card FNB</th>
+                        <th class="text-end">Card Capitec</th>
+                        <th class="text-end">Day total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for day in pay.days %}
+                    <tr>
+                        <td>{{ day.date.strftime('%a %d/%m/%Y') }}</td>
+                        {% for col in [('EFT', 'FNB'), ('EFT', 'Capitec'), ('Card', 'FNB'), ('Card', 'Capitec')] %}
+                        <td class="text-end">{{ rand(day.totals[col]) if day.totals[col] else '-' }}</td>
+                        {% endfor %}
+                        <td class="text-end fw-bold">{{ rand(day.total) if day.total else '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="table-light fw-bold">
+                        <td>Total</td>
+                        {% for col in [('EFT', 'FNB'), ('EFT', 'Capitec'), ('Card', 'FNB'), ('Card', 'Capitec')] %}
+                        <td class="text-end">{{ rand(pay.totals[col]) }}</td>
+                        {% endfor %}
+                        <td class="text-end">{{ rand(pay.total) }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        {% if pay.payment_count %}
+        <details class="px-3 py-3">
+            <summary class="fw-semibold">Every payment ({{ pay.payment_count }})</summary>
+            {% for day in pay.days if day.payments %}
+            <h6 class="mt-3 mb-1">{{ day.date.strftime('%A %d/%m/%Y') }}
+                <small class="text-muted fw-normal">captured by {{ day.captured_by }}</small></h6>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered mb-0">
+                    <thead class="table-light">
+                        <tr><th>Patient</th><th>File no.</th><th>Receipt</th><th>Practitioner</th>
+                            <th>Type</th><th>Bank</th><th class="text-end">Amount</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for p in day.payments %}
+                        <tr><td>{{ p.patient }}</td><td>{{ p.file_no }}</td><td>{{ p.receipt }}</td>
+                            <td>{{ p.provider }}</td><td>{{ p.method }}</td><td>{{ p.bank }}</td>
+                            <td class="text-end">{{ rand(p.amount) }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endfor %}
+        </details>
+        {% endif %}
+    </div>
+    {% if pay.repeated_receipts %}
+    <div class="card-footer">
+        {% for r in pay.repeated_receipts %}
+        <small class="text-warning d-block">
+            Receipt {{ r.receipt }} ({{ r.patient }}) is captured on
+            {% for d in r.dates %}{{ d.strftime('%d/%m/%Y') }}{{ ' and ' if not loop.last }}{% endfor %}.
+            If it was only paid once, it was captured twice.
+        </small>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Credit notes and journals -->
+<div class="row mb-4">
+    {% for title, rows, total, note in [
+        ('Credit Notes', week.credit_by_reason, week.credit_total, 'Credit notes reverse an invoice, so they reduce turnover.'),
+        ('General Journals', week.journal_by_reason, week.journal_total, 'Journals write off a balance. They are not income, and they do not reduce turnover.')] %}
+    <div class="col-lg-6 mb-3">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">{{ title }}</h5>
+                <span class="badge bg-secondary">{{ rand(total) }}</span>
+            </div>
+            <div class="card-body p-0">
+                {% if rows %}
+                <table class="table table-bordered mb-0">
+                    <thead class="table-light"><tr><th>Reason</th><th class="text-end">Count</th><th class="text-end">Amount</th></tr></thead>
+                    <tbody>
+                        {% for r in rows %}
+                        <tr><td>{{ r.reason }}</td><td class="text-end">{{ r.count }}</td><td class="text-end">{{ rand(r.amount) }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-muted text-center py-4 mb-0">None this week.</p>
+                {% endif %}
+            </div>
+            <div class="card-footer"><small class="text-muted">{{ note }}</small></div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% endif %}
+{% endblock %}

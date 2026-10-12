@@ -41,7 +41,11 @@ def _month_bounds(year, month):
 
 def month_totals(year, month):
     """Totals for a month, used here and by the turnover report."""
-    first, last = _month_bounds(year, month)
+    return period_totals(*_month_bounds(year, month))
+
+
+def period_totals(first, last):
+    """Totals from first to last inclusive, e.g. a month or a week."""
     row = db.session.query(
         func.coalesce(func.sum(PatientFlow.treated), 0),
         func.coalesce(func.sum(PatientFlow.walk_ins), 0),
