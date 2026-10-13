@@ -1,0 +1,624 @@
+{% extends "base.html" %}
+
+{% block title %}Financial Reports - StaffTrack{% endblock %}
+
+{% macro rand(value) %}R{{ '{:,.2f}'.format(value) }}{% endmacro %}
+
+{% macro change(pct, label, up_is_good=True) %}
+{% if pct is none %}
+<small class="text-muted">nothing to compare with</small>
+{% elif pct|abs < 0.5 %}
+<small class="text-muted">about the same as {{ label }}</small>
+{% else %}
+{% set good = (pct > 0) == up_is_good %}
+<small class="{{ 'text-success' if good else 'text-danger' }}">{{ '&#9650;'|safe if pct > 0 else '&#9660;'|safe }} {{ '{:.0f}'.format(pct|abs) }}% on {{ label }}</small>
+{% endif %}
+{% endmacro %}
+
+{% block content %}
+{% set t = r.totals %}
+{% set prev_label = 'last ' ~ {'weekly': 'week', 'monthly': 'month', 'quarterly': 'quarter', 'yearly': 'year'}[p.kind] %}
+{% set many = p.kind in ['quarterly', 'yearly'] %}
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h1><i class="bi bi-graph-up-arrow"></i> Financial Reports</h1>
+    <a href="{{ url_for('reports.pdf', kind=p.kind, on=p.start.isoformat()) }}" class="btn btn-primary">
+        <i class="bi bi-file-earmark-pdf"></i> Download PDF
+    </a>
+</div>
+
+<!-- Period selection -->
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            {% for key, label in kinds.items() %}
+            <a href="{{ url_for('reports.index', kind=key) }}"
+               class="btn btn-sm {{ 'btn-primary' if key == p.kind else 'btn-outline-primary' }}">{{ label }}</a>
+            {% endfor %}
+        </div>
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <a href="{{ url_for('reports.index', kind=p.kind, on=p.prev_day.isoformat()) }}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-chevron-left"></i> Previous
+            </a>
+            <div class="text-center">
+                <h4 class="mb-0">{{ p.title }}</h4>
+                <div class="text-muted">
+                    {{ p.span }}
+                    {% if p.kind == 'weekly' and p.week.working_days < 6 %}
+                    <span class="badge bg-secondary ms-1">Short week: {{ p.week.working_days }} working day{{ 's' if p.week.working_days != 1 }}</span>
+                    {% endif %}
+                    {% if p.is_current %}<span class="badge bg-info ms-1">To date</span>{% endif %}
+                </div>
+            </div>
+            {% if p.next_day %}
+            <a href="{{ url_for('reports.index', kind=p.kind, on=p.next_day.isoformat()) }}" class="btn btn-sm btn-outline-secondary">
+                Next <i class="bi bi-chevron-right"></i>
+            </a>
+            {% else %}<span style="width:90px"></span>{% endif %}
+        </div>
+        <div class="d-flex justify-content-center align-items-center flex-wrap gap-2 mt-3">
+            {% if p.kind in ['weekly', 'monthly'] %}
+            <form action="{{ url_for('reports.index') }}" method="GET" class="d-inline-flex gap-2 align-items-center">
+                <input type="hidden" name="kind" value="{{ p.kind }}">
+                <label for="monthPick" class="small text-muted mb-0">Month</label>
+                <input type="month" id="monthPick" name="month" class="form-control form-control-sm" style="width:auto"
+                       value="{{ p.start.strftime('%Y-%m') }}" max="{{ today.strftime('%Y-%m') }}" onchange="this.form.submit()">
+            </form>
+            {% endif %}
+            {% if p.kind == 'weekly' %}
+            {% for mw in p.month_weeks if mw.start <= today %}
+            <a href="{{ url_for('reports.index', kind='weekly', on=mw.start.isoformat()) }}"
+               class="btn btn-sm {{ 'btn-primary' if mw.number == p.week.number else 'btn-outline-primary' }}">
+                Week {{ mw.number }} <small class="d-none d-md-inline">({{ mw.shown_start.strftime('%d/%m') }} to {{ mw.shown_end.strftime('%d/%m') }})</small>
+            </a>
+            {% endfor %}
+            {% endif %}
+            {% if options %}
+            <form action="{{ url_for('reports.index') }}" method="GET" class="d-inline-flex gap-2 align-items-center">
+                <input type="hidden" name="kind" value="{{ p.kind }}">
+                <select name="on" class="form-select form-select-sm" style="width:auto" onchange="this.form.submit()">
+                    {% for o in options %}
+                    <option value="{{ o.value }}" {{ 'selected' if o.value == p.start.isoformat() }}>{{ o.label }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- GoodX status -->
+{% set gx = r.goodx %}
+{% if p.kind == 'weekly' %}
+<div class="alert alert-light border mb-3">
+    <i class="bi bi-info-circle"></i> Everything below comes from the daily sheets captured on StaffTrack.
+    GoodX figures are captured once a month, so they appear on the Monthly, Quarterly and Yearly reports.
+</div>
+{% elif not gx.outstanding and gx.captured %}
+<div class="alert alert-success mb-3">
+    <i class="bi bi-check-circle"></i>
+    GoodX month-end figures are captured for {{ gx.captured | map(attribute='label') | join(', ') }}.
+    {% if r.single_month %}
+    <a href="{{ url_for('turnover.edit', report_id=r.single_month.report.id) }}" class="alert-link ms-2">Edit GoodX figures</a>
+    {% endif %}
+</div>
+{% elif gx.outstanding %}
+<div class="alert alert-warning mb-3">
+    <i class="bi bi-exclamation-circle"></i>
+    <strong>GoodX figures are outstanding</strong> for {{ gx.outstanding | map(attribute='label') | join(', ') }}.
+    Everything from the daily sheets is shown below; the GoodX sections fill in once captured.
+    {% for m in gx.outstanding %}
+    <a href="{{ url_for('turnover.new', month=m.month, year=m.year) }}" class="btn btn-sm btn-outline-dark ms-2 mt-1">
+        <i class="bi bi-plus-circle"></i> Capture {{ m.label }}
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if not r.days %}
+<div class="alert alert-info"><i class="bi bi-info-circle"></i> No daily sheets have been captured for this period yet.</div>
+{% else %}
+
+<!-- Key figures -->
+<div class="row mb-2">
+    {% for label, value, key, hint in [
+        ('Income', rand(t.received), 'received', 'Card, EFT and ERA received'),
+        ('Expenses', rand(t.expenses), 'expenses', 'Money paid out'),
+        ('Net cash flow', rand(t.net), 'net', 'Income less expenses'),
+        ('Turnover', rand(t.turnover), 'turnover', 'Billed, net of credit notes'),
+        ('Transactions', t.transactions, 'transactions', 'Lines captured')] %}
+    <div class="col-6 col-md-4 col-xl mb-3">
+        <div class="card stat-card h-100"><div class="card-body">
+            <p class="stat-label mb-1">{{ label }}</p>
+            <div class="stat-value">{{ value }}</div>
+            <small class="text-muted d-block">{{ hint }}</small>
+            {{ change(r.changes[key], prev_label, key != 'expenses') }}
+        </div></div>
+    </div>
+    {% endfor %}
+</div>
+<p class="text-muted small mb-4">
+    {{ r.days|length }} daily sheet(s) captured. Compared with {{ r.previous_period.title }}.
+    Daily-sheet figures may differ slightly from GoodX; see the Reconciliation section.
+</p>
+
+<!-- Charts -->
+<div class="row mb-4">
+    <div class="col-lg-8 mb-4">
+        <div class="card h-100">
+            <div class="card-header"><h5 class="mb-0"><i class="bi bi-graph-up"></i> Turnover and Income {{ 'by Month' if many else 'by Day' }}</h5></div>
+            <div class="card-body"><div style="position:relative;height:280px"><canvas id="trendChart"></canvas></div></div>
+        </div>
+    </div>
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header"><h5 class="mb-0"><i class="bi bi-pie-chart"></i> Payment Methods</h5></div>
+            <div class="card-body"><div style="position:relative;height:280px"><canvas id="paymentChart"></canvas></div></div>
+        </div>
+    </div>
+</div>
+
+<!-- Transaction summary -->
+<div class="card mb-4">
+    <div class="card-header"><h5 class="mb-0"><i class="bi bi-list-check"></i> Transaction Summary</h5></div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-bordered mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Practitioner</th>
+                        <th class="text-end">Transactions</th>
+                        <th class="text-end">Credit Notes</th>
+                        <th class="text-end">Turnover<br><small>net of credit notes</small></th>
+                        <th class="text-end">KAS7 Card</th>
+                        <th class="text-end">KAS3 EFT</th>
+                        <th class="text-end">Cash Flow<br><small>card + EFT</small></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for x in r.practitioners %}
+                    <tr>
+                        <td>{{ x.name }}</td>
+                        <td class="text-end">{{ x.transactions }}</td>
+                        <td class="text-end text-danger">{{ '(R{:,.2f})'.format(x.credit_notes) if x.credit_notes else '-' }}</td>
+                        <td class="text-end">{{ rand(x.billed) }}</td>
+                        <td class="text-end">{{ rand(x.card) }}</td>
+                        <td class="text-end">{{ rand(x.eft) }}</td>
+                        <td class="text-end fw-bold">{{ rand(x.received) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    {% set pt = r.practitioner_totals %}
+                    <tr class="table-light fw-bold">
+                        <td>Total</td>
+                        <td class="text-end">{{ pt.transactions }}</td>
+                        <td class="text-end text-danger">{{ '(R{:,.2f})'.format(pt.credit_notes) if pt.credit_notes else '-' }}</td>
+                        <td class="text-end">{{ rand(pt.billed) }}</td>
+                        <td class="text-end">{{ rand(pt.card) }}</td>
+                        <td class="text-end">{{ rand(pt.eft) }}</td>
+                        <td class="text-end">{{ rand(pt.received) }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer">
+        <small class="text-muted">A transaction is one line on a daily sheet, not one patient. KAS6 ERA for the period:
+            <strong>{{ rand(t.era) }}</strong>. Medical aids pay the practice number, so ERA can't be split per practitioner.</small>
+    </div>
+</div>
+
+<!-- Daily (or monthly) collections -->
+<div class="card mb-4">
+    <div class="card-header"><h5 class="mb-0"><i class="bi bi-calendar3"></i> {{ 'Month by Month' if many else 'Daily Collections' }}</h5></div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-bordered table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>{{ 'Month' if many else 'Day' }}</th>
+                        {% if many %}<th class="text-end">Sheets</th>{% endif %}
+                        <th class="text-end">Transactions</th>
+                        <th class="text-end">Turnover</th>
+                        <th class="text-end">Card</th>
+                        <th class="text-end">EFT</th>
+                        <th class="text-end">ERA</th>
+                        <th class="text-end">Income</th>
+                        <th class="text-end">Expenses</th>
+                        <th class="text-end">Net cash flow</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in (r.by_month if many else r.days) %}
+                    <tr>
+                        <td>{{ d.label if many else d.date.strftime('%a %d/%m/%Y') }}</td>
+                        {% if many %}<td class="text-end">{{ d.sheets }}</td>{% endif %}
+                        <td class="text-end">{{ d.transactions }}</td>
+                        <td class="text-end">{{ rand(d.turnover) }}</td>
+                        <td class="text-end">{{ rand(d.card) }}</td>
+                        <td class="text-end">{{ rand(d.eft) }}</td>
+                        <td class="text-end">{{ rand(d.era) }}</td>
+                        <td class="text-end fw-bold">{{ rand(d.received) }}</td>
+                        <td class="text-end">{{ rand(d.expenses) if d.expenses else '-' }}</td>
+                        <td class="text-end">{{ rand(d.net) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="table-light fw-bold">
+                        <td>Total</td>
+                        {% if many %}<td class="text-end">{{ r.days|length }}</td>{% endif %}
+                        <td class="text-end">{{ t.transactions }}</td>
+                        <td class="text-end">{{ rand(t.turnover) }}</td>
+                        <td class="text-end">{{ rand(t.card) }}</td>
+                        <td class="text-end">{{ rand(t.eft) }}</td>
+                        <td class="text-end">{{ rand(t.era) }}</td>
+                        <td class="text-end">{{ rand(t.received) }}</td>
+                        <td class="text-end">{{ rand(t.expenses) }}</td>
+                        <td class="text-end">{{ rand(t.net) }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    {% set noted = r.days | selectattr('notes') | list %}
+    {% if noted and not many %}
+    <div class="card-footer">
+        <small class="text-muted d-block mb-1"><strong>Notes on the daily sheets (including expenses):</strong></small>
+        {% for d in noted %}<small class="text-muted d-block">{{ d.date.strftime('%a %d/%m') }}: {{ d.notes }}</small>{% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="row mb-4">
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header"><h5 class="mb-0"><i class="bi bi-bar-chart"></i> Transactions Captured {{ 'by Month' if many else 'per Day' }}</h5></div>
+            <div class="card-body"><div style="position:relative;height:240px"><canvas id="transactionsChart"></canvas></div></div>
+        </div>
+    </div>
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header"><h5 class="mb-0"><i class="bi bi-calendar-week"></i> By Day of the Week</h5></div>
+            <div class="card-body">
+                <div style="position:relative;height:200px"><canvas id="dayOfWeekChart"></canvas></div>
+                <table class="table table-sm mt-3 mb-0">
+                    <thead class="table-light"><tr><th>Day</th><th class="text-end">Days</th><th class="text-end">Avg income</th><th class="text-end">Avg transactions</th></tr></thead>
+                    <tbody>
+                        {% for name, d in r.day_of_week.items() if d.count %}
+                        <tr><td>{{ name }}</td><td class="text-end">{{ d.count }}</td><td class="text-end">{{ rand(d.avg_received) }}</td><td class="text-end">{{ '%.1f'|format(d.avg_transactions) }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <!-- Best and lowest -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header"><h5 class="mb-0"><i class="bi bi-trophy"></i> Best &amp; Lowest Days</h5></div>
+            <div class="card-body p-0">
+                <table class="table table-bordered mb-0">
+                    <thead class="table-light"><tr><th></th><th class="text-end">Turnover</th><th class="text-end">Income</th></tr></thead>
+                    <tbody>
+                        <tr><td class="fw-bold">Best day</td>
+                            <td class="text-end">{{ r.best_turnover.date.strftime('%a %d/%m/%Y') }}<br><strong>{{ rand(r.best_turnover.turnover) }}</strong></td>
+                            <td class="text-end">{{ r.best_received.date.strftime('%a %d/%m/%Y') }}<br><strong>{{ rand(r.best_received.received) }}</strong></td></tr>
+                        <tr><td class="fw-bold">Lowest day</td>
+                            <td class="text-end">{{ r.lowest_turnover.date.strftime('%a %d/%m/%Y') }}<br><strong>{{ rand(r.lowest_turnover.turnover) }}</strong></td>
+                            <td class="text-end">{{ r.lowest_received.date.strftime('%a %d/%m/%Y') }}<br><strong>{{ rand(r.lowest_received.received) }}</strong></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-footer"><small class="text-muted">Ranked separately: the busiest day for work billed is often not the day the most money came in.</small></div>
+        </div>
+    </div>
+    <!-- Patient flow -->
+    <div class="col-lg-6 mb-4">
+        {% set pf = r.patient_flow %}
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-people"></i> Patient Flow</h5>
+                <small class="text-muted">{{ pf.days_recorded }} day(s) recorded</small>
+            </div>
+            <div class="card-body p-0">
+                {% if pf.days_recorded %}
+                <table class="table table-bordered mb-0">
+                    <tr><td>Patients treated</td><td class="text-end">{{ pf.treated }}</td></tr>
+                    <tr><td>Walk-ins</td><td class="text-end">{{ pf.walk_ins }}</td></tr>
+                    <tr><td>No-shows</td><td class="text-end">{{ pf.no_shows }} <small class="text-muted">({{ '{:.0f}'.format(pf.no_show_rate) }}% of booked)</small></td></tr>
+                    <tr><td>Cancellations</td><td class="text-end">{{ pf.cancellations }}</td></tr>
+                    <tr><td>Reschedules</td><td class="text-end">{{ pf.reschedules }}</td></tr>
+                </table>
+                {% else %}
+                <p class="text-muted text-center py-4 mb-0">No patient flow recorded for this period.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payments by bank -->
+{% set pay = r.payments %}
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-bank"></i> Payments by Bank</h5>
+        <small class="text-muted">{{ pay.payment_count }} card and EFT payment(s)</small>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-bordered table-sm mb-0">
+                <thead class="table-light">
+                    <tr><th>{{ 'Month' if many else 'Day' }}</th><th class="text-end">EFT FNB</th><th class="text-end">EFT Capitec</th>
+                        <th class="text-end">Card FNB</th><th class="text-end">Card Capitec</th><th class="text-end">Total</th></tr>
+                </thead>
+                <tbody>
+                    {% set cols = [('EFT', 'FNB'), ('EFT', 'Capitec'), ('Card', 'FNB'), ('Card', 'Capitec')] %}
+                    {% if many %}
+                    {% for m in r.by_month %}
+                    <tr><td>{{ m.label }}</td>
+                        {% for c in cols %}<td class="text-end">{{ rand(m.banks[c]) if m.banks[c] else '-' }}</td>{% endfor %}
+                        <td class="text-end fw-bold">{{ rand(m.bank_total) if m.bank_total else '-' }}</td></tr>
+                    {% endfor %}
+                    {% else %}
+                    {% for day in pay.days %}
+                    <tr><td>{{ day.date.strftime('%a %d/%m/%Y') }}</td>
+                        {% for c in cols %}<td class="text-end">{{ rand(day.totals[c]) if day.totals[c] else '-' }}</td>{% endfor %}
+                        <td class="text-end fw-bold">{{ rand(day.total) if day.total else '-' }}</td></tr>
+                    {% endfor %}
+                    {% endif %}
+                </tbody>
+                <tfoot>
+                    <tr class="table-light fw-bold"><td>Total</td>
+                        {% for c in cols %}<td class="text-end">{{ rand(pay.totals[c]) }}</td>{% endfor %}
+                        <td class="text-end">{{ rand(pay.total) }}</td></tr>
+                </tfoot>
+            </table>
+        </div>
+        {% if r.show_every_payment and pay.payment_count %}
+        <details class="px-3 py-3">
+            <summary class="fw-semibold">Every payment ({{ pay.payment_count }})</summary>
+            {% for day in pay.days if day.payments %}
+            <h6 class="mt-3 mb-1">{{ day.date.strftime('%A %d/%m/%Y') }} <small class="text-muted fw-normal">captured by {{ day.captured_by }}</small></h6>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered mb-0">
+                    <thead class="table-light"><tr><th>Patient</th><th>File no.</th><th>Receipt</th><th>Practitioner</th><th>Type</th><th>Bank</th><th class="text-end">Amount</th></tr></thead>
+                    <tbody>
+                        {% for x in day.payments %}
+                        <tr><td>{{ x.patient }}</td><td>{{ x.file_no }}</td><td>{{ x.receipt }}</td><td>{{ x.provider }}</td><td>{{ x.method }}</td><td>{{ x.bank }}</td><td class="text-end">{{ rand(x.amount) }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endfor %}
+        </details>
+        {% endif %}
+    </div>
+    {% if pay.repeated_receipts %}
+    <div class="card-footer">
+        {% for x in pay.repeated_receipts %}
+        <small class="text-warning d-block">Receipt {{ x.receipt }} ({{ x.patient }}) is captured on
+            {% for d in x.dates %}{{ d.strftime('%d/%m/%Y') }}{{ ' and ' if not loop.last }}{% endfor %}. If it was only paid once, it was captured twice.</small>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Credit notes and journals -->
+<div class="row mb-4">
+    {% for title, rows, total, note in [
+        ('Credit Notes', r.credit_by_reason, r.credit_total, 'Credit notes reverse an invoice, so they reduce turnover.'),
+        ('General Journals', r.journal_by_reason, r.journal_total, 'Journals write off a balance. They are not income, and they do not reduce turnover.')] %}
+    <div class="col-lg-6 mb-3">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">{{ title }}</h5><span class="badge bg-secondary">{{ rand(total) }}</span>
+            </div>
+            <div class="card-body p-0">
+                {% if rows %}
+                <table class="table table-bordered mb-0">
+                    <thead class="table-light"><tr><th>Reason</th><th class="text-end">Count</th><th class="text-end">Amount</th></tr></thead>
+                    <tbody>{% for x in rows %}<tr><td>{{ x.reason }}</td><td class="text-end">{{ x.count }}</td><td class="text-end">{{ rand(x.amount) }}</td></tr>{% endfor %}</tbody>
+                </table>
+                {% else %}<p class="text-muted text-center py-4 mb-0">None in this period.</p>{% endif %}
+            </div>
+            <div class="card-footer"><small class="text-muted">{{ note }}</small></div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Income and expenses -->
+<div class="card mb-4">
+    <div class="card-header"><h5 class="mb-0"><i class="bi bi-cash-stack"></i> Income and Expenses</h5></div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h6 class="text-muted">Income breakdown</h6>
+                <table class="table table-sm">
+                    {% for label, value in r.payment_breakdown.items() %}
+                    <tr><td>{{ label }}{% if label == 'ERA' %} <small class="text-muted">(medical aid remittances, KAS6)</small>{% endif %}</td><td class="text-end">{{ rand(value) }}</td></tr>
+                    {% endfor %}
+                    <tr class="table-success fw-bold"><td>Total income</td><td class="text-end">{{ rand(t.received) }}</td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6 class="text-muted">Net cash flow</h6>
+                <table class="table table-sm">
+                    <tr><td>Income</td><td class="text-end">{{ rand(t.received) }}</td></tr>
+                    <tr><td>Less: expenses</td><td class="text-end text-danger">({{ rand(t.expenses) }})</td></tr>
+                    <tr class="table-light fw-bold"><td>Net cash flow</td><td class="text-end">{{ rand(t.net) }}</td></tr>
+                    <tr><td colspan="2" class="text-muted small border-0 pt-3">Income less expenses: what should be sitting across the FNB and Capitec accounts for this period.</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Reconciliation -->
+{% if r.reconciliation %}
+{% set rc = r.reconciliation %}
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-arrow-left-right"></i> Reconciliation: Daily Sheets against GoodX</h5>
+        <small class="text-muted">{{ rc.months | join(', ') }}</small>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-bordered table-sm mb-0">
+                <thead class="table-light"><tr><th>Practitioner</th><th></th><th class="text-end">Daily sheets</th><th class="text-end">GoodX</th><th class="text-end">Difference</th></tr></thead>
+                <tbody>
+                    {% for row in rc.rows %}
+                    {% for line in row.lines %}
+                    <tr>
+                        {% if loop.first %}<td rowspan="{{ row.lines|length }}" class="fw-semibold">{{ row.name }}
+                            {% if not row.in_goodx %}<br><small class="text-warning">not on the GoodX report</small>{% endif %}
+                            {% if not row.in_stafftrack %}<br><small class="text-warning">not on the daily sheets</small>{% endif %}</td>{% endif %}
+                        <td>{{ line.label }}</td>
+                        <td class="text-end">{{ rand(line.stafftrack) }}</td>
+                        <td class="text-end">{{ rand(line.goodx) }}</td>
+                        <td class="text-end {{ 'text-success' if line.difference|abs < 0.01 else 'text-danger fw-semibold' }}">
+                            {{ 'Matches' if line.difference|abs < 0.01 else rand(line.difference) }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% endfor %}
+                    <tr class="table-light">
+                        <td class="fw-semibold">Practice</td><td>ERA (KAS6)</td>
+                        <td class="text-end">{{ rand(rc.era.stafftrack) }}</td><td class="text-end">{{ rand(rc.era.goodx) }}</td>
+                        <td class="text-end {{ 'text-success' if rc.era.difference|abs < 0.01 else 'text-danger fw-semibold' }}">{{ 'Matches' if rc.era.difference|abs < 0.01 else rand(rc.era.difference) }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer">
+        <small class="text-muted">Difference is GoodX less the daily sheets, over the months that have GoodX figures. GoodX card and EFT
+            include their corrections. A difference usually means a payment captured on one side but not the other, a different date,
+            or a different practitioner.</small>
+    </div>
+</div>
+{% endif %}
+
+<!-- GoodX month-end figures -->
+{% if r.single_month %}
+<h4 class="mt-5 mb-3"><i class="bi bi-file-earmark-bar-graph"></i> GoodX Month-End Report</h4>
+<div class="alert alert-light border mb-4">
+    <strong>Purpose of the report:</strong> a summary of the monthly billing performance for each practitioner,
+    including turnover, credit notes, cash flow, journal adjustments and the final movement balance.
+    <span class="text-muted">Source: GoodX Practice Management System.</span>
+</div>
+{% with report=r.single_month.report, totals=r.single_month.totals, document=r.single_month.document %}
+{% include 'turnover/_goodx.html' %}
+{% endwith %}
+{% elif gx.any and p.kind in ['quarterly', 'yearly'] %}
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-file-earmark-bar-graph"></i> GoodX Month-End Figures</h5>
+        <small class="text-muted">Added up for {{ gx.captured|length }} of {{ gx.months|length }} month(s)</small>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-bordered table-sm mb-0">
+                <thead class="table-light">
+                    <tr><th>Practitioner</th><th class="text-end">Gross turnover</th><th class="text-end">Credit notes</th><th class="text-end">Net turnover</th>
+                        <th class="text-end">KAS3 EFT</th><th class="text-end">KAS6 ERA</th><th class="text-end">KAS7 Card</th><th class="text-end">KAS1 Cash</th>
+                        <th class="text-end">Cash flow</th><th class="text-end">Journals</th><th class="text-end">Movement</th></tr>
+                </thead>
+                <tbody>
+                    {% for g in gx.rows %}
+                    <tr><td>{{ g.name }}</td><td class="text-end">{{ rand(g.gross) }}</td><td class="text-end text-danger">({{ rand(g.credit_notes) }})</td>
+                        <td class="text-end">{{ rand(g.net) }}</td><td class="text-end">{{ rand(g.kas3) }}</td><td class="text-end">{{ rand(g.kas6) }}</td>
+                        <td class="text-end">{{ rand(g.kas7) }}</td><td class="text-end">{{ rand(g.kas1) }}</td><td class="text-end fw-bold">{{ rand(g.cash_flow) }}</td>
+                        <td class="text-end">{{ rand(g.journals) }}</td><td class="text-end">{{ rand(g.movement) }}</td></tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    {% set gt = gx.totals %}
+                    <tr class="table-light fw-bold"><td>Total</td><td class="text-end">{{ rand(gt.gross) }}</td><td class="text-end text-danger">({{ rand(gt.credit_notes) }})</td>
+                        <td class="text-end">{{ rand(gt.net) }}</td><td class="text-end">{{ rand(gt.kas3) }}</td><td class="text-end">{{ rand(gt.kas6) }}</td>
+                        <td class="text-end">{{ rand(gt.kas7) }}</td><td class="text-end">{{ rand(gt.kas1) }}</td><td class="text-end">{{ rand(gt.cash_flow) }}</td>
+                        <td class="text-end">{{ rand(gt.journals) }}</td><td class="text-end">{{ rand(gt.movement) }}</td></tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer">
+        {% for m in gx.months if not m.future %}
+        {% if m.captured %}
+        <a href="{{ url_for('turnover.view', report_id=m.report.id) }}" class="badge bg-success text-decoration-none me-1">{{ m.label }}</a>
+        {% else %}
+        <a href="{{ url_for('turnover.new', month=m.month, year=m.year) }}" class="badge bg-warning text-decoration-none me-1">{{ m.label }}: outstanding</a>
+        {% endif %}
+        {% endfor %}
+        <small class="text-muted d-block mt-1">KAS8 linking re-allocates money already received, so it isn't in cash flow. Movement is a GoodX control total, not profit or cash in the bank.</small>
+    </div>
+</div>
+{% endif %}
+
+{% if r.days %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+(function () {
+    const many = {{ 'true' if many else 'false' }};
+    const points = many
+        ? {{ r.by_month | map(attribute='label') | list | tojson }}.map((label, i) => ({
+              label, turnover: {{ r.by_month | map(attribute='turnover') | list | tojson }}[i],
+              received: {{ r.by_month | map(attribute='received') | list | tojson }}[i],
+              transactions: {{ r.by_month | map(attribute='transactions') | list | tojson }}[i] }))
+        : {{ r.chart_days | tojson }};
+    const rand = v => 'R ' + Number(v).toLocaleString();
+
+    new Chart(document.getElementById('trendChart'), {
+        type: many ? 'bar' : 'line',
+        data: {
+            labels: points.map(p => p.label),
+            datasets: [
+                { label: 'Turnover', data: points.map(p => p.turnover), borderColor: '#3C6FC4',
+                  backgroundColor: many ? '#3C6FC4' : 'rgba(60,111,196,0.08)', borderWidth: 2, tension: 0.3, borderDash: many ? [] : [5, 4] },
+                { label: 'Income', data: points.map(p => p.received), borderColor: '#138A68',
+                  backgroundColor: many ? '#138A68' : 'rgba(19,138,104,0.10)', borderWidth: 2, tension: 0.3, fill: !many }
+            ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+                   plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: c => c.dataset.label + ': ' + rand(c.raw) } } },
+                   scales: { y: { beginAtZero: true, ticks: { callback: rand } } } }
+    });
+
+    const breakdown = {{ r.payment_breakdown | tojson }};
+    const labels = Object.keys(breakdown).filter(k => breakdown[k] > 0);
+    new Chart(document.getElementById('paymentChart'), {
+        type: 'doughnut',
+        data: { labels, datasets: [{ data: labels.map(k => breakdown[k]),
+                backgroundColor: ['#2A6480', '#1F5F4E', '#845812', '#9E3232', '#6B4A7A'] }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' },
+                   tooltip: { callbacks: { label: c => c.label + ': ' + rand(c.raw) } } } }
+    });
+
+    new Chart(document.getElementById('transactionsChart'), {
+        type: 'bar',
+        data: { labels: points.map(p => p.label),
+                datasets: [{ label: 'Transactions captured', data: points.map(p => p.transactions), backgroundColor: '#3C6FC4' }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+                   scales: { y: { beginAtZero: true } } }
+    });
+
+    // A list, not an object: JSON objects come out sorted alphabetically,
+    // which put Friday before Monday.
+    const dow = {{ r.day_of_week.items() | list | tojson }}.filter(([, d]) => d.count > 0);
+    new Chart(document.getElementById('dayOfWeekChart'), {
+        type: 'bar',
+        data: { labels: dow.map(([name]) => name),
+                datasets: [{ label: 'Average income', data: dow.map(([, d]) => d.avg_received), backgroundColor: '#138A68' }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false },
+                   tooltip: { callbacks: { label: c => 'Average income: ' + rand(c.raw) } } },
+                   scales: { y: { beginAtZero: true, ticks: { callback: rand } } } }
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

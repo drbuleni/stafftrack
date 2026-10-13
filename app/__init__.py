@@ -89,6 +89,9 @@ def create_app(config_class=Config):
     from app.routes.patient_flow import bp as patient_flow_bp
     app.register_blueprint(patient_flow_bp)
 
+    from app.routes.reports import bp as reports_bp
+    app.register_blueprint(reports_bp)
+
 
     @app.context_processor
     def inject_practice_name():
