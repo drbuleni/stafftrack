@@ -20,7 +20,8 @@ from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, HRFlowable
 
 from app.utils.leave_report import _NumberedCanvas
 from app.utils.turnover_pdf import (ACCENT, DARK, GRID, PAYMENT_COLUMNS, _grid,
-                                    _practice_logo, _text, build_turnover_pdf, money)
+                                    _practice_logo, _text, build_turnover_pdf,
+                                    era_flowables, money)
 
 TURNOVER_COLOUR = colors.HexColor('#3C6FC4')
 INCOME_COLOUR = colors.HexColor('#138A68')
@@ -136,6 +137,8 @@ def build_financial_pdf(r, generated_by=''):
         el += [logo, Spacer(1, 6)]
     el.append(Paragraph(_text(practice), title))
     el.append(Paragraph(f"{p['kind_label']} Financial Report: <b>{_text(p['title'])}</b>", subtitle))
+    if p['kind'] in ('weekly', 'monthly'):
+        el.append(Paragraph(_text(p['fy_label']), subtitle))
     span = p['span'] + (' (to date)' if p['is_current'] else '')
     if p['kind'] == 'weekly' and p['week']['working_days'] < 6:
         span += f" ({p['week']['working_days']} working days)"
@@ -254,6 +257,12 @@ def build_financial_pdf(r, generated_by=''):
         el.append(CondPageBreak(50*mm))
         el += block
 
+        # ERA remittances, listed like card and EFT
+        era_section, era_appendix = era_flowables(r['era'], section, sub, body, note,
+                                                  details=r['show_every_payment'])
+        el.append(CondPageBreak(60*mm))
+        el += era_section
+
         # 6. Credit notes and journals
         def reasons(heading, rows_in, total, explain):
             if not rows_in:
@@ -357,6 +366,9 @@ def build_financial_pdf(r, generated_by=''):
                 el.append(KeepTogether([heading, table]))
             else:
                 el += [CondPageBreak(40*mm), heading, table]
+
+    if r['days']:
+        el += era_appendix
 
     footer = f"{practice}  ·  {p['kind_label']} Financial Report, {p['title']}"
 

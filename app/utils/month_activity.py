@@ -142,6 +142,7 @@ def month_activity(year, month):
         'practitioner_totals': practitioner_totals,
         'era_total': float(era_total or 0),
         'payments': payments,
+        'era': era_payments(start, end),
         'sheet_count': len(payments['days']),
     }
 
@@ -293,4 +294,47 @@ def week_activity(day):
         'lowest_turnover': lowest_turnover,
         'best_received': best_received,
         'lowest_received': lowest_received,
+    }
+
+
+def era_payments(start, end):
+    """ERA (KAS6) remittances captured on the daily sheets: day by day,
+    every payment, and totals per medical aid. ERA is paid to the practice
+    number, so it stays at practice level, never per practitioner."""
+    sheets = DailyReconciliation.query.filter(
+        DailyReconciliation.date >= start, DailyReconciliation.date <= end
+    ).order_by(DailyReconciliation.date).all()
+
+    days, by_aid, batches = [], defaultdict(lambda: {'count': 0, 'amount': 0.0}), defaultdict(list)
+    for sheet in sheets:
+        payments = []
+        for p in sorted(sheet.era_payments, key=lambda e: (e.sort_order or 0, e.id)):
+            amount = float(p.amount_paid or 0)
+            aid = (p.medical_aid_name or '').strip() or 'Not specified'
+            payments.append({'batch': (p.batch_number or '').strip() or '-', 'medical_aid': aid,
+                             'payment_date': p.payment_date, 'amount': amount})
+            key = aid.upper()
+            by_aid[key]['name'] = by_aid[key].get('name') or aid
+            by_aid[key]['count'] += 1
+            by_aid[key]['amount'] += amount
+            if (p.batch_number or '').strip():
+                batches[(key, p.batch_number.strip())].append(sheet.date)
+        if payments:
+            days.append({'date': sheet.date,
+                         'captured_by': sheet.preparer.full_name if sheet.preparer else '-',
+                         'payments': payments,
+                         'total': sum(x['amount'] for x in payments)})
+
+    aids = sorted(by_aid.values(), key=lambda a: -a['amount'])
+    total = sum(a['amount'] for a in aids)
+    for a in aids:
+        a['share'] = a['amount'] / total * 100 if total else 0
+    return {
+        'days': days,
+        'by_aid': aids,
+        'total': total,
+        'count': sum(a['count'] for a in aids),
+        # the same medical aid batch captured more than once
+        'repeated_batches': [{'medical_aid': by_aid[k]['name'], 'batch': b, 'dates': ds}
+                             for (k, b), ds in sorted(batches.items()) if len(ds) > 1],
     }

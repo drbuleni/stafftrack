@@ -42,6 +42,7 @@
             </a>
             <div class="text-center">
                 <h4 class="mb-0">{{ p.title }}</h4>
+                {% if p.kind in ['weekly', 'monthly'] %}<div class="fw-semibold text-primary small">{{ p.fy_label }}</div>{% endif %}
                 <div class="text-muted">
                     {{ p.span }}
                     {% if p.kind == 'weekly' and p.week.working_days < 6 %}
@@ -407,6 +408,8 @@
     </div>
     {% endif %}
 </div>
+
+{% with era=r.era, era_details=r.show_every_payment %}{% include 'turnover/_era.html' %}{% endwith %}
 
 <!-- Credit notes and journals -->
 <div class="row mb-4">

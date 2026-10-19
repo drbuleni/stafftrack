@@ -253,6 +253,8 @@
     {% endif %}
 </div>
 
+{% with era=activity.era, era_details=True %}{% include 'turnover/_era.html' %}{% endwith %}
+
 {# VAT appears in section 6 of the monthly report document above,
    so it is not repeated here. #}
 

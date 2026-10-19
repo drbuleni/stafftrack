@@ -16,7 +16,7 @@ from datetime import date
 
 from app.models import DailyReconciliation, TurnoverReport
 from app.utils.financial_periods import resolve
-from app.utils.month_activity import (_period_totals, adjustments_by_reason,
+from app.utils.month_activity import (_period_totals, adjustments_by_reason, era_payments,
                                       payments_by_bank, practitioner_summary,
                                       PAYMENT_COLUMNS)
 
@@ -212,6 +212,7 @@ def build_report(kind, day):
         'practitioners': practitioners,
         'practitioner_totals': practitioner_totals,
         'payments': payments,
+        'era': era_payments(start, end),
         'payment_breakdown': payment_breakdown,
         'credit_by_reason': credit_by_reason,
         'journal_by_reason': journal_by_reason,

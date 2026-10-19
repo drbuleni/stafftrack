@@ -89,6 +89,59 @@ def _grid(rows, widths, right=(), bold_last=False, size=8):
     return table
 
 
+def era_flowables(era, section_style, sub_style, body_style, note_style, details=True):
+    """The ERA (KAS6) section for a report PDF, and its appendix pages.
+
+    Returns (section, appendix). The section has the totals per medical aid
+    and, with details, the day-by-day totals. The appendix lists every
+    remittance (batch, medical aid, payment date, amount) by day.
+    """
+    from reportlab.lib.styles import ParagraphStyle
+    cell = ParagraphStyle('EraCell', parent=body_style, fontSize=7.5, leading=9.5,
+                          textColor=DARK, spaceAfter=0)
+    section = [Paragraph('ERA Payments (KAS6)', section_style)]
+    if not era['count']:
+        section.append(Paragraph('No ERA payments were captured for this period.', body_style))
+        return section, []
+    section.append(Paragraph(f"{era['count']} remittances worth {money(era['total'])}, paid to the "
+                             f"practice number, so reported for the whole practice.", body_style))
+    rows = [['Medical aid', 'Payments', 'Amount', 'Share']]
+    rows += [[Paragraph(_text(a['name']), cell), str(a['count']), money(a['amount']),
+              f"{a['share']:.0f}%"] for a in era['by_aid']]
+    rows.append(['Total', str(era['count']), money(era['total']), '100%'])
+    section.append(_grid(rows, [84*mm, 26*mm, 40*mm, 24*mm], right=(1, 2, 3), bold_last=True))
+    if details and era['days']:
+        rows = [['Date', 'Payments', 'ERA received']]
+        rows += [[d['date'].strftime('%a %d/%m/%Y'), str(len(d['payments'])), money(d['total'])]
+                 for d in era['days']]
+        rows.append(['Total', str(era['count']), money(era['total'])])
+        section += [Paragraph('Day by day', sub_style),
+                    _grid(rows, [84*mm, 40*mm, 50*mm], right=(1, 2), bold_last=True)]
+    for b in era['repeated_batches']:
+        dates = ' and '.join(d.strftime('%d/%m/%Y') for d in b['dates'])
+        section.append(Paragraph(f"{_text(b['medical_aid'])} batch {_text(b['batch'])} is captured on "
+                                 f"{dates}. If it was only paid once, it was captured twice.", note_style))
+
+    appendix = []
+    if details and era['days']:
+        appendix += [PageBreak(), Paragraph('Appendix: Every ERA Payment (KAS6)', section_style)]
+        day_head = ParagraphStyle('EraDayHead', parent=sub_style, fontName='Helvetica-Bold')
+        for d in era['days']:
+            rows = [['Batch number', 'Medical aid', 'Payment date', 'Amount paid']]
+            rows += [[_text(x['batch']), Paragraph(_text(x['medical_aid']), cell),
+                      x['payment_date'].strftime('%d/%m/%Y') if x['payment_date'] else '-',
+                      money(x['amount'])] for x in d['payments']]
+            rows.append(['Day total', '', '', money(d['total'])])
+            heading = Paragraph(f"{d['date'].strftime('%A %d/%m/%Y')} <font size=8 color='#5D6E69'>"
+                                f"&nbsp;captured by {_text(d['captured_by'])}</font>", day_head)
+            table = _grid(rows, [40*mm, 70*mm, 30*mm, 34*mm], right=(3,), bold_last=True, size=7.5)
+            appendix.append(KeepTogether([heading, table]) if len(rows) <= 14
+                            else KeepTogether([heading]))
+            if len(rows) > 14:
+                appendix.append(table)
+    return section, appendix
+
+
 def money(value):
     value = float(value or 0)
     if value < 0:
@@ -409,6 +462,8 @@ def build_turnover_pdf(report, totals, patient_flow=None, document=None, activit
         ]
         elements.append(money_table(flow_rows))
 
+    era_appendix = []
+
     # What was captured on the daily sheets: transactions per practitioner
     # and payments by bank. Sinah asked for these to be part of the monthly
     # report rather than separate documents.
@@ -473,6 +528,9 @@ def build_turnover_pdf(report, totals, patient_flow=None, document=None, activit
             elements.append(Paragraph(
                 f"Receipt {_text(r['receipt'])} ({_text(r['patient'])}) is captured on {dates}. "
                 f"If it was only paid once, it was captured twice.", note_style))
+        era_section, era_appendix = era_flowables(activity['era'], section_style, sub_style,
+                                                  body_style, note_style)
+        elements += era_section
         if pay['payment_count']:
             elements.append(Paragraph('Every payment is listed in the appendix at the end of '
                                       'this report.', note_style))
@@ -536,6 +594,9 @@ def build_turnover_pdf(report, totals, patient_flow=None, document=None, activit
                 elements.append(KeepTogether([heading, table]))
             else:
                 elements += [CondPageBreak(40*mm), heading, table]
+
+    if activity and activity.get('era'):
+        elements += era_appendix
 
     if elements_only:
         return elements

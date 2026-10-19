@@ -94,6 +94,7 @@ def resolve(kind, day):
         'title': title,
         'span': span,
         'months': months,
+        'fy_label': f'Financial year {fy_label(fy_start_year(start))}',
         'is_current': start <= today <= end,
         'prev_day': start - timedelta(days=1),
         'next_day': end + timedelta(days=1) if end < today else None,
