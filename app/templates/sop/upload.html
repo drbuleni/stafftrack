@@ -34,7 +34,7 @@
                     <div class="mb-3">
                         {{ form.document.label(class="form-label") }}
                         {{ form.document(class="form-control") }}
-                        <div class="form-text">Allowed formats: PDF, DOC, DOCX (Max 5MB)</div>
+                        <div class="form-text">Allowed formats: PDF, DOC, DOCX (max 4MB)</div>
                         {% if form.document.errors %}
                             <div class="text-danger small">{{ form.document.errors[0] }}</div>
                         {% endif %}

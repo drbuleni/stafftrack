@@ -17,9 +17,20 @@ def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
-    # Ensure instance and upload folders exist
-    os.makedirs(os.path.join(app.root_path, '..', 'instance'), exist_ok=True)
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    # Ensure instance and upload folders exist. Vercel's disk is read-only
+    # and nothing is stored on it (files live in the database), so skip it.
+    if not app.config.get('ON_VERCEL'):
+        os.makedirs(os.path.join(app.root_path, '..', 'instance'), exist_ok=True)
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+    # After a move to a new address, the old host only forwards people on,
+    # keeping the page they asked for, so old bookmarks still land.
+    if app.config.get('REDIRECT_TO'):
+        from flask import redirect as _redirect, request as _request
+
+        @app.before_request
+        def forward_to_new_address():
+            return _redirect(app.config['REDIRECT_TO'] + _request.full_path.rstrip('?'), code=301)
 
     # Initialize extensions
     db.init_app(app)
@@ -92,7 +103,6 @@ def create_app(config_class=Config):
     from app.routes.reports import bp as reports_bp
     app.register_blueprint(reports_bp)
 
-
     @app.context_processor
     def inject_practice_name():
         return {'practice_name': app.config['PRACTICE_NAME']}
@@ -102,7 +112,7 @@ def create_app(config_class=Config):
     @app.errorhandler(413)
     def file_too_large(error):
         from flask import flash, redirect, request as flask_request, url_for
-        flash('That file is too large to upload. Please keep files under 5MB.', 'danger')
+        flash('That file is too large to upload. Please keep files under 4MB.', 'danger')
         return redirect(flask_request.referrer or url_for('dashboard.index')), 302
 
     # Register CLI commands
@@ -216,6 +226,17 @@ def create_app(config_class=Config):
 
         db.session.commit()
         click.echo(f'Updated {changed} section(s).')
+
+    @app.cli.command('add-sop-file-storage')
+    def add_sop_file_storage_command():
+        """Add the columns that hold SOP files in the database. Safe to rerun."""
+        from sqlalchemy import text
+        for column, kind in (('data', 'BYTEA'), ('content_type', 'VARCHAR(100)'),
+                             ('byte_size', 'INTEGER')):
+            db.session.execute(text(
+                f'ALTER TABLE sop_documents ADD COLUMN IF NOT EXISTS {column} {kind}'))
+        db.session.commit()
+        click.echo('sop_documents can now hold files.')
 
     @app.cli.command('send-room-notifications')
     def send_room_notifications_command():

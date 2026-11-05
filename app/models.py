@@ -214,7 +214,13 @@ class SOPDocument(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
-    file_path = db.Column(db.String(500), nullable=False)
+    file_path = db.Column(db.String(500), nullable=False)  # file name; the file itself is in data
+    # Stored in the database, like sick notes: the hosting has no lasting
+    # disk, so files saved to it vanished on every deploy. Deferred so
+    # listing documents never loads the files themselves.
+    data = db.deferred(db.Column(db.LargeBinary))
+    content_type = db.Column(db.String(100))
+    byte_size = db.Column(db.Integer)
     version = db.Column(db.String(20), default='1.0')
     description = db.Column(db.Text)
     uploaded_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)

@@ -108,7 +108,7 @@ class LeaveRequestForm(FlaskForm):
 # Doctor's note upload rules. A note is always optional - staff who have
 # one can attach it, staff who do not are never blocked from applying.
 SICK_NOTE_EXTENSIONS = {'pdf', 'jpg', 'jpeg', 'png', 'webp'}
-SICK_NOTE_MAX_BYTES = 5 * 1024 * 1024
+SICK_NOTE_MAX_BYTES = 4 * 1024 * 1024  # under Vercel's 4.5MB request limit
 SICK_NOTE_TYPES = {
     'pdf': 'application/pdf',
     'jpg': 'image/jpeg',
@@ -141,7 +141,7 @@ def _read_sick_note(file_storage):
 
     if len(data) > SICK_NOTE_MAX_BYTES:
         actual = len(data) / (1024 * 1024)
-        return None, (f'That file is {actual:.1f}MB. Sick notes must be 5MB or '
+        return None, (f'That file is {actual:.1f}MB. Sick notes must be 4MB or '
                       f'smaller - try photographing it at a lower resolution.')
 
     return {

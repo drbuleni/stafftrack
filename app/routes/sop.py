@@ -1,4 +1,7 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, send_from_directory, current_app
+from io import BytesIO
+
+from flask import (Blueprint, render_template, redirect, url_for, flash, request,
+                   send_file)
 from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileRequired, FileAllowed
@@ -9,8 +12,12 @@ from app import db
 from app.models import SOPDocument, SOPAcknowledgement, User
 from app.utils.decorators import manager_required
 from app.utils.audit import log_audit
-import os
-import uuid
+SOP_MAX_BYTES = 4 * 1024 * 1024
+SOP_TYPES = {
+    'pdf': 'application/pdf',
+    'doc': 'application/msword',
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+}
 
 bp = Blueprint('sop', __name__, url_prefix='/sop')
 
@@ -50,19 +57,21 @@ def upload():
 
     if form.validate_on_submit():
         file = form.document.data
-        # Generate secure filename with UUID
-        original_filename = secure_filename(file.filename)
-        ext = original_filename.rsplit('.', 1)[1].lower()
-        unique_filename = f"{uuid.uuid4().hex}.{ext}"
+        original_filename = secure_filename(file.filename) or 'document'
+        ext = original_filename.rsplit('.', 1)[-1].lower()
+        data = file.read()
+        if len(data) > SOP_MAX_BYTES:
+            flash(f'That file is {len(data) / 1024 / 1024:.1f}MB. SOP documents must be '
+                  f'4MB or smaller.', 'danger')
+            return render_template('sop/upload.html', form=form)
 
-        # Save file
-        file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], unique_filename)
-        file.save(file_path)
-
-        # Create database record
+        # Stored in the database, not on the server's disk, which doesn't last
         sop = SOPDocument(
             title=form.title.data,
-            file_path=unique_filename,
+            file_path=original_filename,
+            data=data,
+            content_type=SOP_TYPES.get(ext, 'application/octet-stream'),
+            byte_size=len(data),
             version=form.version.data,
             description=form.description.data,
             uploaded_by=current_user.id
@@ -91,12 +100,13 @@ def download(sop_id):
         'title': sop.title
     })
 
-    return send_from_directory(
-        current_app.config['UPLOAD_FOLDER'],
-        sop.file_path,
-        as_attachment=True,
-        download_name=f"{sop.title}.{sop.file_path.rsplit('.', 1)[1]}"
-    )
+    if not sop.data:
+        flash('This document is no longer available. Please ask a manager to upload it again.',
+              'warning')
+        return redirect(url_for('sop.index'))
+    ext = sop.file_path.rsplit('.', 1)[-1] if '.' in sop.file_path else 'pdf'
+    return send_file(BytesIO(sop.data), mimetype=sop.content_type or 'application/octet-stream',
+                     as_attachment=True, download_name=f'{sop.title}.{ext}')
 
 
 @bp.route('/acknowledge/<int:sop_id>', methods=['POST'])

@@ -32,6 +32,12 @@ def send_email(subject, recipient, html_body, mail):
         html=html_body
     )
 
+    # On Vercel nothing may run after the response is sent, so a background
+    # thread could be cut off mid-send. Send there before responding.
+    if current_app.config.get('ON_VERCEL'):
+        send_async_email(current_app._get_current_object(), msg, mail)
+        return
+
     # Send asynchronously to not block the request
     Thread(
         target=send_async_email,

@@ -1,0 +1,11 @@
+venv/
+instance/
+uploads/
+demo/
+docs/
+tools/
+data/
+*.dump
+*.sql
+migrate_*.py
+seed_*.py

@@ -14,6 +14,12 @@ class Config:
     # Use Supabase PostgreSQL (from .env) or fallback to SQLite for local development
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
         'sqlite:///' + os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance', 'stafftrack.db')
+    # Neon and most hosts hand out plain postgresql:// addresses, which
+    # SQLAlchemy reads as the psycopg2 driver. This app uses psycopg 3.
+    for _prefix in ('postgres://', 'postgresql://'):
+        if SQLALCHEMY_DATABASE_URI.startswith(_prefix):
+            SQLALCHEMY_DATABASE_URI = 'postgresql+psycopg://' + SQLALCHEMY_DATABASE_URI[len(_prefix):]
+            break
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # PostgreSQL connection pool settings for Supabase.
@@ -29,11 +35,20 @@ class Config:
 
     # File upload settings
     UPLOAD_FOLDER = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'uploads', 'sop_documents')
-    # Hard request cap. Kept above the per-feature limits (sick notes and SOP
-    # documents are both capped at 5MB in their own routes) so that an
-    # oversized upload reaches our validator and gets a friendly message,
-    # rather than being cut off by Werkzeug with a bare 413 page.
-    MAX_CONTENT_LENGTH = 8 * 1024 * 1024
+    # Uploads (sick notes, SOP documents) are capped at 4MB each in their own
+    # routes. Vercel refuses any request over 4.5MB before it reaches the
+    # app, so the per-file limit stays below that. This hard cap sits just
+    # above it so an oversized file still reaches our validator and gets a
+    # friendly message rather than a bare 413 page.
+    MAX_CONTENT_LENGTH = int(4.4 * 1024 * 1024)
+
+    # Running on Vercel (it sets VERCEL=1): no writable disk, and nothing
+    # may keep running after a response has been sent.
+    ON_VERCEL = bool(os.environ.get('VERCEL'))
+
+    # Set on the old host after a move, e.g. https://smilez.vernonfamily.solutions,
+    # to send every visitor to the new address instead of serving the app.
+    REDIRECT_TO = (os.environ.get('REDIRECT_TO') or '').rstrip('/')
     ALLOWED_EXTENSIONS = {'pdf', 'docx', 'doc'}
 
     # Session settings
