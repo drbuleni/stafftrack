@@ -19,6 +19,11 @@ def create_app(config_class=Config):
 
     # Ensure instance and upload folders exist. Vercel's disk is read-only
     # and nothing is stored on it (files live in the database), so skip it.
+    if app.config.get('ON_VERCEL') and app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite'):
+        # Without this the app starts on a local file Vercel can't write,
+        # and staff only see a vague "Internal Server Error" at login.
+        raise RuntimeError('DATABASE_URL is not set in Vercel (Settings > Environment '
+                           'Variables). Add the Neon address there, then redeploy.')
     if not app.config.get('ON_VERCEL'):
         os.makedirs(os.path.join(app.root_path, '..', 'instance'), exist_ok=True)
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
